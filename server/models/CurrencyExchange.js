@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const CurrencyExchangeSchema = new mongoose.Schema({
   fromCurrency: {
     type: String,
@@ -49,3 +51,5 @@ const CurrencyExchangeSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 CurrencyExchangeSchema.index({ exchangeDate: -1 });
+
+module.exports = mongoose.model('CurrencyExchange', CurrencyExchangeSchema);

@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const ProjectTaskSchema = new mongoose.Schema({
   project: {
     type: mongoose.Schema.Types.ObjectId,
@@ -62,3 +64,5 @@ const ProjectTaskSchema = new mongoose.Schema({
 
 ProjectTaskSchema.index({ project: 1, status: 1 });
 ProjectTaskSchema.index({ assignedTo: 1, status: 1 });
+
+module.exports = mongoose.model('ProjectTask', ProjectTaskSchema);

@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const ClientSchema = new mongoose.Schema({
   // المعلومات الأساسية
   name: {
@@ -96,3 +98,5 @@ ClientSchema.index({ phone: 1 }, { sparse: true });
 ClientSchema.virtual('displayName').get(function() {
   return this.company ? `${this.name} - ${this.company}` : this.name;
 });
+
+module.exports = mongoose.model('Client', ClientSchema);

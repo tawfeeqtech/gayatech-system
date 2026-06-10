@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const EmployeeSchema = new mongoose.Schema({
   // المعلومات الأساسية
   name: {
@@ -77,3 +79,5 @@ const EmployeeSchema = new mongoose.Schema({
 
 EmployeeSchema.index({ status: 1 });
 EmployeeSchema.index({ name: 1 });
+
+module.exports = mongoose.model('Employee', EmployeeSchema);

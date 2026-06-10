@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const SubscriptionSchema = new mongoose.Schema({
   provider: {
     type: String,
@@ -58,3 +60,5 @@ const SubscriptionSchema = new mongoose.Schema({
 
 SubscriptionSchema.index({ endDate: 1, status: 1 });
 SubscriptionSchema.index({ status: 1 });
+
+module.exports = mongoose.model('Subscription', SubscriptionSchema);

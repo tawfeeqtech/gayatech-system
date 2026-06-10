@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const PartnerFundingSchema = new mongoose.Schema({
   partner: {
     type: mongoose.Schema.Types.ObjectId,
@@ -75,3 +77,5 @@ const PartnerFundingSchema = new mongoose.Schema({
 
 PartnerFundingSchema.index({ partner: 1, fundingDate: -1 });
 PartnerFundingSchema.index({ direction: 1 });
+
+module.exports = mongoose.model('PartnerFunding', PartnerFundingSchema);

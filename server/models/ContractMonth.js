@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const ContractMonthSchema = new mongoose.Schema({
   // العلاقات
   contract: {
@@ -143,3 +145,5 @@ ContractMonthSchema.pre('save', function(next) {
   
   next();
 });
+
+module.exports = mongoose.model('ContractMonth', ContractMonthSchema);

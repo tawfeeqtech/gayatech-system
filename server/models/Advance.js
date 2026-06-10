@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const AdvanceSchema = new mongoose.Schema({
   employee: {
     type: mongoose.Schema.Types.ObjectId,
@@ -81,3 +83,5 @@ AdvanceSchema.pre('save', function(next) {
   
   next();
 });
+
+module.exports = mongoose.model('Advance', AdvanceSchema);

@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const ExpenseCategorySchema = new mongoose.Schema({
   name: {
     type: String,
@@ -20,3 +22,5 @@ const ExpenseCategorySchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+module.exports = mongoose.model('ExpenseCategory', ExpenseCategorySchema);

@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const NotificationSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -74,3 +76,5 @@ const NotificationSchema = new mongoose.Schema({
 
 NotificationSchema.index({ user: 1, read: 1, createdAt: -1 });
 NotificationSchema.index({ user: 1, dismissed: 1 });
+
+module.exports = mongoose.model('Notification', NotificationSchema);

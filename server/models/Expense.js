@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const ExpenseSchema = new mongoose.Schema({
   // رقم المصروف
   expenseNumber: {
@@ -94,3 +96,5 @@ const ExpenseSchema = new mongoose.Schema({
 
 ExpenseSchema.index({ expenseDate: -1 });
 ExpenseSchema.index({ category: 1, expenseDate: -1 });
+
+module.exports = mongoose.model('Expense', ExpenseSchema);

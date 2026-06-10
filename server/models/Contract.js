@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const ContractSchema = new mongoose.Schema({
   // رقم العقد (تلقائي)
   contractNumber: {
@@ -148,3 +150,5 @@ ContractSchema.pre('save', async function(next) {
   }
   next();
 });
+
+module.exports = mongoose.model('Contract', ContractSchema);

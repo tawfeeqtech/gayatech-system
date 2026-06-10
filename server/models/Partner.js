@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const PartnerSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -42,3 +44,5 @@ const PartnerSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+module.exports = mongoose.model('Partner', PartnerSchema);

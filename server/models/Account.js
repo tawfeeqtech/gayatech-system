@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const AccountSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -51,3 +53,5 @@ const AccountSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+module.exports = mongoose.model('Account', AccountSchema);

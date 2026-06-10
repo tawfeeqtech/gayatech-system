@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const SalarySchema = new mongoose.Schema({
   employee: {
     type: mongoose.Schema.Types.ObjectId,
@@ -83,3 +85,5 @@ SalarySchema.pre('save', function(next) {
   
   next();
 });
+
+module.exports = mongoose.model('Salary', SalarySchema);

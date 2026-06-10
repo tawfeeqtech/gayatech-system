@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const ProjectSchema = new mongoose.Schema({
   // رقم المشروع
   projectNumber: {
@@ -128,3 +130,5 @@ const ProjectSchema = new mongoose.Schema({
 ProjectSchema.index({ client: 1, status: 1 });
 ProjectSchema.index({ projectNumber: 1 });
 ProjectSchema.index({ deliveryDate: 1, status: 1 });
+
+module.exports = mongoose.model('Project', ProjectSchema);

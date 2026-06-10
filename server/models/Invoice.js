@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const InvoiceSchema = new mongoose.Schema({
   // رقم الفاتورة
   invoiceNumber: {
@@ -115,3 +117,5 @@ InvoiceSchema.pre('save', function(next) {
   
   next();
 });
+
+module.exports = mongoose.model('Invoice', InvoiceSchema);

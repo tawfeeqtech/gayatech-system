@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const IncomeSourceSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -17,3 +19,5 @@ const IncomeSourceSchema = new mongoose.Schema({
   color: String,
   icon: String
 }, { timestamps: true });
+
+module.exports = mongoose.model('IncomeSource', IncomeSourceSchema);
