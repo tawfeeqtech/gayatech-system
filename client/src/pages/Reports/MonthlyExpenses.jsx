@@ -10,7 +10,7 @@ const { Title } = Typography;
 
 const monthNames = ['يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 
-const MonthlyRevenue = () => {
+const MonthlyExpenses = () => {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,12 +18,12 @@ const MonthlyRevenue = () => {
 
   useEffect(() => {
     setLoading(true);
-    reportAPI.monthlyRevenue({ year })
+    reportAPI.monthlyExpenses({ year })
       .then(res => {
-        const revenue = res.data.data.revenue || [];
+        const expenses = res.data.data.expenses || [];
         const formatted = Array.from({ length: 12 }, (_, i) => {
-          const found = revenue.find(r => r._id === i + 1);
-          return { month: monthNames[i], revenue: found?.total || 0, count: found?.count || 0 };
+          const found = expenses.find(r => r._id === i + 1);
+          return { month: monthNames[i], expenses: found?.total || 0, count: found?.count || 0 };
         });
         setData(formatted);
       })
@@ -31,12 +31,12 @@ const MonthlyRevenue = () => {
       .finally(() => setLoading(false));
   }, [year]);
 
-  const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
+  const totalExpenses = data.reduce((sum, d) => sum + d.expenses, 0);
 
   const columns = [
     { title: 'الشهر', dataIndex: 'month', key: 'month' },
-    { title: 'عدد المعاملات', dataIndex: 'count', key: 'count', align: 'center' },
-    { title: 'الإيرادات', dataIndex: 'revenue', key: 'revenue', render: (v) => <span style={{ color: '#10b981', fontWeight: 600 }}>{formatCurrency(v)}</span> },
+    { title: 'عدد المصاريف', dataIndex: 'count', key: 'count', align: 'center' },
+    { title: 'المصاريف', dataIndex: 'expenses', key: 'expenses', render: (v) => <span style={{ color: '#ef4444', fontWeight: 600 }}>{formatCurrency(v)}</span> },
   ];
 
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
@@ -46,17 +46,17 @@ const MonthlyRevenue = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <a onClick={() => navigate('/reports')} style={{ cursor: 'pointer', color: '#3b82f6' }}><ArrowRightOutlined /> التقارير</a>
-          <Title level={4} style={{ margin: 0 }}>الإيرادات الشهرية</Title>
+          <Title level={4} style={{ margin: 0 }}>المصاريف الشهرية</Title>
         </div>
         <Select value={year} onChange={setYear} style={{ width: 100 }}>
-          {[2024, 2025, 2026, 2027].map(y => ({ value: y, label: y })).map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
+          {[2024, 2025, 2026, 2027].map(y => <Select.Option key={y} value={y}>{y}</Select.Option>)}
         </Select>
       </div>
 
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Card style={{ borderRadius: 8, marginBottom: 16 }}>
-            <Title level={5}>إجمالي الإيرادات: {formatCurrency(totalRevenue)}</Title>
+            <Title level={5}>إجمالي المصاريف: {formatCurrency(totalExpenses)}</Title>
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -64,19 +64,19 @@ const MonthlyRevenue = () => {
                 <YAxis />
                 <Tooltip formatter={(value) => formatCurrency(value)} />
                 <Legend />
-                <Bar dataKey="revenue" name="الإيرادات" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" name="المصاريف" fill="#ef4444" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
         </Col>
         <Col span={24}>
-          <Card title="تفاصيل الإيرادات" style={{ borderRadius: 8 }}>
+          <Card title="تفاصيل المصاريف" style={{ borderRadius: 8 }}>
             <Table columns={columns} dataSource={data} rowKey="month" pagination={false}
               summary={() => (
                 <Table.Summary.Row>
                   <Table.Summary.Cell index={0}><strong>الإجمالي</strong></Table.Summary.Cell>
                   <Table.Summary.Cell index={1} align="center"><strong>{data.reduce((s, d) => s + d.count, 0)}</strong></Table.Summary.Cell>
-                  <Table.Summary.Cell index={2}><strong style={{ color: '#10b981' }}>{formatCurrency(totalRevenue)}</strong></Table.Summary.Cell>
+                  <Table.Summary.Cell index={2}><strong style={{ color: '#ef4444' }}>{formatCurrency(totalExpenses)}</strong></Table.Summary.Cell>
                 </Table.Summary.Row>
               )}
             />
@@ -87,4 +87,4 @@ const MonthlyRevenue = () => {
   );
 };
 
-export default MonthlyRevenue;
+export default MonthlyExpenses;
