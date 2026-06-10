@@ -1,9 +1,16 @@
 const express = require('express');
+const accountController = require('../controllers/accountController');
+const { protect } = require('../middleware/auth');
+const roleCheck = require('../middleware/roleCheck');
+
 const router = express.Router();
 
-// Mock endpoint - قيد التطوير
-router.get('/', (req, res) => {
-  res.json({ message: 'مسار accountRoutes قيد التطوير حالياً' });
-});
+router.use(protect);
+
+router.get('/', roleCheck('admin', 'finance', 'accountant'), accountController.getAccounts);
+router.get('/:id', roleCheck('admin', 'finance', 'accountant'), accountController.getAccount);
+router.get('/:id/movements', roleCheck('admin', 'finance'), accountController.getAccountMovements);
+router.post('/', roleCheck('admin'), accountController.createAccount);
+router.put('/:id', roleCheck('admin'), accountController.updateAccount);
 
 module.exports = router;

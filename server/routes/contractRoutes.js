@@ -1,9 +1,18 @@
 const express = require('express');
+const contractController = require('../controllers/contractController');
+const { protect } = require('../middleware/auth');
+const roleCheck = require('../middleware/roleCheck');
+
 const router = express.Router();
 
-// Mock endpoint - قيد التطوير
-router.get('/', (req, res) => {
-  res.json({ message: 'مسار contractRoutes قيد التطوير حالياً' });
-});
+router.use(protect);
+
+router.get('/', roleCheck('admin', 'finance', 'pm'), contractController.getContracts);
+router.get('/:id', roleCheck('admin', 'finance', 'pm'), contractController.getContract);
+router.get('/:id/months', roleCheck('admin', 'finance', 'pm'), contractController.getContractMonths);
+router.post('/', roleCheck('admin', 'pm'), contractController.createContract);
+router.put('/:id', roleCheck('admin', 'pm'), contractController.updateContract);
+router.patch('/:id/status', roleCheck('admin', 'pm'), contractController.updateContractStatus);
+router.delete('/:id', roleCheck('admin'), contractController.deleteContract);
 
 module.exports = router;

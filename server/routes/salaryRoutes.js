@@ -1,9 +1,14 @@
 const express = require('express');
+const sc = require('../controllers/salaryController');
+const { protect } = require('../middleware/auth');
+const roleCheck = require('../middleware/roleCheck');
 const router = express.Router();
+router.use(protect);
 
-// Mock endpoint - قيد التطوير
-router.get('/', (req, res) => {
-  res.json({ message: 'مسار salaryRoutes قيد التطوير حالياً' });
-});
+router.get('/pending', roleCheck('admin', 'finance'), sc.getPendingSalaries);
+router.get('/', roleCheck('admin', 'finance'), sc.getSalaries);
+router.post('/', roleCheck('admin', 'finance'), sc.createSalary);
+router.put('/:id', roleCheck('admin'), sc.updateSalary);
+router.patch('/:id/pay', roleCheck('admin', 'finance'), sc.paySalary);
 
 module.exports = router;

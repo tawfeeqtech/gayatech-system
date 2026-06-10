@@ -6,6 +6,30 @@ const { port, nodeEnv } = require('./config/env');
 const corsConfig = require('./config/cors');
 const errorHandler = require('./middleware/errorHandler');
 
+
+// ============================================
+// ✅ تسجيل جميع موديلات قاعدة البيانات (الأهم!)
+// ============================================
+require('./models/User');
+require('./models/Client');
+require('./models/Account');
+require('./models/Transaction');
+require('./models/Contract');
+require('./models/ContractMonth');
+require('./models/Project');
+require('./models/ProjectTask');
+require('./models/Employee');
+require('./models/IncomeSource');      // <--- هذا اللي ناقصك
+require('./models/Expense');
+require('./models/Partner');
+require('./models/PartnerFunding');
+require('./models/Subscription');
+require('./models/CurrencyExchange');
+require('./models/Invoice');
+require('./models/Notification');
+// ============================================
+
+
 // الاتصال بقاعدة البيانات
 connectDB();
 
@@ -28,17 +52,20 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/clients', require('./routes/clientRoutes'));
 app.use('/api/contracts', require('./routes/contractRoutes'));
+app.use('/api/contract-months', require('./routes/contractMonthRoutes'));
 app.use('/api/projects', require('./routes/projectRoutes'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
 app.use('/api/invoices', require('./routes/invoiceRoutes'));
 app.use('/api/accounts', require('./routes/accountRoutes'));
 app.use('/api/expenses', require('./routes/expenseRoutes'));
+app.use('/api/expense-categories', require('./routes/expenseCategoryRoutes'));
 app.use('/api/employees', require('./routes/employeeRoutes'));
 app.use('/api/salaries', require('./routes/salaryRoutes'));
 app.use('/api/advances', require('./routes/advanceRoutes'));
 app.use('/api/partners', require('./routes/partnerRoutes'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/api/currency', require('./routes/currencyRoutes'));
+app.use('/api/income-sources', require('./routes/incomeSourceRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/import', require('./routes/importRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
