@@ -4,7 +4,8 @@ const ContractSchema = new mongoose.Schema({
   // رقم العقد (تلقائي)
   contractNumber: {
     type: String,
-    unique: true
+    unique: true,
+    sparse: true
     // مثال: CONT-2026-0001
   },
   
@@ -136,17 +137,27 @@ const ContractSchema = new mongoose.Schema({
 
 // مؤشرات
 ContractSchema.index({ client: 1, status: 1 });
-ContractSchema.index({ contractNumber: 1 });
 ContractSchema.index({ status: 1 });
 
 // توليد رقم العقد تلقائياً
 ContractSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const year = new Date().getFullYear();
-    const count = await this.constructor.countDocuments({
-      contractNumber: new RegExp(`CONT-${year}`)
-    });
-    this.contractNumber = `CONT-${year}-${String(count + 1).padStart(4, '0')}`;
+  if (this.isNew && !this.contractNumber) {
+    try {
+      const year = this.startDate ? this.startDate.getFullYear() : new Date().getFullYear();
+      const lastContract = await this.constructor.findOne({
+        contractNumber: new RegExp(`^CONT-${year}-`)
+      }).sort({ contractNumber: -1 });
+      
+      let nextNumber = 1;
+      if (lastContract && lastContract.contractNumber) {
+        const parts = lastContract.contractNumber.split('-');
+        nextNumber = parseInt(parts[parts.length - 1]) + 1;
+      }
+      
+      this.contractNumber = `CONT-${year}-${String(nextNumber).padStart(4, '0')}`;
+    } catch (error) {
+      this.contractNumber = `CONT-${Date.now()}`;
+    }
   }
   next();
 });

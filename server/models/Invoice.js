@@ -4,7 +4,8 @@ const InvoiceSchema = new mongoose.Schema({
   // رقم الفاتورة
   invoiceNumber: {
     type: String,
-    unique: true
+    unique: true,
+    sparse: true
     // مثال: INV-2026-0001
   },
   
@@ -102,16 +103,36 @@ const InvoiceSchema = new mongoose.Schema({
 
 InvoiceSchema.index({ client: 1, status: 1 });
 InvoiceSchema.index({ dueDate: 1, status: 1 });
-InvoiceSchema.index({ invoiceNumber: 1 });
 
-InvoiceSchema.pre('save', function(next) {
+InvoiceSchema.pre('save', async function(next) {
+  if (this.isNew && !this.invoiceNumber) {
+    try {
+      const year = this.issueDate ? this.issueDate.getFullYear() : new Date().getFullYear();
+      const lastInvoice = await this.constructor.findOne({
+        invoiceNumber: new RegExp(`^INV-${year}-`)
+      }).sort({ invoiceNumber: -1 });
+      
+      let nextNumber = 1;
+      if (lastInvoice && lastInvoice.invoiceNumber) {
+        const parts = lastInvoice.invoiceNumber.split('-');
+        nextNumber = parseInt(parts[parts.length - 1]) + 1;
+      }
+      
+      this.invoiceNumber = `INV-${year}-${String(nextNumber).padStart(4, '0')}`;
+    } catch (error) {
+      this.invoiceNumber = `INV-${Date.now()}`;
+    }
+  }
+  
+  // حساب المتبقي
   this.remainingAmount = this.totalAmount - this.paidAmount;
   
+  // تحديث الحالة
   if (this.paidAmount >= this.totalAmount && this.status !== 'ملغاة') {
     this.status = 'مدفوعة';
   } else if (this.paidAmount > 0 && this.paidAmount < this.totalAmount) {
     this.status = 'مدفوعة جزئياً';
-  } else if (new Date() > this.dueDate && this.paidAmount === 0) {
+  } else if (this.dueDate && new Date() > this.dueDate && this.paidAmount === 0 && this.status !== 'مسودة') {
     this.status = 'متأخرة';
   }
   

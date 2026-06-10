@@ -4,7 +4,8 @@ const ProjectSchema = new mongoose.Schema({
   // رقم المشروع
   projectNumber: {
     type: String,
-    unique: true
+    unique: true,
+    sparse: true 
     // مثال: PROJ-2026-0001
   },
   
@@ -128,7 +129,31 @@ const ProjectSchema = new mongoose.Schema({
 });
 
 ProjectSchema.index({ client: 1, status: 1 });
-ProjectSchema.index({ projectNumber: 1 });
 ProjectSchema.index({ deliveryDate: 1, status: 1 });
+
+ProjectSchema.pre('save', async function(next) {
+  if (this.isNew && !this.projectNumber) {
+    try {
+      const year = this.startDate ? this.startDate.getFullYear() : new Date().getFullYear();
+      
+      // ابحث عن آخر مشروع له رقم في هذه السنة
+      const lastProject = await this.constructor.findOne({
+        projectNumber: new RegExp(`^PROJ-${year}-`)
+      }).sort({ projectNumber: -1 });
+      
+      let nextNumber = 1;
+      if (lastProject && lastProject.projectNumber) {
+        const parts = lastProject.projectNumber.split('-');
+        nextNumber = parseInt(parts[parts.length - 1]) + 1;
+      }
+      
+      this.projectNumber = `PROJ-${year}-${String(nextNumber).padStart(4, '0')}`;
+    } catch (error) {
+      // إذا فشل التوليد، استخدم timestamp
+      this.projectNumber = `PROJ-${Date.now()}`;
+    }
+  }
+  next();
+});
 
 module.exports = mongoose.model('Project', ProjectSchema);

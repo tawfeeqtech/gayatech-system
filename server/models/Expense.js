@@ -4,7 +4,8 @@ const ExpenseSchema = new mongoose.Schema({
   // رقم المصروف
   expenseNumber: {
     type: String,
-    unique: true
+    unique: true,
+    sparse: true
   },
   
   // العلاقات
@@ -97,4 +98,25 @@ const ExpenseSchema = new mongoose.Schema({
 ExpenseSchema.index({ expenseDate: -1 });
 ExpenseSchema.index({ category: 1, expenseDate: -1 });
 
+ExpenseSchema.pre('save', async function(next) {
+  if (this.isNew && !this.expenseNumber) {
+    try {
+      const year = this.expenseDate ? this.expenseDate.getFullYear() : new Date().getFullYear();
+      const lastExpense = await this.constructor.findOne({
+        expenseNumber: new RegExp(`^EXP-${year}-`)
+      }).sort({ expenseNumber: -1 });
+      
+      let nextNumber = 1;
+      if (lastExpense && lastExpense.expenseNumber) {
+        const parts = lastExpense.expenseNumber.split('-');
+        nextNumber = parseInt(parts[parts.length - 1]) + 1;
+      }
+      
+      this.expenseNumber = `EXP-${year}-${String(nextNumber).padStart(4, '0')}`;
+    } catch (error) {
+      this.expenseNumber = `EXP-${Date.now()}`;
+    }
+  }
+  next();
+});
 module.exports = mongoose.model('Expense', ExpenseSchema);

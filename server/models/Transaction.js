@@ -4,7 +4,8 @@ const TransactionSchema = new mongoose.Schema({
   // رقم المعاملة
   transactionNumber: {
     type: String,
-    unique: true
+    unique: true,
+    sparse: true 
     // مثال: TRX-2026-0001
   },
   
@@ -161,15 +162,26 @@ TransactionSchema.index({ nature: 1, type: 1 });
 
 // Middleware: توليد رقم المعاملة
 TransactionSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const year = new Date(this.transactionDate).getFullYear();
-    const count = await this.constructor.countDocuments({
-      transactionNumber: new RegExp(`TRX-${year}`)
-    });
-    this.transactionNumber = `TRX-${year}-${String(count + 1).padStart(4, '0')}`;
+  if (this.isNew && !this.transactionNumber) {
+    try {
+      const year = this.transactionDate ? this.transactionDate.getFullYear() : new Date().getFullYear();
+      const lastTransaction = await this.constructor.findOne({
+        transactionNumber: new RegExp(`^TRX-${year}-`)
+      }).sort({ transactionNumber: -1 });
+      
+      let nextNumber = 1;
+      if (lastTransaction && lastTransaction.transactionNumber) {
+        const parts = lastTransaction.transactionNumber.split('-');
+        nextNumber = parseInt(parts[parts.length - 1]) + 1;
+      }
+      
+      this.transactionNumber = `TRX-${year}-${String(nextNumber).padStart(4, '0')}`;
+    } catch (error) {
+      this.transactionNumber = `TRX-${Date.now()}`;
+    }
   }
   
-  // تعيين الطبيعة تلقائياً
+  // تحديد الطبيعة تلقائياً
   if (this.type === 'تحويل') {
     this.nature = 'داخلي';
   } else {
@@ -178,5 +190,6 @@ TransactionSchema.pre('save', async function(next) {
   
   next();
 });
+
 
 module.exports = mongoose.model('Transaction', TransactionSchema);
