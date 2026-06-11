@@ -71,7 +71,12 @@ const InvoiceForm = () => {
             <Col xs={24} md={8}>
               <Form.Item name="status" label="الحالة">
                 <Select options={[
-                  { value: 'مسودة', label: 'مسودة' }, { value: 'مصدرة', label: 'مصدرة' },
+                  { value: 'مسودة', label: 'مسودة' },
+                  { value: 'مصدرة', label: 'مصدرة' },
+                  { value: 'مدفوعة جزئياً', label: 'مدفوعة جزئياً' },
+                  { value: 'مدفوعة', label: 'مدفوعة' },
+                  { value: 'متأخرة', label: 'متأخرة' },
+                  { value: 'ملغاة', label: 'ملغاة' },
                 ]} />
               </Form.Item>
             </Col>

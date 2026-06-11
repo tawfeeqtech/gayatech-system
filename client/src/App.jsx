@@ -49,6 +49,7 @@ import EmployeePerformance from './pages/Reports/EmployeePerformance';
 import { ReemMovements, CompanyAccount } from './pages/Reports/AccountMovements';
 import IncomeSources from './pages/Reports/IncomeSources';
 import MonthlyExpenses from './pages/Reports/MonthlyExpenses';
+import InvoiceDetail from './pages/Invoices/InvoiceDetail';
 
 import { useAuth } from './hooks/useAuth';
 
@@ -109,6 +110,7 @@ function App() {
 
           <Route path="invoices" element={<InvoiceList />} />
           <Route path="invoices/new" element={<InvoiceForm />} />
+          <Route path="invoices/:id" element={<InvoiceDetail />} />
 
           <Route path="expenses" element={<ExpenseList />} />
           <Route path="expenses/new" element={<ExpenseForm />} />

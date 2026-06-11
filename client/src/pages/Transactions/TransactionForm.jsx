@@ -6,32 +6,83 @@ import FormField from '../../components/ui/FormField';
 import transactionAPI from '../../api/transactions';
 import clientAPI from '../../api/clients';
 import accountAPI from '../../api/accounts';
+import invoiceAPI from '../../api/invoices';
 
 const { Title } = Typography;
+
+const formatCurrency = (amount, currency = 'USD') => {
+  const symbols = { USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' };
+  try {
+    return `${symbols[currency] || ''}${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  } catch { return `${amount}`; }
+};
 
 const TransactionForm = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [clients, setClients] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [type, setType] = useState('دخل');
 
   useEffect(() => {
-    Promise.all([
-      clientAPI.getAll({ limit: 100 }).then(r => setClients(r.data.data.clients || [])).catch(() => {}),
-      accountAPI.getAll().then(r => setAccounts(r.data.data.accounts || [])).catch(() => {}),
-    ]);
+    // جلب العملاء والحسابات مرة واحدة
+    clientAPI.getAll({ limit: 100 })
+      .then(r => setClients(r.data.data.clients || []))
+      .catch(() => {});
+    
+    accountAPI.getAll()
+      .then(r => setAccounts(r.data.data.accounts || []))
+      .catch(() => {});
   }, []);
+
+  // عند اختيار العميل - جلب فواتيره
+  const handleClientChange = async (clientId) => {
+    // مسح الفاتورة المختارة سابقاً
+    form.setFieldsValue({ invoice: undefined });
+    
+    if (!clientId) {
+      setInvoices([]);
+      return;
+    }
+
+    setLoadingInvoices(true);
+    try {
+      // جلب جميع الفواتير ثم فلترتها يدوياً
+      const res = await invoiceAPI.getAll({ limit: 200 });
+      const allInvoices = res.data.data.invoices || [];
+      
+      // فلترة الفواتير الخاصة بالعميل وغير المدفوعة
+      const clientInvoices = allInvoices.filter(inv => {
+        const invClientId = typeof inv.client === 'object' ? inv.client?._id : inv.client;
+        const matchesClient = invClientId === clientId;
+        const notFullyPaid = inv.status !== 'مدفوعة' && inv.status !== 'ملغاة';
+        return matchesClient && notFullyPaid;
+      });
+      
+      console.log('Client ID:', clientId);
+      console.log('All invoices:', allInvoices.length);
+      console.log('Filtered invoices:', clientInvoices.length);
+      
+      setInvoices(clientInvoices);
+      
+      if (clientInvoices.length === 0) {
+        message.info('لا توجد فواتير غير مدفوعة لهذا العميل');
+      }
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+      message.error('فشل في جلب الفواتير');
+      setInvoices([]);
+    } finally {
+      setLoadingInvoices(false);
+    }
+  };
 
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
-      const data = {
-        ...values,
-        nature: values.type === 'تحويل' ? 'داخلي' : 'خارجي',
-      };
       await transactionAPI.create(values);
       message.success('تمت إضافة المعاملة بنجاح');
       navigate('/transactions');
@@ -44,7 +95,13 @@ const TransactionForm = () => {
 
   const onTypeChange = (value) => {
     setType(value);
-    form.setFieldsValue({ fromAccount: undefined, toAccount: undefined });
+    form.setFieldsValue({ 
+      fromAccount: undefined, 
+      toAccount: undefined, 
+      invoice: undefined, 
+      client: undefined 
+    });
+    setInvoices([]);
   };
 
   return (
@@ -62,7 +119,9 @@ const TransactionForm = () => {
             <Col xs={24} md={8}>
               <Form.Item name="type" label="نوع المعاملة" rules={[{ required: true }]}>
                 <Select onChange={onTypeChange} options={[
-                  { value: 'دخل', label: '💰 دخل' }, { value: 'مصروف', label: '💸 مصروف' }, { value: 'تحويل', label: '🔄 تحويل' },
+                  { value: 'دخل', label: '💰 دخل' },
+                  { value: 'مصروف', label: '💸 مصروف' },
+                  { value: 'تحويل', label: '🔄 تحويل' },
                 ]} />
               </Form.Item>
             </Col>
@@ -79,59 +138,92 @@ const TransactionForm = () => {
           </Row>
 
           <Row gutter={24}>
-            {/* الحسابات - تظهر حسب النوع */}
+            {/* الحسابات */}
             {type === 'تحويل' ? (
               <>
-                <Col xs={24} md={12}>
+                <Col xs={24} md={6}>
                   <Form.Item name="fromAccount" label="من حساب" rules={[{ required: true, message: 'مطلوب للتحويل' }]}>
                     <Select placeholder="اختر الحساب المصدر" options={accounts.map(a => ({ value: a._id, label: a.name }))} />
                   </Form.Item>
                 </Col>
-                <Col xs={24} md={12}>
+                <Col xs={24} md={6}>
                   <Form.Item name="toAccount" label="إلى حساب" rules={[{ required: true, message: 'مطلوب للتحويل' }]}>
                     <Select placeholder="اختر الحساب الوجهة" options={accounts.map(a => ({ value: a._id, label: a.name }))} />
                   </Form.Item>
                 </Col>
               </>
             ) : type === 'دخل' ? (
-              <Col xs={24} md={12}>
+              <Col xs={24} md={6}>
                 <Form.Item name="toAccount" label="إلى حساب (المستلم)" rules={[{ required: true, message: 'مطلوب' }]}>
                   <Select placeholder="اختر الحساب المستلم" options={accounts.map(a => ({ value: a._id, label: a.name }))} />
                 </Form.Item>
               </Col>
             ) : (
-              <Col xs={24} md={12}>
+              <Col xs={24} md={6}>
                 <Form.Item name="fromAccount" label="من حساب (المدفوع منه)" rules={[{ required: true, message: 'مطلوب' }]}>
                   <Select placeholder="اختر الحساب" options={accounts.map(a => ({ value: a._id, label: a.name }))} />
                 </Form.Item>
               </Col>
             )}
-            <Col xs={24} md={12}>
+            <Col xs={24} md={6}>
               <FormField name="transactionDate" label="تاريخ المعاملة" type="date" rules={[{ required: true }]} />
+            </Col>
+            <Col xs={24} md={6}>
+              <Form.Item name="status" label="الحالة">
+                <Select options={[
+                  { value: 'مكتمل', label: 'مكتمل' },
+                  { value: 'معلق', label: 'معلق' },
+                  { value: 'قيد المراجعة', label: 'قيد المراجعة' },
+                ]} />
+              </Form.Item>
             </Col>
           </Row>
 
+          {/* ربط بالعميل والفاتورة - فقط لنوع الدخل */}
+          {type === 'دخل' && (
+            <Row gutter={24}>
+              <Col xs={24} md={12}>
+                <Form.Item name="client" label="العميل">
+                  <Select 
+                    placeholder="اختر العميل" 
+                    allowClear 
+                    showSearch 
+                    optionFilterProp="label"
+                    onChange={handleClientChange}
+                    options={clients.map(c => ({ 
+                      value: c._id, 
+                      label: c.company ? `${c.name} - ${c.company}` : c.name 
+                    }))} 
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="invoice" label="ربط بفاتورة (اختياري)">
+                  <Select 
+                    placeholder={loadingInvoices ? 'جاري التحميل...' : 'اختر الفاتورة'} 
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    loading={loadingInvoices}
+                    disabled={loadingInvoices || invoices.length === 0}
+                    notFoundContent={loadingInvoices ? 'جاري التحميل...' : 'لا توجد فواتير غير مدفوعة'}
+                    options={invoices.map(inv => ({ 
+                      value: inv._id, 
+                      label: `${inv.invoiceNumber || 'بدون رقم'} | ${formatCurrency(inv.totalAmount - inv.paidAmount, inv.currency)} متبقي | ${inv.invoiceType}` 
+                    }))} 
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          )}
+
           <Row gutter={24}>
-            <Col xs={24} md={8}>
-              <Form.Item name="client" label="العميل (اختياري)">
-                <Select placeholder="اختر العميل" allowClear showSearch optionFilterProp="label"
-                  options={clients.map(c => ({ value: c._id, label: c.company ? `${c.name} - ${c.company}` : c.name }))} />
-              </Form.Item>
-            </Col>
             <Col xs={24} md={8}>
               <Form.Item name="paymentMethod" label="وسيلة الدفع">
                 <Select options={[
                   { value: 'تحويل بنكي', label: 'تحويل بنكي' }, { value: 'نقد', label: 'نقد' },
                   { value: 'شيك', label: 'شيك' }, { value: 'بطاقة ائتمان', label: 'بطاقة ائتمان' },
                   { value: 'ريم', label: 'ريم' }, { value: 'أخرى', label: 'أخرى' },
-                ]} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item name="status" label="الحالة">
-                <Select options={[
-                  { value: 'مكتمل', label: 'مكتمل' }, { value: 'معلق', label: 'معلق' },
-                  { value: 'قيد المراجعة', label: 'قيد المراجعة' },
                 ]} />
               </Form.Item>
             </Col>

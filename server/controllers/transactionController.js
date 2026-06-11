@@ -130,16 +130,23 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
 
   const transaction = await Transaction.create(req.body);
 
-  // تحديث الأرصدة بعد إنشاء المعاملة
-  await updateAccountBalances(transaction);
+  if (transaction.invoice && transaction.type === 'دخل') {
+    await updateInvoiceStatus(transaction.invoice, transaction.amount);
+    
+    // ربط المعاملة بالفاتورة
+    await Invoice.findByIdAndUpdate(transaction.invoice, {
+      $push: { transactions: transaction._id }
+    });
+  }
 
-  // تحديث حالة الفاتورة/الشهر المرتبط
+
+  // تحديث حالة الشهر المرتبط
   if (transaction.contractMonth) {
     await updateContractMonthStatus(transaction.contractMonth);
   }
-  if (transaction.invoice) {
-    await updateInvoiceStatus(transaction.invoice);
-  }
+
+  // تحديث الأرصدة
+  await updateAccountBalances(transaction);
 
   // تحديث إحصائيات العميل
   if (transaction.client) {
@@ -385,15 +392,22 @@ const updateContractMonthStatus = async (monthId) => {
   await Contract.findByIdAndUpdate(month.contract, { computedStats: stats });
 };
 
-const updateInvoiceStatus = async (invoiceId) => {
+const updateInvoiceStatus = async (invoiceId, additionalAmount = 0) => {
   const invoice = await Invoice.findById(invoiceId);
   if (!invoice) return;
 
+  // إضافة المبلغ الجديد
+  if (additionalAmount > 0) {
+    invoice.paidAmount = (invoice.paidAmount || 0) + additionalAmount;
+  }
+
+  // تحديث الحالة
   if (invoice.paidAmount >= invoice.totalAmount) {
     invoice.status = 'مدفوعة';
   } else if (invoice.paidAmount > 0) {
     invoice.status = 'مدفوعة جزئياً';
   }
+  
   invoice.remainingAmount = invoice.totalAmount - invoice.paidAmount;
   await invoice.save();
 };
