@@ -66,6 +66,14 @@ exports.createProject = asyncHandler(async (req, res, next) => {
   req.body.createdBy = req.user._id;
   const project = await Project.create(req.body);
 
+  if (project.team && project.team.length > 0) {
+    for (const member of project.team) {
+      if (member.employee) {
+        await updateEmployeeStatsForProject(member.employee);
+      }
+    }
+  }
+
   res.status(201).json({
     status: 'success',
     data: { project }
@@ -84,6 +92,14 @@ exports.updateProject = asyncHandler(async (req, res, next) => {
 
   if (!project) {
     return next(new ApiError('المشروع غير موجود', 404));
+  }
+
+  if (project.team && project.team.length > 0) {
+    for (const member of project.team) {
+      if (member.employee) {
+        await updateEmployeeStatsForProject(member.employee);
+      }
+    }
   }
 
   res.status(200).json({
@@ -149,3 +165,28 @@ exports.getProjectTasks = asyncHandler(async (req, res, next) => {
     data: { tasks }
   });
 });
+
+const updateEmployeeStatsForProject = async (employeeId) => {
+  const Employee = require('../models/Employee');
+  const Project = require('../models/Project');
+  const ProjectTask = require('../models/ProjectTask');
+
+  const projects = await Project.find({
+    'team.employee': employeeId,
+    status: { $in: ['قيد التخطيط', 'قيد التنفيذ', 'تحت المراجعة'] }
+  });
+
+  const tasks = await ProjectTask.find({ 'assignedTo.employee': employeeId });
+  const completedTasks = tasks.filter(t => t.status === 'مكتملة').length;
+  const totalHours = tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+
+  await Employee.findByIdAndUpdate(employeeId, {
+    computedStats: {
+      activeProjects: projects.length,
+      totalProjects: projects.length,
+      totalTasks: tasks.length,
+      completedTasks: completedTasks,
+      totalHoursWorked: totalHours
+    }
+  });
+};
