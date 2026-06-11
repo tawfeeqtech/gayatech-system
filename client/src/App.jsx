@@ -134,6 +134,7 @@ function App() {
 
           <Route path="subscriptions" element={<SubscriptionList />} />
           <Route path="subscriptions/new" element={<SubscriptionForm />} />
+          <Route path="subscriptions/edit/:id" element={<SubscriptionForm />} />
 
           <Route path="currency-exchange" element={<CurrencyExchangeList />} />
           <Route path="import" element={<ImportData />} />
