@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Steps, Button, Upload, Select, message, Alert, Table, Typography } from 'antd';
+import { Card, Steps, Button, Upload, Select, message, Alert, Table, Typography, Space } from 'antd';
 import { UploadOutlined, DownloadOutlined, InboxOutlined } from '@ant-design/icons';
 import importAPI from '../../api/import';
 

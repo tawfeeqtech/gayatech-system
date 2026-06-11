@@ -4,6 +4,7 @@ import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import FormField from '../../components/ui/FormField';
 import employeeAPI from '../../api/employees';
+import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
@@ -21,7 +22,7 @@ const EmployeeForm = () => {
       employeeAPI.getById(id)
         .then(r => {
           const e = r.data.data.employee;
-          form.setFieldsValue({ ...e, joiningDate: e.joiningDate?.split('T')[0] });
+          form.setFieldsValue({ ...e, joiningDate: e.joiningDate ? dayjs(e.joiningDate) : undefined });
         })
         .catch(() => { message.error('فشل في جلب البيانات'); navigate('/employees'); })
         .finally(() => setLoading(false));

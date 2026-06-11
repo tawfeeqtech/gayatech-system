@@ -29,6 +29,10 @@ const ClientDetail = () => {
         clientAPI.getById(id),
         clientAPI.getStats(id),
       ]);
+      console.log('📊 Stats Response:', statsRes.data);
+      console.log('💰 Stats data:', statsRes.data.data);
+    
+
       setClient({
         ...clientRes.data.data.client,
         stats: statsRes.data.data.stats,

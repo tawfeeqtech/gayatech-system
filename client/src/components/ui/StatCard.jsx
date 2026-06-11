@@ -1,6 +1,13 @@
 import React from 'react';
 import { Card } from 'antd';
-import CountUp from 'react-countup';
+
+const formatNumber = (num) => {
+  if (num === undefined || num === null) return '0';
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+};
 
 const StatCard = ({
   title,
@@ -10,7 +17,6 @@ const StatCard = ({
   color = '#2563eb',
   icon,
   loading = false,
-  precision = 0,
 }) => {
   return (
     <Card
@@ -28,7 +34,7 @@ const StatCard = ({
           </div>
           <div style={{ fontSize: 28, fontWeight: 'bold', color, fontFamily: 'Cairo, sans-serif' }}>
             {prefix && <span style={{ fontSize: 18 }}>{prefix} </span>}
-            <CountUp end={value} duration={1.5} decimals={precision} separator="," />
+            {formatNumber(value)}
             {suffix && <span style={{ fontSize: 14 }}> {suffix}</span>}
           </div>
         </div>

@@ -6,6 +6,7 @@ import FormField from '../../components/ui/FormField';
 import projectAPI from '../../api/projects';
 import clientAPI from '../../api/clients';
 import employeeAPI from '../../api/employees';
+import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
@@ -37,12 +38,16 @@ const ProjectForm = () => {
       const r = await projectAPI.getById(id);
       const p = r.data.data.project;
       form.setFieldsValue({
-        ...p, client: p.client?._id,
-        startDate: p.startDate?.split('T')[0],
-        deliveryDate: p.deliveryDate?.split('T')[0],
+        ...p,
+        client: p.client?._id,
+        startDate: p.startDate ? dayjs(p.startDate) : undefined,      // ✅ dayjs
+        deliveryDate: p.deliveryDate ? dayjs(p.deliveryDate) : undefined, // ✅ dayjs
         team: p.team?.map(t => ({ employee: t.employee?._id, role: t.role })),
       });
-    } catch { message.error('فشل في جلب بيانات المشروع'); navigate('/projects'); }
+    } catch { 
+      message.error('فشل في جلب بيانات المشروع'); 
+      navigate('/projects'); 
+    }
     finally { setLoading(false); }
   };
 

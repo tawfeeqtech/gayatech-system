@@ -28,6 +28,10 @@ const TransactionForm = () => {
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
+      const data = {
+        ...values,
+        nature: values.type === 'تحويل' ? 'داخلي' : 'خارجي',
+      };
       await transactionAPI.create(values);
       message.success('تمت إضافة المعاملة بنجاح');
       navigate('/transactions');

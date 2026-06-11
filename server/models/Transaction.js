@@ -20,7 +20,10 @@ const TransactionSchema = new mongoose.Schema({
   nature: {
     type: String,
     enum: ['خارجي', 'داخلي'],
-    required: true
+    required: false,
+    default: function() {
+      return this.type === 'تحويل' ? 'داخلي' : 'خارجي';
+    }
   },
   
   // المبلغ والعملة

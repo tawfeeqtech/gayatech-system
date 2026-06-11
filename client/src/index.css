@@ -10,3 +10,46 @@ body {
   direction: rtl;
   background-color: #f8fafc;
 }
+
+/* تخصيص القائمة الجانبية */
+.ant-menu-dark {
+  background-color: #1b4332 !important;
+}
+
+.ant-menu-dark .ant-menu-item {
+  color: #e8f5e9 !important;
+}
+
+.ant-menu-dark .ant-menu-item:hover {
+  background-color: #2d6c5b !important;
+}
+
+.ant-menu-dark .ant-menu-item-selected {
+  background-color: #3d8b74 !important;
+  color: #ffffff !important;
+}
+
+.ant-menu-dark .ant-menu-submenu-title {
+  color: #e8f5e9 !important;
+}
+
+.ant-menu-dark .ant-menu-submenu-title:hover {
+  background-color: #2d6c5b !important;
+  color: #ffd54f !important;
+}
+
+.ant-menu-dark .ant-menu-item-selected::after {
+  border-right-color: #ffd54f !important;
+}
+
+.ant-menu-dark .ant-menu-sub .ant-menu-item {
+  padding-right: 48px !important;
+}
+
+/* تخصيص المجموعات */
+.ant-menu-item-group-title {
+  padding: 16px 24px 8px 24px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 1px !important;
+}

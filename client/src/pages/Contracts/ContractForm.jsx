@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import FormField from '../../components/ui/FormField';
 import contractAPI from '../../api/contracts';
 import clientAPI from '../../api/clients';
+import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
@@ -39,8 +40,8 @@ const ContractForm = () => {
       form.setFieldsValue({
         ...contract,
         client: contract.client?._id,
-        startDate: contract.startDate ? contract.startDate.split('T')[0] : undefined,
-        endDate: contract.endDate ? contract.endDate.split('T')[0] : undefined,
+        startDate: contract.startDate ? dayjs(contract.startDate) : undefined,
+        endDate: contract.endDate ? dayjs(contract.endDate) : undefined,
       });
     } catch (error) {
       message.error('فشل في جلب بيانات العقد');

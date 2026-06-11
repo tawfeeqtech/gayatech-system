@@ -71,6 +71,7 @@ exports.getPartnerFundings = asyncHandler(async (req, res, next) => {
 });
 
 exports.createFunding = asyncHandler(async (req, res, next) => {
+  req.body.partner = req.params.id;
   req.body.createdBy = req.user._id;
   const funding = await PartnerFunding.create(req.body);
 

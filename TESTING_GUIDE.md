@@ -89,7 +89,7 @@ curl http://localhost:5000/
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@gayatech.ps",
+    "username": "admin",
     "password": "admin123"
   }'
 ```
