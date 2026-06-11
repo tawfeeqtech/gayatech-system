@@ -73,3 +73,25 @@ exports.getPendingAdvances = asyncHandler(async (req, res, next) => {
     .sort('-requestDate');
   res.status(200).json({ status: 'success', results: advances.length, data: { advances } });
 });
+
+// @desc    حذف سلفة
+// @route   DELETE /api/advances/:id
+// @access  Private (admin)
+exports.deleteAdvance = asyncHandler(async (req, res, next) => {
+  const advance = await Advance.findById(req.params.id);
+
+  if (!advance) {
+    return next(new ApiError('السلفة غير موجودة', 404));
+  }
+
+  if (advance.transaction) {
+    return next(new ApiError('لا يمكن حذف السلفة لوجود معاملة مالية مرتبطة بها', 400));
+  }
+
+  await Advance.findByIdAndDelete(req.params.id);
+
+  res.status(200).json({
+    status: 'success',
+    message: 'تم حذف السلفة بنجاح'
+  });
+});

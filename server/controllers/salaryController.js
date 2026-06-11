@@ -57,3 +57,26 @@ exports.getPendingSalaries = asyncHandler(async (req, res, next) => {
     .sort('-month');
   res.status(200).json({ status: 'success', results: salaries.length, data: { salaries } });
 });
+
+// @desc    حذف راتب
+// @route   DELETE /api/salaries/:id
+// @access  Private (admin)
+exports.deleteSalary = asyncHandler(async (req, res, next) => {
+  const salary = await Salary.findById(req.params.id);
+
+  if (!salary) {
+    return next(new ApiError('الراتب غير موجود', 404));
+  }
+
+  // تحقق من وجود معاملة مرتبطة
+  if (salary.transaction) {
+    return next(new ApiError('لا يمكن حذف الراتب لوجود معاملة مالية مرتبطة به', 400));
+  }
+
+  await Salary.findByIdAndDelete(req.params.id);
+
+  res.status(200).json({
+    status: 'success',
+    message: 'تم حذف الراتب بنجاح'
+  });
+});

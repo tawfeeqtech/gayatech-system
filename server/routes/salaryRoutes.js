@@ -9,6 +9,7 @@ router.get('/pending', roleCheck('admin', 'finance'), sc.getPendingSalaries);
 router.get('/', roleCheck('admin', 'finance'), sc.getSalaries);
 router.post('/', roleCheck('admin', 'finance'), sc.createSalary);
 router.put('/:id', roleCheck('admin'), sc.updateSalary);
+router.delete('/:id', roleCheck('admin'), sc.deleteSalary);
 router.patch('/:id/pay', roleCheck('admin', 'finance'), sc.paySalary);
 
 module.exports = router;

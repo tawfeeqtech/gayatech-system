@@ -78,6 +78,10 @@ const PartnerDetail = () => {
     },
     { title: 'السبب', dataIndex: 'reason', key: 'reason', width: 200, ellipsis: true },
     {
+      title: 'تاريخ السداد المتوقع', dataIndex: 'expectedRepaymentDate', key: 'expected', width: 130,
+      render: (d) => d ? new Date(d).toLocaleDateString('ar-SA') : <span style={{ color: '#94a3b8' }}>—</span>,
+    },
+    {
       title: 'الحالة', dataIndex: 'status', key: 'status', width: 90,
       render: (s) => <Tag color={s === 'مكتمل' ? 'green' : 'orange'}>{s}</Tag>,
     },
@@ -119,6 +123,47 @@ const PartnerDetail = () => {
         </Col>
       </Row>
 
+      {balance < 0 && (
+        <Card 
+          title="💰 تسديد المبلغ المستحق" 
+          style={{ borderRadius: 8, marginBottom: 24, border: '1px solid #f59e0b' }}
+          extra={<Tag color="orange">مستحق للشريك</Tag>}
+        >
+          <Row gutter={[16, 16]} align="middle">
+            <Col xs={24} md={6}>
+              <span style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>المبلغ المستحق:</span>
+              <div style={{ fontSize: 20, color: '#ef4444', fontWeight: 700 }}>
+                {formatCurrency(Math.abs(balance))}
+              </div>
+            </Col>
+            <Col xs={24} md={6}>
+              <span style={{ display: 'block', marginBottom: 4 }}>إجمالي التمويل:</span>
+              <div style={{ fontWeight: 600 }}>{formatCurrency(stats.totalFunded || 0)}</div>
+            </Col>
+            <Col xs={24} md={6}>
+              <span style={{ display: 'block', marginBottom: 4 }}>إجمالي المسدد:</span>
+              <div style={{ fontWeight: 600, color: '#10b981' }}>{formatCurrency(stats.totalRepaid || 0)}</div>
+            </Col>
+            <Col xs={24} md={6}>
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setShowFundingForm(true);
+                  fundingForm.setFieldsValue({
+                    direction: 'سداد للشريك',
+                    amount: Math.abs(balance),
+                    reason: 'سداد كامل',
+                  });
+                }}
+              >
+                تسجيل سداد
+              </Button>
+            </Col>
+          </Row>
+        </Card>
+      )}
+
       <Card style={{ borderRadius: 8, marginBottom: 24 }}>
         <Descriptions title="معلومات الشريك" column={{ xs: 1, sm: 2 }}>
           <Descriptions.Item label="البريد">{partner.email || '—'}</Descriptions.Item>
@@ -149,6 +194,16 @@ const PartnerDetail = () => {
               <Form.Item name="amount" rules={[{ required: true }]}>
                 <InputNumber placeholder="المبلغ" min={0} style={{ width: 120 }} />
               </Form.Item>
+
+              <Form.Item name="currency">
+                <Select style={{ width: 80 }} options={[
+                  { value: 'USD', label: '$' },
+                  { value: 'ILS', label: '₪' },
+                  { value: 'SAR', label: '﷼' },
+                  { value: 'JOD', label: 'د.أ' },
+                ]} />
+              </Form.Item>
+
               <Form.Item name="fundingDate" rules={[{ required: true }]}>
                 <input type="date" style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db' }} />
               </Form.Item>
@@ -156,6 +211,13 @@ const PartnerDetail = () => {
                 <Select placeholder="الحساب" style={{ width: 140 }} allowClear
                   options={accounts.map(a => ({ value: a._id, label: a.name }))} />
               </Form.Item>
+
+              {fundingForm.getFieldValue('direction') === 'تمويل وارد' && (
+                <Form.Item name="expectedRepaymentDate" label="تاريخ السداد المتوقع">
+                  <input type="date" style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db' }} />
+                </Form.Item>
+              )}
+
               <Form.Item name="reason" rules={[{ required: true }]}>
                 <Select placeholder="السبب" style={{ width: 180 }} options={[
                   { value: 'تمويل تشغيلي', label: 'تمويل تشغيلي' },

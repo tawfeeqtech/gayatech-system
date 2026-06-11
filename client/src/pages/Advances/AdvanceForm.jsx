@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, message, Typography } from 'antd';
+import { Card, Form, Button, Space, Row, Col, Select, message, Typography, InputNumber, DatePicker } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import FormField from '../../components/ui/FormField';
 import advanceAPI from '../../api/advances';
 import employeeAPI from '../../api/employees';
 
@@ -32,10 +31,11 @@ const AdvanceForm = () => {
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
         <Button icon={<ArrowRightOutlined />} onClick={() => navigate('/advances')}>العودة</Button>
-        <Title level={4} style={{ margin: 0 }}>إضافة سلفة</Title>
+        <Title level={4} style={{ margin: 0 }}>إضافة سلفة جديدة</Title>
       </div>
       <Card style={{ borderRadius: 8 }}>
-        <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ currency: 'USD' }}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit}
+          initialValues={{ currency: 'USD', repaymentMethod: 'خصم من الراتب' }}>
           <Row gutter={24}>
             <Col xs={24} md={8}>
               <Form.Item name="employee" label="الموظف" rules={[{ required: true }]}>
@@ -44,15 +44,51 @@ const AdvanceForm = () => {
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <FormField name="amount" label="المبلغ" type="number" rules={[{ required: true }]} min={0} />
+              <Form.Item name="amount" label="المبلغ" rules={[{ required: true }]}>
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <FormField name="requestDate" label="التاريخ" type="date" rules={[{ required: true }]} />
+              <Form.Item name="currency" label="العملة">
+                <Select options={[
+                  { value: 'USD', label: 'دولار $' }, { value: 'ILS', label: 'شيكل ₪' },
+                  { value: 'SAR', label: 'ريال ﷼' }, { value: 'JOD', label: 'دينار د.أ' },
+                ]} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col xs={24} md={8}>
+              <Form.Item name="requestDate" label="تاريخ الطلب" rules={[{ required: true }]}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="expectedRepaymentDate" label="تاريخ السداد المتوقع">
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="repaymentMethod" label="طريقة السداد">
+                <Select options={[
+                  { value: 'خصم من الراتب', label: 'خصم من الراتب' },
+                  { value: 'دفعة واحدة', label: 'دفعة واحدة' },
+                  { value: 'أقساط', label: 'أقساط' },
+                ]} />
+              </Form.Item>
             </Col>
           </Row>
           <Row gutter={24}>
             <Col span={24}>
-              <FormField name="reason" label="السبب" type="textarea" />
+              <Form.Item name="reason" label="سبب السلفة">
+                <Select placeholder="اختر السبب" options={[
+                  { value: 'ظروف طارئة', label: 'ظروف طارئة' },
+                  { value: 'مصاريف طبية', label: 'مصاريف طبية' },
+                  { value: 'تعليم', label: 'تعليم' },
+                  { value: 'سكن', label: 'سكن' },
+                  { value: 'أخرى', label: 'أخرى' },
+                ]} />
+              </Form.Item>
             </Col>
           </Row>
           <div style={{ textAlign: 'left', marginTop: 24, borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
