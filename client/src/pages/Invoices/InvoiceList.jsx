@@ -113,9 +113,9 @@ const InvoiceList = () => {
         onPageChange={(p, ps) => { setPage(p); if (ps !== pageSize) { setPageSize(ps); setPage(1); } }}
         searchPlaceholder="بحث عن فاتورة..."
         onSearch={(v) => { setSearch(v); setPage(1); }}
-        addPath="/invoices/new" editPath="/invoices/edit" detailPath="/invoices"
+        addPath="/invoices/new"  detailPath="/invoices"
         onDelete={(r) => setDeleteTarget(r)} onRefresh={fetchInvoices}
-        filters={filterBar} editPath={undefined}
+        filters={filterBar} editPath="/invoices/edit"
       />
       <ConfirmDialog open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete}
         loading={deleteLoading} title="تأكيد حذف الفاتورة"
