@@ -38,6 +38,9 @@ const TransactionForm = () => {
   const [loadingToWallets, setLoadingToWallets] = useState(false);
   const [loadingFromWallets, setLoadingFromWallets] = useState(false);
 
+  const [selectedInvoices, setSelectedInvoices] = useState([]);
+  const [allocationMode, setAllocationMode] = useState(false);
+
   useEffect(() => { 
     clientAPI.getAll({ limit: 100 }).then(r => setClients(r.data.data.clients || [])).catch(() => {});
     accountAPI.getAll().then(r => setAccounts(r.data.data.accounts || [])).catch(() => {});
@@ -140,10 +143,17 @@ const TransactionForm = () => {
       // جلب الفواتير
       const invRes = await invoiceAPI.getAll({ limit: 200 });
       const allInvoices = invRes.data.data.invoices || [];
-      const clientInvoices = allInvoices.filter(inv => {
-        const invClientId = typeof inv.client === 'object' ? inv.client?._id : inv.client;
-        return invClientId === clientId && inv.status !== 'مدفوعة' && inv.status !== 'ملغاة';
-      });
+      const clientInvoices = allInvoices
+        .filter(inv => {
+          const invClientId = typeof inv.client === 'object' ? inv.client?._id : inv.client;
+          return invClientId === clientId && inv.status !== 'مدفوعة' && inv.status !== 'ملغاة';
+        })
+        .map(inv => {
+          return {
+            ...inv,
+            contractMonthId: inv.contractMonth || null,
+          };
+        });
       setInvoices(clientInvoices);
 
       // جلب العقود النشطة للعميل
@@ -197,8 +207,34 @@ const TransactionForm = () => {
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
-      if (isEdit) {
-        // 👈 تعديل
+      if (allocationMode && selectedInvoices.length > 0) {
+        // 👈 وضع التوزيع: إنشاء معاملة واحدة مع توزيعات
+        const totalAllocated = selectedInvoices.reduce((sum, inv) => sum + (inv.allocatedAmount || 0), 0);
+        
+        // التحقق من تطابق المجموع
+        if (Math.abs(totalAllocated - values.amount) > 0.01) {
+          message.error(`مجموع التوزيعات (${totalAllocated}) لا يساوي مبلغ المعاملة (${values.amount})`);
+          setSubmitting(false);
+          return;
+        }
+        
+        // إنشاء allocations
+        const allocations = selectedInvoices.map(inv => ({
+          invoice: inv._id,
+          amount: inv.allocatedAmount,
+          contractMonth: inv.contractMonthId || undefined,
+        }));
+        
+        const data = {
+          ...values,
+          allocations,
+          client: values.client,
+          type: 'دخل',
+        };
+        
+        await transactionAPI.create(data);
+        message.success('تمت إضافة المعاملة وتوزيعها بنجاح');
+      } else if (isEdit) {
         await transactionAPI.update(id, values);
         message.success('تم تحديث المعاملة بنجاح');
       } else {
@@ -231,6 +267,48 @@ const TransactionForm = () => {
     setToWallets([]);
     setFromWallets([]);
     setInvoices([]);
+  };
+  // إضافة فاتورة لقائمة التوزيع
+  const addInvoiceToAllocation = (invoiceId) => {
+    if (!invoiceId) return;
+    
+    const invoice = invoices.find(inv => inv._id === invoiceId);
+    if (!invoice) return;
+    
+    // التحقق من عدم وجودها مسبقاً
+    if (selectedInvoices.find(i => i._id === invoiceId)) {
+      message.warning('هذه الفاتورة مضافة بالفعل');
+      return;
+    }
+    
+    const remaining = invoice.totalAmount - (invoice.paidAmount || 0);
+    
+    setSelectedInvoices([...selectedInvoices, {
+      _id: invoice._id,
+      invoiceNumber: invoice.invoiceNumber,
+      totalAmount: invoice.totalAmount,
+      paidAmount: invoice.paidAmount || 0,
+      remaining: remaining,
+      allocatedAmount: remaining, // افتراضياً: المبلغ المتبقي كامل
+      currency: invoice.currency,
+      invoiceType: invoice.invoiceType,
+      contractMonthId: invoice.contractMonthId, // إذا كانت مرتبطة بشهر عقد
+    }]);
+    
+    // مسح الاختيار من القائمة المنسدلة
+    form.setFieldsValue({ invoice: undefined });
+  };
+
+  // إزالة فاتورة من التوزيع
+  const removeInvoiceFromAllocation = (invoiceId) => {
+    setSelectedInvoices(selectedInvoices.filter(i => i._id !== invoiceId));
+  };
+
+  // تحديث المبلغ المخصص لفاتورة
+  const updateAllocatedAmount = (invoiceId, amount) => {
+    setSelectedInvoices(selectedInvoices.map(i => 
+      i._id === invoiceId ? { ...i, allocatedAmount: amount || 0 } : i
+    ));
   };
 
   return (
@@ -392,6 +470,120 @@ const TransactionForm = () => {
                 </Col>
               </Row>
             </>
+          )}
+
+          {/* قسم توزيع الدفعة على عدة فواتير */}
+          {type === 'دخل' && (
+            <Row gutter={24} style={{ marginTop: 16 }}>
+              <Col span={24}>
+                <Card 
+                  size="small" 
+                  title={
+                    <Space>
+                      <span>توزيع الدفعة على الفواتير</span>
+                      <Button 
+                        type="link" 
+                        size="small"
+                        onClick={() => setAllocationMode(!allocationMode)}
+                      >
+                        {allocationMode ? 'إلغاء التوزيع' : 'تفعيل التوزيع المتعدد'}
+                      </Button>
+                    </Space>
+                  }
+                  style={{ background: allocationMode ? '#f0f9ff' : '#f8fafc', borderRadius: 8 }}
+                >
+                  {allocationMode ? (
+                    <>
+                      {/* إضافة فاتورة */}
+                      <Row gutter={8} style={{ marginBottom: 12 }}>
+                        <Col flex="auto">
+                          <Select
+                            placeholder="اختر فاتورة لإضافتها للتوزيع"
+                            allowClear
+                            showSearch
+                            optionFilterProp="label"
+                            value={undefined}
+                            onChange={addInvoiceToAllocation}
+                            options={invoices
+                              .filter(inv => !selectedInvoices.find(si => si._id === inv._id))
+                              .map(inv => ({
+                                value: inv._id,
+                                label: `${inv.invoiceNumber || '—'} | ${formatCurrency(inv.totalAmount - (inv.paidAmount || 0), inv.currency)} متبقي | ${inv.invoiceType}`
+                              }))}
+                          />
+                        </Col>
+                      </Row>
+
+                      {/* قائمة الفواتير المحددة */}
+                      {selectedInvoices.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: 16, color: '#94a3b8' }}>
+                          لم تتم إضافة فواتير بعد - اختر من القائمة أعلاه
+                        </div>
+                      ) : (
+                        <>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ background: '#e2e8f0' }}>
+                                <th style={{ padding: 8, textAlign: 'right' }}>الفاتورة</th>
+                                <th style={{ padding: 8, textAlign: 'center' }}>المبلغ الكلي</th>
+                                <th style={{ padding: 8, textAlign: 'center' }}>المدفوع سابقاً</th>
+                                <th style={{ padding: 8, textAlign: 'center' }}>المتبقي</th>
+                                <th style={{ padding: 8, textAlign: 'center' }}>المبلغ المدفوع الآن</th>
+                                <th style={{ padding: 8, textAlign: 'center' }}>✕</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedInvoices.map(inv => (
+                                <tr key={inv._id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                  <td style={{ padding: 8 }}>{inv.invoiceNumber || '—'}</td>
+                                  <td style={{ padding: 8, textAlign: 'center' }}>{formatCurrency(inv.totalAmount, inv.currency)}</td>
+                                  <td style={{ padding: 8, textAlign: 'center' }}>{formatCurrency(inv.paidAmount, inv.currency)}</td>
+                                  <td style={{ padding: 8, textAlign: 'center', color: '#ef4444' }}>{formatCurrency(inv.remaining, inv.currency)}</td>
+                                  <td style={{ padding: 8, textAlign: 'center' }}>
+                                    <InputNumber
+                                      min={0}
+                                      max={inv.remaining}
+                                      value={inv.allocatedAmount}
+                                      onChange={(val) => updateAllocatedAmount(inv._id, val)}
+                                      style={{ width: 100 }}
+                                    />
+                                  </td>
+                                  <td style={{ padding: 8, textAlign: 'center' }}>
+                                    <Button type="text" danger size="small" onClick={() => removeInvoiceFromAllocation(inv._id)}>✕</Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr style={{ background: '#f1f5f9', fontWeight: 'bold' }}>
+                                <td style={{ padding: 8 }}>المجموع</td>
+                                <td style={{ padding: 8, textAlign: 'center' }}></td>
+                                <td style={{ padding: 8, textAlign: 'center' }}></td>
+                                <td style={{ padding: 8, textAlign: 'center' }}></td>
+                                <td style={{ padding: 8, textAlign: 'center', fontSize: 16, color: selectedInvoices.reduce((s, i) => s + (i.allocatedAmount || 0), 0) === form.getFieldValue('amount') ? '#10b981' : '#ef4444' }}>
+                                  {formatCurrency(selectedInvoices.reduce((s, i) => s + (i.allocatedAmount || 0), 0))}
+                                </td>
+                                <td style={{ padding: 8, textAlign: 'center' }}></td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                          
+                          {selectedInvoices.reduce((s, i) => s + (i.allocatedAmount || 0), 0) !== (form.getFieldValue('amount') || 0) && (
+                            <div style={{ marginTop: 8, color: '#ef4444', fontSize: 13 }}>
+                              ⚠️ مجموع التوزيعات يجب أن يساوي مبلغ المعاملة
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: 16, color: '#94a3b8' }}>
+                      فعّل التوزيع المتعدد لتتمكن من توزيع دفعة واحدة على عدة فواتير
+                    </div>
+                  )}
+                </Card>
+              </Col>
+            </Row>
           )}
 
           {/* وسيلة الدفع + الوصف */}

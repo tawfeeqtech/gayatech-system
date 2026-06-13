@@ -146,6 +146,27 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
 
   const transaction = await Transaction.create(req.body);
 
+  if (req.body.allocations && Array.isArray(req.body.allocations) && req.body.allocations.length > 0) {
+    for (const allocation of req.body.allocations) {
+      if (allocation.invoice) {
+        // تحديث الفاتورة
+        await updateInvoiceStatus(allocation.invoice, allocation.amount);
+        await Invoice.findByIdAndUpdate(allocation.invoice, {
+          $push: { transactions: transaction._id }
+        });
+      }
+      
+      if (allocation.contractMonth) {
+        // تحديث شهر العقد
+        const month = await ContractMonth.findById(allocation.contractMonth);
+        if (month) {
+          month.paidAmount = (month.paidAmount || 0) + allocation.amount;
+          await month.save();
+          await updateContractMonthStatus(allocation.contractMonth);
+        }
+      }
+    }
+  }
     // تحديث رصيد المحفظة
   if (toWallet && (type === 'دخل' || type === 'تحويل')) {
     await Wallet.findByIdAndUpdate(toWallet, {

@@ -92,6 +92,7 @@ exports.createContract = asyncHandler(async (req, res, next) => {
       issueDate: new Date(),
       dueDate: dueDate,
       status: 'مصدرة',
+      contractMonth: contractMonth._id,
       notes: `فاتورة شهر ${startMonth} - ${contract.title}`,
       items: [{
         description: `رسوم العقد الشهري - ${contract.title}`,
@@ -160,6 +161,7 @@ exports.createContract = asyncHandler(async (req, res, next) => {
           issueDate: currentDate,
           dueDate: dueDate,
           status: 'مصدرة',
+          contractMonth: contractMonth._id,
           notes: `فاتورة شهر ${month} - ${contract.title}`,
           items: [{
             description: `رسوم العقد الشهري - ${contract.title} - ${month}`,
@@ -253,6 +255,7 @@ exports.updateContract = asyncHandler(async (req, res, next) => {
           issueDate: currentDate,
           dueDate: dueDate,
           status: 'مصدرة',
+          contractMonth: contractMonth._id,
           notes: `فاتورة شهر ${month} - ${contract.title}`,
           items: [{
             description: `رسوم العقد الشهري - ${contract.title} - ${month}`,

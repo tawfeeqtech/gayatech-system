@@ -26,7 +26,10 @@ const InvoiceSchema = new mongoose.Schema({
     enum: ['مشروع', 'خدمة', 'عقد شهري', 'استقطاب', 'متجر', 'أخرى'],
     required: true
   },
-  
+  contractMonth: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ContractMonth'
+  },
   // المبلغ
   totalAmount: {
     type: Number,
