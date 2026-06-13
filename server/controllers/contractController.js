@@ -120,6 +120,79 @@ exports.createContract = asyncHandler(async (req, res, next) => {
     await contract.save();
   }
 
+  // 👈 توليد جميع الأشهر من البداية حتى الشهر الحالي
+  if (contract.status === 'نشط' && contract.autoGeneration && contract.autoGeneration.enabled) {
+    const Invoice = require('../models/Invoice');
+    
+    const startDate = new Date(contract.startDate);
+    const now = new Date();
+    // Loop من شهر البداية حتى الشهر الحالي
+    let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    
+    while (currentDate <= now) {
+      const month = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      const exists = await ContractMonth.findOne({
+        contract: contract._id,
+        month: month
+      });
+      
+      if (!exists) {
+        const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), contract.dueDayOfMonth || 10);
+        
+        const contractMonth = await ContractMonth.create({
+          contract: contract._id,
+          client: contract.client,
+          month: month,
+          value: contract.defaultMonthlyValue,
+          currency: contract.currency,
+          dueDate: dueDate,
+          status: contract.autoGeneration.autoConfirm ? 'confirmed' : 'pending_review',
+          generationType: 'auto',
+          createdBy: req.user?._id
+        });
+
+        const invoice = await Invoice.create({
+          client: contract.client,
+          invoiceType: 'عقد شهري',
+          totalAmount: contract.defaultMonthlyValue,
+          currency: contract.currency,
+          issueDate: currentDate,
+          dueDate: dueDate,
+          status: 'مصدرة',
+          notes: `فاتورة شهر ${month} - ${contract.title}`,
+          items: [{
+            description: `رسوم العقد الشهري - ${contract.title} - ${month}`,
+            quantity: 1,
+            unitPrice: contract.defaultMonthlyValue,
+            totalPrice: contract.defaultMonthlyValue
+          }],
+          createdBy: req.user?._id
+        });
+
+        contractMonth.invoice = invoice._id;
+        await contractMonth.save();
+      }
+      
+      // الشهر التالي
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+
+    // تحديث إحصائيات العقد
+    const months = await ContractMonth.find({ contract: contract._id });
+    const stats = {
+      totalMonths: months.length,
+      paidMonths: months.filter(m => m.status === 'paid').length,
+      pendingMonths: months.filter(m => ['confirmed', 'overdue', 'partially_paid'].includes(m.status)).length,
+      totalValue: months.reduce((sum, m) => sum + m.value, 0),
+      totalPaid: months.reduce((sum, m) => sum + (m.paidAmount || 0), 0)
+    };
+    stats.totalRemaining = stats.totalValue - stats.totalPaid;
+
+    contract.computedStats = stats;
+    await contract.save();
+  }
+
   res.status(201).json({
     status: 'success',
     data: { contract }
@@ -140,59 +213,73 @@ exports.updateContract = asyncHandler(async (req, res, next) => {
     return next(new ApiError('العقد غير موجود', 404));
   }
 
-  // تحقق مما إذا كنا بحاجة لتوليد الشهر الحالي في حال تفعيل التوليد التلقائي
+  // 👈 توليد الأشهر المفقودة من البداية حتى الشهر الحالي
   if (contract.status === 'نشط' && contract.autoGeneration && contract.autoGeneration.enabled) {
+    const Invoice = require('../models/Invoice');
+    
+    const startDate = new Date(contract.startDate);
     const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const exists = await ContractMonth.findOne({
-      contract: contract._id,
-      month: currentMonth
-    });
-
-    if (!exists) {
-      const dueDate = new Date(now.getFullYear(), now.getMonth(), contract.dueDayOfMonth || 10);
-      const contractMonth = await ContractMonth.create({
+    let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    let generatedCount = 0;
+    
+    while (currentDate <= now) {
+      const month = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      const exists = await ContractMonth.findOne({
         contract: contract._id,
-        client: contract.client,
-        month: currentMonth,
-        value: contract.defaultMonthlyValue,
-        currency: contract.currency,
-        dueDate: dueDate,
-        status: contract.autoGeneration.autoConfirm ? 'confirmed' : 'pending_review',
-        generationType: 'auto',
-        createdBy: req.user?._id
+        month: month
       });
+      
+      if (!exists) {
+        const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), contract.dueDayOfMonth || 10);
+        
+        const contractMonth = await ContractMonth.create({
+          contract: contract._id,
+          client: contract.client,
+          month: month,
+          value: contract.defaultMonthlyValue,
+          currency: contract.currency,
+          dueDate: dueDate,
+          status: contract.autoGeneration.autoConfirm ? 'confirmed' : 'pending_review',
+          generationType: 'auto',
+          createdBy: req.user?._id
+        });
 
-      const Invoice = require('../models/Invoice');
-      const invoice = await Invoice.create({
-        client: contract.client,
-        invoiceType: 'عقد شهري',
-        totalAmount: contract.defaultMonthlyValue,
-        currency: contract.currency,
-        issueDate: now,
-        dueDate: dueDate,
-        status: 'مصدرة',
-        notes: `فاتورة شهر ${currentMonth} - ${contract.title}`,
-        items: [{
-          description: `رسوم العقد الشهري - ${contract.title}`,
-          quantity: 1,
-          unitPrice: contract.defaultMonthlyValue,
-          totalPrice: contract.defaultMonthlyValue
-        }],
-        createdBy: req.user?._id
-      });
+        const invoice = await Invoice.create({
+          client: contract.client,
+          invoiceType: 'عقد شهري',
+          totalAmount: contract.defaultMonthlyValue,
+          currency: contract.currency,
+          issueDate: currentDate,
+          dueDate: dueDate,
+          status: 'مصدرة',
+          notes: `فاتورة شهر ${month} - ${contract.title}`,
+          items: [{
+            description: `رسوم العقد الشهري - ${contract.title} - ${month}`,
+            quantity: 1,
+            unitPrice: contract.defaultMonthlyValue,
+            totalPrice: contract.defaultMonthlyValue
+          }],
+          createdBy: req.user?._id
+        });
 
-      contractMonth.invoice = invoice._id;
-      await contractMonth.save();
+        contractMonth.invoice = invoice._id;
+        await contractMonth.save();
+        generatedCount++;
+      }
+      
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
 
-      // تحديث إحصائيات العقد
+    // تحديث إحصائيات العقد
+    if (generatedCount > 0) {
       const months = await ContractMonth.find({ contract: contract._id });
       const stats = {
         totalMonths: months.length,
         paidMonths: months.filter(m => m.status === 'paid').length,
         pendingMonths: months.filter(m => ['confirmed', 'overdue', 'partially_paid'].includes(m.status)).length,
         totalValue: months.reduce((sum, m) => sum + m.value, 0),
-        totalPaid: months.reduce((sum, m) => sum + m.paidAmount, 0)
+        totalPaid: months.reduce((sum, m) => sum + (m.paidAmount || 0), 0)
       };
       stats.totalRemaining = stats.totalValue - stats.totalPaid;
 
@@ -269,3 +356,20 @@ exports.getContractMonths = asyncHandler(async (req, res, next) => {
     data: { months }
   });
 });
+
+// دالة مساعدة: تحديث إحصائيات العقد
+const updateContractStats = async (contractId) => {
+  const months = await ContractMonth.find({ contract: contractId });
+
+  const stats = {
+    totalMonths: months.length,
+    paidMonths: months.filter(m => m.status === 'paid').length,
+    pendingMonths: months.filter(m => ['confirmed', 'overdue', 'partially_paid'].includes(m.status)).length,
+    totalValue: months.reduce((sum, m) => sum + m.value, 0),
+    totalPaid: months.reduce((sum, m) => sum + (m.paidAmount || 0), 0)
+  };
+  stats.totalRemaining = stats.totalValue - stats.totalPaid;
+
+  await Contract.findByIdAndUpdate(contractId, { computedStats: stats });
+  return stats;
+};

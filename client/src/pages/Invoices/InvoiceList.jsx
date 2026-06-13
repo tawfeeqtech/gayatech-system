@@ -113,7 +113,7 @@ const InvoiceList = () => {
         onPageChange={(p, ps) => { setPage(p); if (ps !== pageSize) { setPageSize(ps); setPage(1); } }}
         searchPlaceholder="بحث عن فاتورة..."
         onSearch={(v) => { setSearch(v); setPage(1); }}
-        addPath="/invoices/new" detailPath="/invoices"
+        addPath="/invoices/new" editPath="/invoices/edit" detailPath="/invoices"
         onDelete={(r) => setDeleteTarget(r)} onRefresh={fetchInvoices}
         filters={filterBar} editPath={undefined}
       />

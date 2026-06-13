@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Button, Space, Row, Col, Select, message, Spin, Typography } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { useNavigate, useParams } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import FormField from '../../components/ui/FormField';
 import invoiceAPI from '../../api/invoices';
@@ -10,6 +12,8 @@ const { Title } = Typography;
 
 const InvoiceForm = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = !!id;
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -17,13 +21,38 @@ const InvoiceForm = () => {
 
   useEffect(() => {
     clientAPI.getAll({ limit: 100 }).then(r => setClients(r.data.data.clients || [])).catch(() => { });
-  }, []);
+    if (isEdit) fetchInvoice();
+  }, [id]);
+
+  const fetchInvoice = async () => {
+    setLoading(true);
+    try {
+      const res = await invoiceAPI.getById(id);
+      const inv = res.data.data.invoice;
+      form.setFieldsValue({
+        ...inv,
+        client: inv.client?._id,
+        issueDate: inv.issueDate ? dayjs(inv.issueDate) : undefined,
+        dueDate: inv.dueDate ? dayjs(inv.dueDate) : undefined,
+      });
+    } catch {
+      message.error('فشل في جلب بيانات الفاتورة');
+      navigate('/invoices');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
-      await invoiceAPI.create(values);
-      message.success('تمت إضافة الفاتورة');
+      if (isEdit) {
+        await invoiceAPI.update(id, values);
+        message.success('تم تحديث الفاتورة بنجاح');
+      } else {
+        await invoiceAPI.create(values);
+        message.success('تمت إضافة الفاتورة بنجاح');
+      }
       navigate('/invoices');
     } catch (e) {
       message.error(e.response?.data?.message || 'فشل في الحفظ');
@@ -32,11 +61,13 @@ const InvoiceForm = () => {
     }
   };
 
+  if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
+
   return (
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
         <Button icon={<ArrowRightOutlined />} onClick={() => navigate('/invoices')}>العودة</Button>
-        <Title level={4} style={{ margin: 0 }}>إضافة فاتورة جديدة</Title>
+        <Title level={4} style={{ margin: 0 }}>{isEdit ? 'تعديل فاتورة' : 'إضافة فاتورة جديدة'}</Title>
       </div>
 
       <Card style={{ borderRadius: 8 }}>
@@ -97,7 +128,9 @@ const InvoiceForm = () => {
           <div style={{ textAlign: 'left', marginTop: 24, borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
             <Space>
               <Button onClick={() => navigate('/invoices')}>إلغاء</Button>
-              <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={submitting}>حفظ</Button>
+              <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={submitting}>
+                {isEdit ? 'تحديث الفاتورة' : 'حفظ الفاتورة'}
+              </Button>
             </Space>
           </div>
         </Form>
