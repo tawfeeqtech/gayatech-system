@@ -56,9 +56,9 @@ const InvoiceDetail = () => {
         </Col>
         <Col xs={24} sm={6}>
           <StatCard title="الحالة" value={invoice.status || '—'} color={
-            invoice.status === 'مدفوعة' ? '#10b981' : 
-            invoice.status === 'متأخرة' ? '#ef4444' : 
-            invoice.status === 'مدفوعة جزئياً' ? '#f59e0b' : '#3b82f6'
+            invoice.status === 'مدفوعة' ? '#10b981' :
+              invoice.status === 'متأخرة' ? '#ef4444' :
+                invoice.status === 'مدفوعة جزئياً' ? '#f59e0b' : '#3b82f6'
           } icon="📌" />
         </Col>
       </Row>

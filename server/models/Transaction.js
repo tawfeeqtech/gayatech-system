@@ -49,7 +49,15 @@ const TransactionSchema = new mongoose.Schema({
     ref: 'Account'
     // null إذا كان الوجهة خارجية
   },
-  
+
+  fromWallet: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Wallet'
+  },
+  toWallet: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Wallet'
+  },
   // التاريخ
   transactionDate: {
     type: Date,

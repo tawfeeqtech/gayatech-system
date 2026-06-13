@@ -64,6 +64,62 @@ exports.createContract = asyncHandler(async (req, res, next) => {
   req.body.createdBy = req.user._id;
   const contract = await Contract.create(req.body);
 
+  // توليد تلقائي فور التفعيل عند الإنشاء
+  if (contract.status === 'نشط' && contract.autoGeneration && contract.autoGeneration.enabled) {
+    const startDate = new Date(contract.startDate);
+    const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const dueDate = new Date(startDate.getFullYear(), startDate.getMonth(), contract.dueDayOfMonth || 10);
+
+    const contractMonth = await ContractMonth.create({
+      contract: contract._id,
+      client: contract.client,
+      month: startMonth,
+      value: contract.defaultMonthlyValue,
+      currency: contract.currency,
+      dueDate: dueDate,
+      status: contract.autoGeneration.autoConfirm ? 'confirmed' : 'pending_review',
+      generationType: 'auto',
+      createdBy: req.user?._id
+    });
+
+    const Invoice = require('../models/Invoice');
+    const invoice = await Invoice.create({
+      client: contract.client,
+      invoiceType: 'عقد شهري',
+      totalAmount: contract.defaultMonthlyValue,
+      currency: contract.currency,
+      issueDate: new Date(),
+      dueDate: dueDate,
+      status: 'مصدرة',
+      notes: `فاتورة شهر ${startMonth} - ${contract.title}`,
+      items: [{
+        description: `رسوم العقد الشهري - ${contract.title}`,
+        quantity: 1,
+        unitPrice: contract.defaultMonthlyValue,
+        totalPrice: contract.defaultMonthlyValue
+      }],
+      createdBy: req.user?._id
+    });
+
+    contractMonth.invoice = invoice._id;
+    await contractMonth.save();
+
+    // تحديث إحصائيات العقد
+    const months = await ContractMonth.find({ contract: contract._id });
+    const stats = {
+      totalMonths: months.length,
+      paidMonths: months.filter(m => m.status === 'paid').length,
+      pendingMonths: months.filter(m => ['confirmed', 'overdue', 'partially_paid'].includes(m.status)).length,
+      totalValue: months.reduce((sum, m) => sum + m.value, 0),
+      totalPaid: months.reduce((sum, m) => sum + m.paidAmount, 0)
+    };
+    stats.totalRemaining = stats.totalValue - stats.totalPaid;
+
+    contract.computedStats = stats;
+    await contract.save();
+  }
+
   res.status(201).json({
     status: 'success',
     data: { contract }
@@ -82,6 +138,67 @@ exports.updateContract = asyncHandler(async (req, res, next) => {
 
   if (!contract) {
     return next(new ApiError('العقد غير موجود', 404));
+  }
+
+  // تحقق مما إذا كنا بحاجة لتوليد الشهر الحالي في حال تفعيل التوليد التلقائي
+  if (contract.status === 'نشط' && contract.autoGeneration && contract.autoGeneration.enabled) {
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const exists = await ContractMonth.findOne({
+      contract: contract._id,
+      month: currentMonth
+    });
+
+    if (!exists) {
+      const dueDate = new Date(now.getFullYear(), now.getMonth(), contract.dueDayOfMonth || 10);
+      const contractMonth = await ContractMonth.create({
+        contract: contract._id,
+        client: contract.client,
+        month: currentMonth,
+        value: contract.defaultMonthlyValue,
+        currency: contract.currency,
+        dueDate: dueDate,
+        status: contract.autoGeneration.autoConfirm ? 'confirmed' : 'pending_review',
+        generationType: 'auto',
+        createdBy: req.user?._id
+      });
+
+      const Invoice = require('../models/Invoice');
+      const invoice = await Invoice.create({
+        client: contract.client,
+        invoiceType: 'عقد شهري',
+        totalAmount: contract.defaultMonthlyValue,
+        currency: contract.currency,
+        issueDate: now,
+        dueDate: dueDate,
+        status: 'مصدرة',
+        notes: `فاتورة شهر ${currentMonth} - ${contract.title}`,
+        items: [{
+          description: `رسوم العقد الشهري - ${contract.title}`,
+          quantity: 1,
+          unitPrice: contract.defaultMonthlyValue,
+          totalPrice: contract.defaultMonthlyValue
+        }],
+        createdBy: req.user?._id
+      });
+
+      contractMonth.invoice = invoice._id;
+      await contractMonth.save();
+
+      // تحديث إحصائيات العقد
+      const months = await ContractMonth.find({ contract: contract._id });
+      const stats = {
+        totalMonths: months.length,
+        paidMonths: months.filter(m => m.status === 'paid').length,
+        pendingMonths: months.filter(m => ['confirmed', 'overdue', 'partially_paid'].includes(m.status)).length,
+        totalValue: months.reduce((sum, m) => sum + m.value, 0),
+        totalPaid: months.reduce((sum, m) => sum + m.paidAmount, 0)
+      };
+      stats.totalRemaining = stats.totalValue - stats.totalPaid;
+
+      contract.computedStats = stats;
+      await contract.save();
+    }
   }
 
   res.status(200).json({

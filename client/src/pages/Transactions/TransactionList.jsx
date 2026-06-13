@@ -24,7 +24,7 @@ const TransactionList = () => {
   const [accountFilter, setAccountFilter] = useState('');
   const [dateRange, setDateRange] = useState(null);
   const [accounts, setAccounts] = useState([]);
-  const [summary, setSummary] = useState({ income: 0, expense: 0, net: 0 });
+  const [summary, setSummary] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -46,12 +46,12 @@ const TransactionList = () => {
 
       const [txRes, sumRes] = await Promise.all([
         transactionAPI.getAll(params),
-        transactionAPI.getSummary().catch(() => ({ data: { data: { month: { income: 0, expense: 0, net: 0 } } } })),
+        transactionAPI.getSummary().catch(() => ({ data: { data: { month: {} } } })),
       ]);
 
       setTransactions(txRes.data.data.transactions);
       setTotal(txRes.data.total);
-      setSummary(sumRes.data?.data?.month || { income: 0, expense: 0, net: 0 });
+      setSummary(sumRes.data?.data?.month || {});
     } catch (error) {
       message.error('فشل في جلب المعاملات');
     } finally {
@@ -137,18 +137,57 @@ const TransactionList = () => {
 
   return (
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
-      {/* بطاقات الملخص */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={8}>
-          <StatCard title="إجمالي الدخل (الشهر)" value={summary.income} prefix="$" color="#10b981" icon="💰" />
-        </Col>
-        <Col xs={24} sm={8}>
-          <StatCard title="إجمالي المصروف (الشهر)" value={summary.expense} prefix="$" color="#ef4444" icon="💸" />
-        </Col>
-        <Col xs={24} sm={8}>
-          <StatCard title="الصافي" value={summary.net} prefix="$" color={summary.net >= 0 ? '#3b82f6' : '#ef4444'} icon="📊" />
-        </Col>
-      </Row>
+      {/* بطاقات الملخص حسب العملة */}
+      {Object.keys(summary).length === 0 ? (
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={24} sm={8}>
+            <StatCard title="إجمالي الدخل (الشهر)" value={0} prefix="$" color="#10b981" icon="💰" />
+          </Col>
+          <Col xs={24} sm={8}>
+            <StatCard title="إجمالي المصروف (الشهر)" value={0} prefix="$" color="#ef4444" icon="💸" />
+          </Col>
+          <Col xs={24} sm={8}>
+            <StatCard title="الصافي" value={0} prefix="$" color="#3b82f6" icon="📊" />
+          </Col>
+        </Row>
+      ) : (
+        Object.entries(summary).map(([currency, stats]) => (
+          <div key={currency} style={{ marginBottom: 24 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8, color: '#475569' }}>
+              الملخص المالي لشهر يونيو ({currency})
+            </div>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={8}>
+                <StatCard 
+                  title={`إجمالي الدخل (${currency})`} 
+                  value={stats.income || 0} 
+                  prefix={{ USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' }[currency] || currency} 
+                  color="#10b981" 
+                  icon="💰" 
+                />
+              </Col>
+              <Col xs={24} sm={8}>
+                <StatCard 
+                  title={`إجمالي المصروف (${currency})`} 
+                  value={stats.expense || 0} 
+                  prefix={{ USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' }[currency] || currency} 
+                  color="#ef4444" 
+                  icon="💸" 
+                />
+              </Col>
+              <Col xs={24} sm={8}>
+                <StatCard 
+                  title={`الصافي (${currency})`} 
+                  value={stats.net || 0} 
+                  prefix={{ USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' }[currency] || currency} 
+                  color={(stats.net || 0) >= 0 ? '#3b82f6' : '#ef4444'} 
+                  icon="📊" 
+                />
+              </Col>
+            </Row>
+          </div>
+        ))
+      )}
 
       <DataTable
         title="المعاملات المالية" columns={columns} dataSource={transactions}
@@ -162,7 +201,7 @@ const TransactionList = () => {
         onRefresh={fetchTransactions}
         filters={filterBar}
         showActions={true}
-        editPath={undefined}
+        editPath="/transactions/edit"
       />
 
       <ConfirmDialog open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete}

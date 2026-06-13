@@ -17,6 +17,9 @@ const ClientDetail = () => {
   const { id } = useParams();
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [contracts, setContracts] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [transactions, setTransactions] = useState([]);
 
   useEffect(() => {
     fetchClient();
@@ -25,18 +28,20 @@ const ClientDetail = () => {
   const fetchClient = async () => {
     setLoading(true);
     try {
-      const [clientRes, statsRes] = await Promise.all([
+      const [clientRes, statsRes, contractsRes, projectsRes, txRes] = await Promise.all([
         clientAPI.getById(id),
         clientAPI.getStats(id),
+        clientAPI.getContracts(id).catch(() => ({ data: { data: { contracts: [] } } })),
+        clientAPI.getProjects(id).catch(() => ({ data: { data: { projects: [] } } })),
+        clientAPI.getTransactions(id, { limit: 20 }).catch(() => ({ data: { data: { transactions: [] } } })),
       ]);
-      console.log('📊 Stats Response:', statsRes.data);
-      console.log('💰 Stats data:', statsRes.data.data);
-    
-
       setClient({
         ...clientRes.data.data.client,
         stats: statsRes.data.data.stats,
       });
+      setContracts(contractsRes.data?.data?.contracts || []);
+      setProjects(projectsRes.data?.data?.projects || []);
+      setTransactions(txRes.data?.data?.transactions || []);
     } catch (error) {
       message.error('فشل في جلب بيانات العميل');
       navigate('/clients');
@@ -172,32 +177,47 @@ const ClientDetail = () => {
           items={[
             {
               key: 'contracts',
-              label: 'العقود',
+              label: `العقود (${contracts.length})`,
               children: (
                 <Table
                   columns={contractColumns}
-                  dataSource={[]} // يمكن ربطها بـ API لاحقاً
+                  dataSource={contracts}
                   rowKey="_id"
                   locale={{ emptyText: 'لا توجد عقود مرتبطة' }}
+                  pagination={false}
                 />
               ),
             },
             {
               key: 'projects',
-              label: 'المشاريع',
+              label: `المشاريع (${projects.length})`,
               children: (
                 <Table
                   columns={projectColumns}
-                  dataSource={[]}
+                  dataSource={projects}
                   rowKey="_id"
                   locale={{ emptyText: 'لا توجد مشاريع مرتبطة' }}
+                  pagination={false}
                 />
               ),
             },
             {
               key: 'transactions',
-              label: 'المعاملات',
-              children: <div>قريباً - المعاملات المالية للعميل</div>,
+              label: 'المعاملات المالية',
+              children: (
+                <Table
+                  columns={[
+                    { title: 'التاريخ', dataIndex: 'transactionDate', key: 'date', render: (d) => d ? new Date(d).toLocaleDateString('ar-SA') : '—' },
+                    { title: 'النوع', dataIndex: 'type', key: 'type' },
+                    { title: 'المبلغ', dataIndex: 'amount', key: 'amount', render: (v, r) => formatCurrency(v, r.currency) },
+                    { title: 'الوصف', dataIndex: 'description', key: 'desc' },
+                  ]}
+                  dataSource={transactions}
+                  rowKey="_id"
+                  locale={{ emptyText: 'لا توجد معاملات' }}
+                  pagination={false}
+                />
+              ),
             },
           ]}
         />

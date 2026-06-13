@@ -1,11 +1,13 @@
 const express = require('express');
 const accountController = require('../controllers/accountController');
+const walletRoutes = require('./walletRoutes');
 const { protect } = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
 
 const router = express.Router();
 
 router.use(protect);
+router.use('/:accountId/wallets', walletRoutes);
 
 router.get('/', roleCheck('admin', 'finance', 'accountant'), accountController.getAccounts);
 router.get('/:id', roleCheck('admin', 'finance', 'accountant'), accountController.getAccount);

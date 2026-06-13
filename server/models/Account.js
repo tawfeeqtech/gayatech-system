@@ -49,7 +49,11 @@ const AccountSchema = new mongoose.Schema({
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }
+  },
+  wallets: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Wallet'
+  }],
 }, {
   timestamps: true
 });

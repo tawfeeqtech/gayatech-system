@@ -56,23 +56,23 @@ import { useAuth } from './hooks/useAuth';
 // مكون حماية المسارات
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, isAuthenticated } = useAuth();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return <Navigate to="/" replace />;
   }
-  
+
   return children;
 };
 
 function App() {
   return (
     <>
-      <Toaster 
-        position="top-center" 
+      <Toaster
+        position="top-center"
         reverseOrder={false}
         toastOptions={{
           duration: 4000,
@@ -83,7 +83,7 @@ function App() {
       />
       <Routes>
         <Route path="/login" element={<Login />} />
-        
+
         <Route path="/" element={
           <ProtectedRoute>
             <MainLayout />
@@ -104,9 +104,10 @@ function App() {
           <Route path="projects/new" element={<ProjectForm />} />
           <Route path="projects/edit/:id" element={<ProjectForm />} />
           <Route path="projects/:id" element={<ProjectDetail />} />
-          
+
           <Route path="transactions" element={<TransactionList />} />
           <Route path="transactions/new" element={<TransactionForm />} />
+          <Route path="transactions/edit/:id" element={<TransactionForm />} />
 
           <Route path="invoices" element={<InvoiceList />} />
           <Route path="invoices/new" element={<InvoiceForm />} />
@@ -124,7 +125,7 @@ function App() {
 
           <Route path="salaries" element={<SalaryList />} />
           <Route path="salaries/new" element={<SalaryForm />} />
-          
+
           <Route path="advances" element={<AdvanceList />} />
           <Route path="advances/new" element={<AdvanceForm />} />
 
@@ -155,12 +156,12 @@ function App() {
           <Route path="reports/company-account" element={<CompanyAccount />} />
           <Route path="reports/income-sources" element={<IncomeSources />} />
 
-          
+
           <Route path="settings" element={<SystemSettings />} />
           <Route path="settings/users" element={<UserManagement />} />
 
         </Route>
-        
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

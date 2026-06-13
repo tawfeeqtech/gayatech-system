@@ -16,7 +16,7 @@ const InvoiceForm = () => {
   const [clients, setClients] = useState([]);
 
   useEffect(() => {
-    clientAPI.getAll({ limit: 100 }).then(r => setClients(r.data.data.clients || [])).catch(() => {});
+    clientAPI.getAll({ limit: 100 }).then(r => setClients(r.data.data.clients || [])).catch(() => { });
   }, []);
 
   const handleSubmit = async (values) => {

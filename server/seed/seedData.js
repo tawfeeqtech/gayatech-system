@@ -156,6 +156,55 @@ const seedDB = async () => {
       console.log(`   ✅ ${a.name}`);
     }
 
+    console.log('\n👛 Creating wallets...');
+
+    const Wallet = require('../models/Wallet');
+
+    const walletsData = [
+      // محافظ حساب الشركة
+      {
+        name: 'محفظة الدولار - الشركة',
+        account: createdAccounts['حساب الشركة']._id,
+        currency: 'USD',
+        isDefault: true,
+        createdBy: createdUsers['admin']._id
+      },
+      {
+        name: 'محفظة الشيكل - الشركة',
+        account: createdAccounts['حساب الشركة']._id,
+        currency: 'ILS',
+        createdBy: createdUsers['admin']._id
+      },
+      // محافظ صندوق ريم
+      {
+        name: 'محفظة الدولار - ريم',
+        account: createdAccounts['صندوق ريم']._id,
+        currency: 'USD',
+        isDefault: true,
+        createdBy: createdUsers['admin']._id
+      },
+      {
+        name: 'محفظة الريال - ريم',
+        account: createdAccounts['صندوق ريم']._id,
+        currency: 'SAR',
+        createdBy: createdUsers['admin']._id
+      },
+      // محفظة النقد
+      {
+        name: 'محفظة الدولار - نقد',
+        account: createdAccounts['نقد']._id,
+        currency: 'USD',
+        isDefault: true,
+        createdBy: createdUsers['admin']._id
+      }
+    ];
+
+    for (const w of walletsData) {
+      await Wallet.create(w);
+      console.log(`   ✅ ${w.name} (${w.currency})`);
+    }
+
+
     // 3. Income Sources
     console.log('\n📑 Creating income sources...');
     const createdSources = {};

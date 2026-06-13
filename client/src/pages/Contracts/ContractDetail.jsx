@@ -110,8 +110,8 @@ const ContractDetail = () => {
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} md={6}><StatCard title="إجمالي الأشهر" value={stats.totalMonths || 0} color="#3b82f6" icon="📅" /></Col>
         <Col xs={24} sm={12} md={6}><StatCard title="الأشهر المدفوعة" value={stats.paidMonths || 0} color="#10b981" icon="✅" /></Col>
-        <Col xs={24} sm={12} md={6}><StatCard title="إجمالي القيمة" value={stats.totalValue || 0} prefix="$" color="#f59e0b" /></Col>
-        <Col xs={24} sm={12} md={6}><StatCard title="المتبقي" value={stats.totalRemaining || 0} prefix="$" color="#ef4444" /></Col>
+        <Col xs={24} sm={12} md={6}><StatCard title="إجمالي القيمة" value={stats.totalValue || 0} prefix={{ USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' }[contract.currency] || contract.currency} color="#f59e0b" /></Col>
+        <Col xs={24} sm={12} md={6}><StatCard title="المتبقي" value={stats.totalRemaining || 0} prefix={{ USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' }[contract.currency] || contract.currency} color="#ef4444" /></Col>
       </Row>
 
       <Card style={{ borderRadius: 8, marginBottom: 24 }}>
