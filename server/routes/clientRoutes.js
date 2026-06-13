@@ -18,4 +18,5 @@ router.post('/', roleCheck('admin', 'pm'), clientController.createClient);
 router.put('/:id', roleCheck('admin', 'pm'), clientController.updateClient);
 router.delete('/:id', roleCheck('admin'), clientController.deleteClient);
 
+router.get('/:id/contracts', roleCheck('admin', 'finance', 'pm'), clientController.getClientContracts);
 module.exports = router;

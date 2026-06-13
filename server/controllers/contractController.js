@@ -195,6 +195,28 @@ exports.createContract = asyncHandler(async (req, res, next) => {
     await contract.save();
   }
 
+  // تحديث إحصائيات العميل
+  const Client = require('../models/Client');
+  const Project = require('../models/Project');
+
+  const [allContracts, allProjects] = await Promise.all([
+    Contract.find({ client: contract.client }),
+    Project.find({ client: contract.client })
+  ]);
+
+  await Client.findByIdAndUpdate(contract.client, {
+    computedStats: {
+      totalContracts: allContracts.length,
+      activeContracts: allContracts.filter(c => c.status === 'نشط').length,
+      totalProjects: allProjects.length,
+      activeProjects: allProjects.filter(p => p.status === 'قيد التنفيذ').length,
+      totalInvoiced: 0, 
+      totalPaid: 0,
+      balance: 0,
+      lastTransactionDate: null
+    }
+  });
+
   res.status(201).json({
     status: 'success',
     data: { contract }
@@ -291,6 +313,26 @@ exports.updateContract = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // تحديث إحصائيات العميل إذا تغيرت حالة العقد
+  if (req.body.status) {
+    const Client = require('../models/Client');
+    const Project = require('../models/Project');
+    
+    const [allContracts, allProjects] = await Promise.all([
+      Contract.find({ client: contract.client }),
+      Project.find({ client: contract.client })
+    ]);
+
+    await Client.findByIdAndUpdate(contract.client, {
+      computedStats: {
+        totalContracts: allContracts.length,
+        activeContracts: allContracts.filter(c => c.status === 'نشط').length,
+        totalProjects: allProjects.length,
+        activeProjects: allProjects.filter(p => p.status === 'قيد التنفيذ').length,
+      }
+    });
+  }
+
   res.status(200).json({
     status: 'success',
     data: { contract }
@@ -329,10 +371,28 @@ exports.deleteContract = asyncHandler(async (req, res, next) => {
     return next(new ApiError('العقد غير موجود', 404));
   }
 
-  // حذف أشهر العقد المرتبطة
+  const clientId = contract.client;
+  // حذف أشهر العقد
   await ContractMonth.deleteMany({ contract: req.params.id });
-
   await Contract.findByIdAndDelete(req.params.id);
+
+  // 👈 تحديث إحصائيات العميل
+  const Client = require('../models/Client');
+  const Project = require('../models/Project');
+  
+  const [allContracts, allProjects] = await Promise.all([
+    Contract.find({ client: clientId }),
+    Project.find({ client: clientId })
+  ]);
+
+  await Client.findByIdAndUpdate(clientId, {
+    computedStats: {
+      totalContracts: allContracts.length,
+      activeContracts: allContracts.filter(c => c.status === 'نشط').length,
+      totalProjects: allProjects.length,
+      activeProjects: allProjects.filter(p => p.status === 'قيد التنفيذ').length,
+    }
+  });
 
   res.status(200).json({
     status: 'success',

@@ -74,6 +74,23 @@ exports.createProject = asyncHandler(async (req, res, next) => {
     }
   }
 
+  const Client = require('../models/Client');
+  const Contract = require('../models/Contract');
+
+  const [allContracts, allProjects] = await Promise.all([
+    Contract.find({ client: project.client }),
+    Project.find({ client: project.client })
+  ]);
+
+  await Client.findByIdAndUpdate(project.client, {
+    computedStats: {
+      totalContracts: allContracts.length,
+      activeContracts: allContracts.filter(c => c.status === 'نشط').length,
+      totalProjects: allProjects.length,
+      activeProjects: allProjects.filter(p => p.status === 'قيد التنفيذ').length,
+    }
+  });
+
   res.status(201).json({
     status: 'success',
     data: { project }

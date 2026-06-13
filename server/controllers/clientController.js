@@ -178,3 +178,19 @@ exports.getClientStats = asyncHandler(async (req, res, next) => {
     data: { stats }
   });
 });
+
+// @desc    الحصول على عقود العميل
+// @route   GET /api/clients/:id/contracts
+// @access  Private
+exports.getClientContracts = asyncHandler(async (req, res, next) => {
+  const Contract = require('../models/Contract');
+  
+  const contracts = await Contract.find({ client: req.params.id })
+    .sort('-createdAt');
+
+  res.status(200).json({
+    status: 'success',
+    results: contracts.length,
+    data: { contracts }
+  });
+});
