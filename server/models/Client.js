@@ -67,10 +67,12 @@ const ClientSchema = new mongoose.Schema({
     activeContracts: { type: Number, default: 0 },
     totalProjects: { type: Number, default: 0 },
     activeProjects: { type: Number, default: 0 },
-    totalInvoiced: { type: Number, default: 0 },      // إجمالي الفواتير
-    totalPaid: { type: Number, default: 0 },           // إجمالي المدفوع
-    balance: { type: Number, default: 0 },             // الرصيد (مدفوع - فواتير)
-    lastTransactionDate: Date
+    totalInvoiced: { type: Number, default: 0 },
+    totalPaid: { type: Number, default: 0 },
+    balance: { type: Number, default: 0 },
+    lastTransactionDate: Date,
+    balances: { type: Map, of: Number, default: {} },
+    details: { type: Map, of: Object, default: {} }
   },
   
   // سجل التدقيق

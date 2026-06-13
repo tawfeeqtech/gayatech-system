@@ -2,6 +2,7 @@ const Contract = require('../models/Contract');
 const ContractMonth = require('../models/ContractMonth');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
+const { updateClientStats } = require('../services/clientStatsService');
 
 // @desc    الحصول على جميع العقود
 // @route   GET /api/contracts
@@ -196,26 +197,8 @@ exports.createContract = asyncHandler(async (req, res, next) => {
   }
 
   // تحديث إحصائيات العميل
-  const Client = require('../models/Client');
-  const Project = require('../models/Project');
-
-  const [allContracts, allProjects] = await Promise.all([
-    Contract.find({ client: contract.client }),
-    Project.find({ client: contract.client })
-  ]);
-
-  await Client.findByIdAndUpdate(contract.client, {
-    computedStats: {
-      totalContracts: allContracts.length,
-      activeContracts: allContracts.filter(c => c.status === 'نشط').length,
-      totalProjects: allProjects.length,
-      activeProjects: allProjects.filter(p => p.status === 'قيد التنفيذ').length,
-      totalInvoiced: 0, 
-      totalPaid: 0,
-      balance: 0,
-      lastTransactionDate: null
-    }
-  });
+  const { updateClientStats } = require('./clientController');
+  await updateClientStats(contract.client);
 
   res.status(201).json({
     status: 'success',
@@ -315,22 +298,8 @@ exports.updateContract = asyncHandler(async (req, res, next) => {
 
   // تحديث إحصائيات العميل إذا تغيرت حالة العقد
   if (req.body.status) {
-    const Client = require('../models/Client');
-    const Project = require('../models/Project');
-    
-    const [allContracts, allProjects] = await Promise.all([
-      Contract.find({ client: contract.client }),
-      Project.find({ client: contract.client })
-    ]);
-
-    await Client.findByIdAndUpdate(contract.client, {
-      computedStats: {
-        totalContracts: allContracts.length,
-        activeContracts: allContracts.filter(c => c.status === 'نشط').length,
-        totalProjects: allProjects.length,
-        activeProjects: allProjects.filter(p => p.status === 'قيد التنفيذ').length,
-      }
-    });
+    const { updateClientStats } = require('./clientController');
+    await updateClientStats(contract.client);
   }
 
   res.status(200).json({

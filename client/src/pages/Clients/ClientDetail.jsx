@@ -135,17 +135,27 @@ const ClientDetail = () => {
         <Col xs={24} sm={12} md={6}>
           <StatCard title="المشاريع النشطة" value={stats.activeProjects || 0} color="#8b5cf6" icon="🚀" />
         </Col>
-        <Col xs={24} sm={12} md={6}>
-          <StatCard title="إجمالي الفواتير" value={stats.totalInvoiced || 0} color="#f59e0b" prefix="$" />
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <StatCard
-            title="الرصيد"
-            value={stats.balance || 0}
-            color={stats.balance > 0 ? '#10b981' : '#ef4444'}
-            prefix="$"
-          />
-        </Col>
+        {stats.details && Object.entries(stats.details).map(([currency, data]) => (
+          <Col xs={24} sm={12} md={6} key={currency}>
+            <StatCard 
+              title={`الفواتير (${currency})`} 
+              value={data.invoiced || 0} 
+              prefix={{ USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' }[currency] || currency}
+              color="#f59e0b" 
+            />
+          </Col>
+        ))}
+        
+        {stats.balances && Object.entries(stats.balances).map(([currency, balance]) => (
+          <Col xs={24} sm={12} md={6} key={`bal-${currency}`}>
+            <StatCard
+              title={`الرصيد (${currency})`}
+              value={balance || 0}
+              prefix={{ USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' }[currency] || currency}
+              color={balance > 0 ? '#10b981' : '#ef4444'}
+            />
+          </Col>
+        ))}
       </Row>
 
       {/* معلومات العميل */}

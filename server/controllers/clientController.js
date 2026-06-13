@@ -1,6 +1,7 @@
 const Client = require('../models/Client');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
+const { updateClientStats } = require('../services/clientStatsService');
 
 // @desc    الحصول على جميع العملاء
 // @route   GET /api/clients
@@ -146,7 +147,6 @@ exports.getClientStats = asyncHandler(async (req, res, next) => {
     return next(new ApiError('العميل غير موجود', 404));
   }
 
-  // جلب الإحصائيات من النماذج المرتبطة
   const Contract = require('../models/Contract');
   const ContractMonth = require('../models/ContractMonth');
   const Project = require('../models/Project');
@@ -159,19 +159,52 @@ exports.getClientStats = asyncHandler(async (req, res, next) => {
     ContractMonth.find({ client: req.params.id })
   ]);
 
+  // حساب الأرصدة حسب العملة
+  const balances = {};
+  const details = {};
+  
+  contractMonths.forEach(cm => {
+    const currency = cm.currency || 'USD';
+    if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
+    details[currency].invoiced += cm.value || 0;
+    details[currency].paid += cm.paidAmount || 0;
+  });
+  
+  projects.forEach(p => {
+    const currency = p.currency || 'USD';
+    if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
+    details[currency].invoiced += p.totalValue || 0;
+  });
+
+  Object.keys(details).forEach(currency => {
+    balances[currency] = (details[currency].paid || 0) - (details[currency].invoiced || 0);
+  });
+
   const stats = {
     totalContracts: contracts.length,
     activeContracts: contracts.filter(c => c.status === 'نشط').length,
     totalProjects: projects.length,
     activeProjects: projects.filter(p => p.status === 'قيد التنفيذ').length,
     totalTransactions: transactions.length,
-    totalInvoiced: contractMonths.reduce((sum, cm) => sum + cm.value, 0),
-    totalPaid: contractMonths.reduce((sum, cm) => sum + cm.paidAmount, 0),
-    balance: client.computedStats?.balance || 0,
+    balances,
+    details,
     lastTransaction: transactions.length > 0 
       ? transactions.sort((a, b) => b.transactionDate - a.transactionDate)[0]
       : null
   };
+
+  // 👈 حدث بيانات العميل أيضاً
+  await Client.findByIdAndUpdate(req.params.id, {
+    computedStats: {
+      ...client.computedStats,
+      totalContracts: contracts.length,
+      activeContracts: contracts.filter(c => c.status === 'نشط').length,
+      totalProjects: projects.length,
+      activeProjects: projects.filter(p => p.status === 'قيد التنفيذ').length,
+      balances,
+      details,
+    }
+  });
 
   res.status(200).json({
     status: 'success',
@@ -192,5 +225,29 @@ exports.getClientContracts = asyncHandler(async (req, res, next) => {
     status: 'success',
     results: contracts.length,
     data: { contracts }
+  });
+});
+
+// @desc    تحديث إحصائيات جميع العملاء
+// @route   POST /api/clients/update-all-stats
+// @access  Private (admin)
+exports.updateAllClientStats = asyncHandler(async (req, res, next) => {
+  const Client = require('../models/Client');
+  const clients = await Client.find();
+  let updated = 0;
+
+  for (const client of clients) {
+    try {
+      await updateClientStats(client._id);
+      updated++;
+    } catch (e) {
+      console.error(`Failed: ${client._id}`);
+    }
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: `تم تحديث ${updated} من ${clients.length} عميل`,
+    data: { updated, total: clients.length }
   });
 });

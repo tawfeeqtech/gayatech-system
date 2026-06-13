@@ -105,41 +105,17 @@ const ClientList = () => {
       ),
     },
     {
-      title: 'معلومات الاتصال',
-      key: 'contact',
-      width: 220,
-      render: (_, record) => (
-        <div>
-          {record.email && (
-            <div style={{ marginBottom: 2 }}>
-              <MailOutlined style={{ color: '#94a3b8', marginLeft: 6 }} />
-              <span style={{ fontSize: 13 }}>{record.email}</span>
-            </div>
-          )}
-          {record.phone && (
-            <div>
-              <PhoneOutlined style={{ color: '#94a3b8', marginLeft: 6 }} />
-              <span style={{ fontSize: 13 }}>{record.phone}</span>
-            </div>
-          )}
-          {!record.email && !record.phone && (
-            <span style={{ color: '#cbd5e1' }}>—</span>
-          )}
-        </div>
-      ),
-    },
-    {
       title: 'النوع',
       dataIndex: 'clientType',
       key: 'clientType',
-      width: 110,
+      width: 100,
       render: (text) => text || '—',
     },
     {
       title: 'الحالة',
       dataIndex: 'status',
       key: 'status',
-      width: 120,
+      width: 110,
       render: (status) => (
         <StatusBadge status={status} mapping={statusColors.client} />
       ),
@@ -161,18 +137,30 @@ const ClientList = () => {
     {
       title: 'الرصيد',
       key: 'balance',
-      width: 110,
+      width: 200,
       render: (_, record) => {
-        const balance = record.computedStats?.balance || 0;
+        const balances = record.computedStats?.balances || {};
+        const currencies = Object.keys(balances);
+        
+        if (currencies.length === 0) {
+          return <span style={{ color: '#94a3b8' }}>—</span>;
+        }
+        
         return (
-          <span
-            style={{
-              color: balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : '#94a3b8',
-              fontWeight: 600,
-            }}
-          >
-            {balance > 0 ? '+' : ''}{balance.toFixed(2)} $
-          </span>
+          <Space wrap size={[4, 2]}>
+            {currencies.map(currency => {
+              const balance = balances[currency] || 0;
+              const symbols = { USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' };
+              const symbol = symbols[currency] || currency;
+              const color = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : '#94a3b8';
+              
+              return (
+                <span key={currency} style={{ color, fontWeight: 600, fontSize: 13 }}>
+                  {balance > 0 ? '+' : ''}{balance.toFixed(2)} {symbol}
+                </span>
+              );
+            })}
+          </Space>
         );
       },
     },

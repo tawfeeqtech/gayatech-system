@@ -19,4 +19,5 @@ router.put('/:id', roleCheck('admin', 'pm'), clientController.updateClient);
 router.delete('/:id', roleCheck('admin'), clientController.deleteClient);
 
 router.get('/:id/contracts', roleCheck('admin', 'finance', 'pm'), clientController.getClientContracts);
+router.post('/update-all-stats', roleCheck('admin'), clientController.updateAllClientStats);
 module.exports = router;
