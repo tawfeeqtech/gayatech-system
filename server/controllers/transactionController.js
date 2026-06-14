@@ -7,6 +7,7 @@ const Wallet = require('../models/Wallet');
 const CurrencyExchange = require('../models/CurrencyExchange');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
+const { updateClientStats } = require('../services/clientStatsService');
 
 // @desc    الحصول على جميع المعاملات
 // @route   GET /api/transactions
@@ -548,26 +549,26 @@ const updateInvoiceStatus = async (invoiceId, additionalAmount = 0) => {
   }
 };
 
-const updateClientStats = async (clientId) => {
-  const ContractMonth = require('../models/ContractMonth');
-  const Contract = require('../models/Contract');
-  const Project = require('../models/Project');
+// const updateClientStats = async (clientId) => {
+//   const ContractMonth = require('../models/ContractMonth');
+//   const Contract = require('../models/Contract');
+//   const Project = require('../models/Project');
 
-  const [contractMonths, contracts, projects] = await Promise.all([
-    ContractMonth.find({ client: clientId }),
-    Contract.find({ client: clientId }),
-    Project.find({ client: clientId })
-  ]);
+//   const [contractMonths, contracts, projects] = await Promise.all([
+//     ContractMonth.find({ client: clientId }),
+//     Contract.find({ client: clientId }),
+//     Project.find({ client: clientId })
+//   ]);
 
-  const stats = {
-    totalContracts: contracts.length,
-    activeContracts: contracts.filter(c => c.status === 'نشط').length,
-    totalProjects: projects.length,
-    activeProjects: projects.filter(p => p.status === 'قيد التنفيذ').length,
-    totalInvoiced: contractMonths.reduce((sum, cm) => sum + cm.value, 0),
-    totalPaid: contractMonths.reduce((sum, cm) => sum + cm.paidAmount, 0)
-  };
-  stats.balance = stats.totalPaid - stats.totalInvoiced;
+//   const stats = {
+//     totalContracts: contracts.length,
+//     activeContracts: contracts.filter(c => c.status === 'نشط').length,
+//     totalProjects: projects.length,
+//     activeProjects: projects.filter(p => p.status === 'قيد التنفيذ').length,
+//     totalInvoiced: contractMonths.reduce((sum, cm) => sum + cm.value, 0),
+//     totalPaid: contractMonths.reduce((sum, cm) => sum + cm.paidAmount, 0)
+//   };
+//   stats.balance = stats.totalPaid - stats.totalInvoiced;
 
-  await Client.findByIdAndUpdate(clientId, { computedStats: stats });
-};
+//   await Client.findByIdAndUpdate(clientId, { computedStats: stats });
+// };

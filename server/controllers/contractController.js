@@ -341,6 +341,16 @@ exports.deleteContract = asyncHandler(async (req, res, next) => {
   }
 
   const clientId = contract.client;
+
+  // حذف الفواتير المرتبطة بأشهر العقد
+  const Invoice = require('../models/Invoice');
+  const months = await ContractMonth.find({ contract: req.params.id });
+  for (const month of months) {
+    if (month.invoice) {
+      await Invoice.findByIdAndDelete(month.invoice);
+    }
+  }
+
   // حذف أشهر العقد
   await ContractMonth.deleteMany({ contract: req.params.id });
   await Contract.findByIdAndDelete(req.params.id);
@@ -362,6 +372,11 @@ exports.deleteContract = asyncHandler(async (req, res, next) => {
       activeProjects: allProjects.filter(p => p.status === 'قيد التنفيذ').length,
     }
   });
+
+    // 👈 تحديث إحصائيات العميل
+  const { updateClientStats } = require('../services/clientStatsService');
+  await updateClientStats(clientId);
+
 
   res.status(200).json({
     status: 'success',

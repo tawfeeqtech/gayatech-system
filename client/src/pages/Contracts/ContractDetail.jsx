@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Tabs, Row, Col, Descriptions, Button, Spin, Table, Tag, Space, message } from 'antd';
 import { ArrowRightOutlined, EditOutlined } from '@ant-design/icons';
+import { Modal, InputNumber } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
+import invoiceAPI from '../../api/invoices';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
 import StatCard from '../../components/ui/StatCard';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -16,6 +18,8 @@ const ContractDetail = () => {
   const [months, setMonths] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [editMonth, setEditMonth] = useState(null);
+  const [editMonthValue, setEditMonthValue] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -48,6 +52,35 @@ const ContractDetail = () => {
     }
   };
 
+  const handleEditMonth = (month) => {
+    setEditMonth(month);
+    setEditMonthValue(month.value);
+  };
+
+  const handleSaveMonth = async () => {
+    if (!editMonth) return;
+    try {
+      await contractMonthAPI.update(editMonth._id, { 
+        value: editMonthValue,
+        currency: editMonth.currency 
+      });
+      
+      // إذا كان هناك فاتورة مرتبطة، حدثها أيضاً
+      if (editMonth.invoice) {
+        await invoiceAPI.update(editMonth.invoice, { 
+          totalAmount: editMonthValue,
+          currency: editMonth.currency 
+        });
+      }
+      
+      message.success('تم تحديث قيمة الشهر والفاتورة');
+      setEditMonth(null);
+      fetchData();
+    } catch (e) {
+      message.error('فشل في التحديث');
+    }
+  };
+
   const handleDeleteMonth = async () => {
     if (!deleteTarget) return;
     try {
@@ -77,12 +110,13 @@ const ContractDetail = () => {
       render: (s) => <StatusBadge status={s} mapping={statusColors.monthStatus} />,
     },
     {
-      title: 'إجراءات', key: 'actions', width: 140,
+      title: 'إجراءات', key: 'actions', width: 200,
       render: (_, record) => (
         <Space size="small">
           {(record.status === 'pending_review' || record.status === 'confirmed') && (
             <Button size="small" type="primary" onClick={() => handleConfirmMonth(record._id)}>تأكيد</Button>
           )}
+          <Button size="small" onClick={() => handleEditMonth(record)}>تعديل</Button>
           <Button size="small" danger onClick={() => setDeleteTarget(record._id)}>حذف</Button>
         </Space>
       ),
@@ -137,6 +171,34 @@ const ContractDetail = () => {
         message="هل أنت متأكد من حذف هذا الشهر؟"
         type="danger"
       />
+      
+      <Modal
+        title="تعديل قيمة الشهر"
+        open={!!editMonth}
+        onCancel={() => setEditMonth(null)}
+        onOk={handleSaveMonth}
+        okText="حفظ"
+        cancelText="إلغاء"
+      >
+        {editMonth && (
+          <div style={{ fontFamily: 'Cairo, sans-serif' }}>
+            <p>الشهر: <strong>{editMonth.month}</strong></p>
+            <p>القيمة الحالية: <strong>{editMonth.value} {editMonth.currency}</strong></p>
+            <div style={{ marginTop: 12 }}>
+              <label>القيمة الجديدة:</label>
+              <InputNumber
+                value={editMonthValue}
+                onChange={setEditMonthValue}
+                min={0}
+                style={{ width: '100%', marginTop: 8 }}
+              />
+            </div>
+            <p style={{ marginTop: 12, color: '#f59e0b' }}>
+              ⚠️ سيتم تحديث الفاتورة المرتبطة تلقائياً
+            </p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

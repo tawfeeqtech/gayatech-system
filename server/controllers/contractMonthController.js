@@ -35,7 +35,20 @@ exports.updateContractMonth = asyncHandler(async (req, res, next) => {
     return next(new ApiError('شهر العقد غير موجود', 404));
   }
 
+  if (contractMonth.invoice && (req.body.value !== undefined || req.body.currency !== undefined)) {
+    const Invoice = require('../models/Invoice');
+    const updateData = {};
+    if (req.body.value !== undefined) updateData.totalAmount = req.body.value;
+    if (req.body.currency !== undefined) updateData.currency = req.body.currency;
+    
+    await Invoice.findByIdAndUpdate(contractMonth.invoice, updateData);
+  }
+
   await updateContractStats(contractMonth.contract);
+
+  // 👈 تحديث إحصائيات العميل
+  const { updateClientStats } = require('../services/clientStatsService');
+  await updateClientStats(contractMonth.client);
 
   res.status(200).json({
     status: 'success',
@@ -61,6 +74,9 @@ exports.confirmContractMonth = asyncHandler(async (req, res, next) => {
     return next(new ApiError('شهر العقد غير موجود', 404));
   }
 
+  const { updateClientStats } = require('../services/clientStatsService');
+  await updateClientStats(contractMonth.client);
+
   res.status(200).json({
     status: 'success',
     data: { contractMonth }
@@ -85,9 +101,22 @@ exports.deleteContractMonth = asyncHandler(async (req, res, next) => {
     return next(new ApiError('لا يمكن حذف الشهر لوجود معاملات مالية مرتبطة به', 400));
   }
 
+  if (contractMonth.invoice) {
+    const Invoice = require('../models/Invoice');
+    // تحقق من وجود معاملات مرتبطة بالفاتورة
+    const hasInvoiceTransactions = await Transaction.exists({ invoice: contractMonth.invoice });
+    if (!hasInvoiceTransactions) {
+      await Invoice.findByIdAndDelete(contractMonth.invoice);
+    }
+  }
+
   const contractId = contractMonth.contract;
+  const clientId = contractMonth.client;
   await ContractMonth.findByIdAndDelete(req.params.id);
   await updateContractStats(contractId);
+
+  const { updateClientStats } = require('../services/clientStatsService');
+  await updateClientStats(clientId);
 
   res.status(200).json({
     status: 'success',

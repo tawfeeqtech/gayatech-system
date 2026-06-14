@@ -101,6 +101,34 @@ exports.updateInvoice = asyncHandler(async (req, res, next) => {
     return next(new ApiError('الفاتورة غير موجودة', 404));
   }
 
+  if (req.body.totalAmount !== undefined) {
+    const ContractMonth = require('../models/ContractMonth');
+    const contractMonth = await ContractMonth.findOne({ invoice: invoice._id });
+    
+    if (contractMonth) {
+      contractMonth.value = req.body.totalAmount;
+      contractMonth.currency = req.body.currency || contractMonth.currency;
+      await contractMonth.save();
+      
+      // تحديث إحصائيات العقد
+      const Contract = require('../models/Contract');
+      const allMonths = await ContractMonth.find({ contract: contractMonth.contract });
+      const stats = {
+        totalMonths: allMonths.length,
+        paidMonths: allMonths.filter(m => m.status === 'paid').length,
+        pendingMonths: allMonths.filter(m => ['confirmed', 'overdue', 'partially_paid'].includes(m.status)).length,
+        totalValue: allMonths.reduce((sum, m) => sum + m.value, 0),
+        totalPaid: allMonths.reduce((sum, m) => sum + (m.paidAmount || 0), 0)
+      };
+      stats.totalRemaining = stats.totalValue - stats.totalPaid;
+      await Contract.findByIdAndUpdate(contractMonth.contract, { computedStats: stats });
+      
+      // تحديث إحصائيات العميل
+      const { updateClientStats } = require('../services/clientStatsService');
+      await updateClientStats(contractMonth.client);
+    }
+  }
+
   res.status(200).json({
     status: 'success',
     data: { invoice }
@@ -139,6 +167,9 @@ exports.deleteInvoice = asyncHandler(async (req, res, next) => {
     return next(new ApiError('الفاتورة غير موجودة', 404));
   }
 
+    // تحقق من وجود معاملات مرتبطة
+  const Transaction = require('../models/Transaction');
+
   // تحقق من وجود معاملات مرتبطة
   const hasTransactions = await Transaction.exists({ invoice: req.params.id });
 
@@ -146,7 +177,20 @@ exports.deleteInvoice = asyncHandler(async (req, res, next) => {
     return next(new ApiError('لا يمكن حذف الفاتورة لوجود معاملات مالية مرتبطة بها', 400));
   }
 
+  const ContractMonth = require('../models/ContractMonth');
+  const contractMonth = await ContractMonth.findOne({ invoice: invoice._id });
+  const clientId = invoice.client;
+
+  if (contractMonth) {
+    await ContractMonth.findByIdAndDelete(contractMonth._id);
+  }
+
   await Invoice.findByIdAndDelete(req.params.id);
+
+  if (clientId) {
+    const { updateClientStats } = require('../services/clientStatsService');
+    await updateClientStats(clientId);
+  }
 
   res.status(200).json({
     status: 'success',
