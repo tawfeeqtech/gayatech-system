@@ -113,9 +113,9 @@ const ContractDetail = () => {
       title: 'إجراءات', key: 'actions', width: 200,
       render: (_, record) => (
         <Space size="small">
-          {(record.status === 'pending_review' || record.status === 'confirmed') && (
+          {/* {(record.status === 'pending_review' || record.status === 'confirmed') && (
             <Button size="small" type="primary" onClick={() => handleConfirmMonth(record._id)}>تأكيد</Button>
-          )}
+          )} */}
           <Button size="small" onClick={() => handleEditMonth(record)}>تعديل</Button>
           <Button size="small" danger onClick={() => setDeleteTarget(record._id)}>حذف</Button>
         </Space>
