@@ -197,7 +197,7 @@ exports.createContract = asyncHandler(async (req, res, next) => {
   }
 
   // تحديث إحصائيات العميل
-  const { updateClientStats } = require('./clientController');
+  // const { updateClientStats } = require('./clientController');
   await updateClientStats(contract.client);
 
   res.status(201).json({
@@ -298,7 +298,7 @@ exports.updateContract = asyncHandler(async (req, res, next) => {
 
   // تحديث إحصائيات العميل إذا تغيرت حالة العقد
   if (req.body.status) {
-    const { updateClientStats } = require('./clientController');
+    // const { updateClientStats } = require('./clientController');
     await updateClientStats(contract.client);
   }
 
