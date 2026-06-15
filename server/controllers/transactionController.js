@@ -125,9 +125,9 @@ exports.getTransaction = asyncHandler(async (req, res, next) => {
 exports.createTransaction = asyncHandler(async (req, res, next) => {
   req.body.createdBy = req.user._id;
 
-  // التحقق من صحة البيانات حسب نوع المعاملة
   const { type, fromAccount, toAccount, fromWallet, toWallet, amount, currency } = req.body;
 
+  // التحقق من صحة البيانات
   if (type === 'تحويل') {
     if (!fromAccount || !toAccount) {
       return next(new ApiError('التحويل يتطلب حساب المصدر وحساب الوجهة', 400));
@@ -147,10 +147,10 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
 
   const transaction = await Transaction.create(req.body);
 
+  // 👈 معالجة التوزيعات (allocations) - مرة واحدة فقط
   if (req.body.allocations && Array.isArray(req.body.allocations) && req.body.allocations.length > 0) {
     for (const allocation of req.body.allocations) {
       if (allocation.invoice) {
-        // تحديث الفاتورة
         await updateInvoiceStatus(allocation.invoice, allocation.amount);
         await Invoice.findByIdAndUpdate(allocation.invoice, {
           $push: { transactions: transaction._id }
@@ -158,7 +158,6 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
       }
       
       if (allocation.contractMonth) {
-        // تحديث شهر العقد
         const month = await ContractMonth.findById(allocation.contractMonth);
         if (month) {
           month.paidAmount = (month.paidAmount || 0) + allocation.amount;
@@ -167,8 +166,21 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
         }
       }
     }
+  } else {
+    // 👈 إذا لم تكن هناك توزيعات، استخدم الطريقة المباشرة
+    if (transaction.invoice && transaction.type === 'دخل') {
+      await updateInvoiceStatus(transaction.invoice, transaction.amount);
+      await Invoice.findByIdAndUpdate(transaction.invoice, {
+        $push: { transactions: transaction._id }
+      });
+    }
+
+    if (transaction.contractMonth) {
+      await updateContractMonthStatus(transaction.contractMonth);
+    }
   }
-    // تحديث رصيد المحفظة
+
+  // تحديث رصيد المحفظة
   if (toWallet && (type === 'دخل' || type === 'تحويل')) {
     await Wallet.findByIdAndUpdate(toWallet, {
       $inc: { balance: amount }
@@ -180,51 +192,30 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // إذا كان تحويلاً بين عملات مختلفة، سجل في currency_exchanges تلقائياً
+  // إذا كان تحويلاً بين عملات مختلفة
   if (type === 'تحويل' && fromWallet && toWallet) {
     const fromW = await Wallet.findById(fromWallet);
     const toW = await Wallet.findById(toWallet);
     
     if (fromW && toW && fromW.currency !== toW.currency) {
-      const exchangeRate = amount > 0 && req.body.originalAmount 
-        ? req.body.originalAmount / amount 
-        : 0;
-      
       await CurrencyExchange.create({
         fromCurrency: fromW.currency,
         toCurrency: toW.currency,
         fromAmount: amount,
         toAmount: req.body.toAmount || amount,
-        exchangeRate: req.body.exchangeRate || exchangeRate,
+        exchangeRate: req.body.exchangeRate || (amount > 0 ? (req.body.toAmount || amount) / amount : 0),
         exchangeDate: transaction.transactionDate,
         via: req.body.paymentMethod || 'بنك',
         transaction: transaction._id,
-        notes: `تحويل تلقائي من معاملة #${transaction.transactionNumber}`,
+        notes: `تحويل من معاملة #${transaction.transactionNumber}`,
         createdBy: req.user._id
       });
     }
   }
 
-  if (transaction.invoice && transaction.type === 'دخل') {
-    await updateInvoiceStatus(transaction.invoice, transaction.amount);
-    
-    // ربط المعاملة بالفاتورة
-    await Invoice.findByIdAndUpdate(transaction.invoice, {
-      $push: { transactions: transaction._id }
-    });
-  }
-
-
-  // تحديث حالة الشهر المرتبط
-  if (transaction.contractMonth) {
-    await updateContractMonthStatus(transaction.contractMonth);
-  }
-
-  // تحديث الأرصدة
-  await updateAccountBalances(transaction);
-
-  // تحديث إحصائيات العميل
+  // تحديث إحصائيات العميل (مرة واحدة فقط)
   if (transaction.client) {
+    const { updateClientStats } = require('../services/clientStatsService');
     await updateClientStats(transaction.client);
   }
 

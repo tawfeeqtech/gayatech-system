@@ -67,6 +67,7 @@ const ClientSchema = new mongoose.Schema({
     activeContracts: { type: Number, default: 0 },
     totalProjects: { type: Number, default: 0 },
     activeProjects: { type: Number, default: 0 },
+    completedProjects: { type: Number, default: 0 },
     totalInvoiced: { type: Number, default: 0 },
     totalPaid: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },

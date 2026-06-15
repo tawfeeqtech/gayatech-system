@@ -91,6 +91,9 @@ exports.createProject = asyncHandler(async (req, res, next) => {
     }
   });
 
+  const { updateClientStats } = require('../services/clientStatsService');
+  await updateClientStats(project.client);
+
   res.status(201).json({
     status: 'success',
     data: { project }
@@ -118,6 +121,8 @@ exports.updateProject = asyncHandler(async (req, res, next) => {
       }
     }
   }
+  const { updateClientStats } = require('../services/clientStatsService');
+  await updateClientStats(project.client);
 
   res.status(200).json({
     status: 'success',
@@ -156,11 +161,14 @@ exports.deleteProject = asyncHandler(async (req, res, next) => {
   if (!project) {
     return next(new ApiError('المشروع غير موجود', 404));
   }
+  const clientId = project.client;
 
   // حذف المهام المرتبطة
   await ProjectTask.deleteMany({ project: req.params.id });
 
   await Project.findByIdAndDelete(req.params.id);
+  const { updateClientStats } = require('../services/clientStatsService');
+  await updateClientStats(clientId);
 
   res.status(200).json({
     status: 'success',

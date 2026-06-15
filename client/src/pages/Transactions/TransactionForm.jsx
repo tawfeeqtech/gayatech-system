@@ -501,6 +501,7 @@ const TransactionForm = () => {
                             placeholder="اختر فاتورة لإضافتها للتوزيع"
                             allowClear
                             showSearch
+                            style={{ width: '20%' }}
                             optionFilterProp="label"
                             value={undefined}
                             onChange={addInvoiceToAllocation}

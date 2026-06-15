@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, message, Spin, Typography } from 'antd';
+import { Card, Form, Button, Space, Row, Col, Select, message, Spin, Typography, Switch } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import FormField from '../../components/ui/FormField';
 import projectAPI from '../../api/projects';
+import projectTaskAPI from '../../api/projectTasks';
 import clientAPI from '../../api/clients';
 import employeeAPI from '../../api/employees';
 import dayjs from 'dayjs';
@@ -19,6 +20,11 @@ const ProjectForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [clients, setClients] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [customRoles, setCustomRoles] = useState([
+    'مطور رئيسي', 'مطور مساعد', 'مصمم رئيسي', 'مصمم جرافيك',
+    'مسوق رقمي', 'مدير مشروع', 'محلل بيانات', 'مهندس DevOps',
+    'مختبر جودة', 'مستشار تقني', 'مدقق مالي', 'مساعد إداري'
+  ]);
 
   useEffect(() => {
     Promise.all([fetchClients(), fetchEmployees()]);
@@ -54,11 +60,68 @@ const ProjectForm = () => {
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
-      if (isEdit) { await projectAPI.update(id, values); message.success('تم تحديث المشروع'); }
-      else { await projectAPI.create(values); message.success('تم إضافة المشروع'); }
+      const { autoGenerateTasks, team, ...projectData } = values;
+
+      const dataToSend = {
+        ...projectData,
+        team: team || [], 
+      };
+      
+      console.log('📋 Form values:', values);
+      console.log('👥 Team:', team);
+      console.log('🔄 Auto generate:', autoGenerateTasks);
+      
+      let projectId = id; // استخدم id الموجود إذا كان تعديل
+      
+      if (isEdit) {
+        await projectAPI.update(id, projectData);
+        message.success('تم تحديث المشروع');
+      } else {
+        const result = await projectAPI.create(projectData);
+        projectId = result?.data?.data?.project?._id;
+        console.log('✅ Project created, ID:', projectId);
+        message.success('تم إضافة المشروع');
+      }
+
+      // 👈 توليد مهام تلقائية للفريق
+      if (!isEdit && autoGenerateTasks !== false && team && team.length > 0 && projectId) {
+        console.log('🚀 Generating tasks for project:', projectId);
+        
+        for (const member of team) {
+          if (member.employee && member.role) {
+            const emp = employees.find(e => e._id === member.employee);
+            const taskTitle = `${member.role} - ${emp?.name || 'عضو الفريق'}`;
+            
+            console.log('📝 Creating task:', taskTitle);
+            
+            try {
+              await projectTaskAPI.create(projectId, {
+                title: taskTitle,
+                description: `مهمة ${member.role} ضمن مشروع ${projectData.title}`,
+                assignedTo: [{ employee: member.employee, role: member.role }],
+                priority: 'متوسطة',
+                status: 'لم تبدأ',
+                startDate: member.startDate || new Date(),
+              });
+              console.log('✅ Task created:', taskTitle);
+            } catch (e) {
+              console.error('❌ Failed to create task:', e.response?.data || e.message);
+            }
+          }
+        }
+        
+        message.success('تم إنشاء المهام للفريق بنجاح');
+      } else {
+        console.log('⏭️ Skipping task generation:', { autoGenerateTasks, teamLength: team?.length, projectId });
+      }
+
       navigate('/projects');
-    } catch (e) { message.error(e.response?.data?.message || 'فشل في الحفظ'); }
-    finally { setSubmitting(false); }
+    } catch (e) {
+      console.error('❌ Submit error:', e);
+      message.error(e.response?.data?.message || 'فشل في الحفظ');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
@@ -144,26 +207,77 @@ const ProjectForm = () => {
                   {fields.map(({ key, name, ...rest }) => (
                     <Row key={key} gutter={8} align="middle" style={{ marginBottom: 8 }}>
                       <Col xs={10}>
-                        <Form.Item {...rest} name={[name, 'employee']} rules={[{ required: true }]} noStyle>
-                          <Select placeholder="اختر موظف" showSearch optionFilterProp="label"
-                            options={employees.map(e => ({ value: e._id, label: `${e.name} - ${e.jobTitle}` }))} />
+                        <Form.Item {...rest} name={[name, 'employee']} rules={[{ required: true, message: 'اختر موظف' }]} label="اختر موظف" noStyle>
+                          <Select 
+                            placeholder="اختر موظف" 
+                            showSearch 
+                            optionFilterProp="label"
+                            style={{ width: '100%' }} // <--- هذا السطر سيجبر الحقل على التمدد بكامل مساحة العمود
+                            dropdownMatchSelectWidth={false} // لكي تفتح القائمة المنسدلة بعرض النص الطويل إذا تجاوز الحقل
+                            options={employees.map(e => ({ 
+                              value: e._id, 
+                              label: `${e.name} - ${e.jobTitle}` 
+                            }))} 
+                          />
                         </Form.Item>
                       </Col>
-                      <Col xs={10}>
-                        <Form.Item {...rest} name={[name, 'role']} noStyle>
-                          <Select placeholder="الدور" options={[
-                            { value: 'مطور رئيسي', label: 'مطور رئيسي' }, { value: 'مصمم رئيسي', label: 'مصمم رئيسي' },
-                            { value: 'مساعد', label: 'مساعد' }, { value: 'مراجع', label: 'مراجع' },
-                          ]} />
+
+                      <Col xs={6}>
+                        <Form.Item {...rest} name={[name, 'role']} rules={[{ required: true, message: 'الدور مطلوب' }]} label="اختر أو اكتب دوراً" noStyle>
+                          <Select 
+                            placeholder="اختر أو اكتب دوراً"
+                            showSearch
+                            optionFilterProp="label"
+                            style={{ width: '100%' }} // <--- إضافة العرض الكامل هنا أيضاً لتوحيد المظهر
+                            dropdownMatchSelectWidth={false}
+                            options={customRoles.map(role => ({ value: role, label: role }))}
+                            onSearch={(value) => {
+                              if (value && !customRoles.includes(value)) {
+                                setCustomRoles(prev => [...new Set([...prev, value])]);
+                              }
+                            }}
+                          />
                         </Form.Item>
                       </Col>
-                      <Col xs={4}><Button danger onClick={() => remove(name)}>✕</Button></Col>
+
+                      <Col xs={6}>
+                        <Form.Item {...rest} name={[name, 'startDate']} noStyle>
+                          <input type="date" placeholder="تاريخ البداية" 
+                            style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+
+                      <Col xs={2}>
+                        <Button danger onClick={() => remove(name)} style={{ width: '100%' }}>✕</Button>
+                      </Col>
                     </Row>
                   ))}
-                  <Button type="dashed" onClick={() => add()} block>+ إضافة عضو</Button>
+                  <Space>
+                    <Button type="dashed" onClick={() => add({ role: '', startDate: '' })} block>
+                      + إضافة عضو للفريق
+                    </Button>
+                    <Button type="link" onClick={() => {
+                      const newRole = prompt('أدخل اسم الدور الجديد:');
+                      if (newRole && !customRoles.includes(newRole)) {
+                        setCustomRoles(prev => [...prev, newRole]);
+                        message.success(`تمت إضافة "${newRole}" إلى قائمة الأدوار`);
+                      }
+                    }}>
+                      + إدارة الأدوار
+                    </Button>
+                  </Space>
                 </>
               )}
             </Form.List>
+          </Card>
+
+          <Card size="small" style={{ marginTop: 16, background: '#f0f9ff', borderRadius: 8 }}>
+            <Form.Item name="autoGenerateTasks" label="توليد مهام تلقائية للفريق" valuePropName="checked">
+              <Switch defaultChecked />
+            </Form.Item>
+            <div style={{ fontSize: 12, color: '#64748b' }}>
+              سيتم إنشاء مهمة لكل عضو في الفريق بناءً على دوره في المشروع
+            </div>
           </Card>
 
           <Row gutter={24} style={{ marginTop: 16 }}>

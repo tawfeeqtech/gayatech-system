@@ -128,11 +128,22 @@ const ClientList = () => {
       render: (_, record) => record.computedStats?.activeContracts || 0,
     },
     {
-      title: 'المشاريع',
-      key: 'projects',
+      title: 'المشاريع المفتوحة',
+      key: 'activeProjects',
       width: 80,
       align: 'center',
       render: (_, record) => record.computedStats?.activeProjects || 0,
+    },
+    {
+      title: 'المشاريع المكتملة',
+      key: 'completedProjects',
+      width: 80,
+      align: 'center',
+      render: (_, record) => {
+        const total = record.computedStats?.totalProjects || 0;
+        const active = record.computedStats?.activeProjects || 0;
+        return total - active;
+      },
     },
     {
       title: 'الرصيد',

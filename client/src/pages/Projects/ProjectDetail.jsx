@@ -23,7 +23,7 @@ const ProjectDetail = () => {
 
   useEffect(() => {
     fetchData();
-    employeeAPI.getAll({ limit: 100 }).then(r => setEmployees(r.data.data.employees || [])).catch(() => {});
+    employeeAPI.getAll({ limit: 100 }).then(r => setEmployees(r.data.data.employees || [])).catch(() => { });
   }, [id]);
 
   const fetchData = async () => {
@@ -57,17 +57,72 @@ const ProjectDetail = () => {
     catch { message.error('فشل في الحذف'); }
   };
 
+  const handleAddTasksFromTeam = async () => {
+    console.log('👥 Team data:', project?.team);
+    
+    if (!project?.team || project.team.length === 0) {
+      message.warning('لا يوجد فريق عمل لتوليد المهام');
+      return;
+    }
+
+    let created = 0;
+    for (const member of project.team) {
+      console.log('Member:', member);
+      
+      const employeeId = typeof member.employee === 'object' 
+        ? member.employee?._id 
+        : member.employee;
+      
+      const employeeName = typeof member.employee === 'object' 
+        ? member.employee?.name 
+        : 'عضو الفريق';
+      
+      if (!employeeId) {
+        console.log('❌ No employee ID for:', member);
+        continue;
+      }
+
+      try {
+        const taskData = {
+          title: `${member.role || 'مهمة'} - ${employeeName}`,
+          description: `مهمة ${member.role || ''} ضمن مشروع ${project.title}`,
+          assignedTo: [{ employee: employeeId, role: member.role }],
+          priority: 'متوسطة',
+          status: 'لم تبدأ',
+        };
+        
+        console.log('📝 Creating task:', taskData);
+        
+        await projectTaskAPI.create(id, taskData);
+        created++;
+      } catch (e) {
+        console.error('❌ Failed to create task:', e.response?.data || e.message);
+      }
+    }
+    
+    if (created > 0) {
+      message.success(`تم إنشاء ${created} مهمة من الفريق`);
+      fetchData();
+    } else {
+      message.warning('لم يتم إنشاء أي مهمة - تحقق من Console');
+    }
+  };
+
   const taskColumns = [
     { title: 'المهمة', dataIndex: 'title', key: 'title' },
     { title: 'المسؤول', key: 'assignee', render: (_, r) => r.assignedTo?.map(a => a.employee?.name).join(', ') || '—' },
-    { title: 'الأولوية', dataIndex: 'priority', key: 'priority', render: (p) => {
-      const colors = { 'منخفضة': 'default', 'متوسطة': 'blue', 'عالية': 'orange', 'حرجة': 'red' };
-      return <Tag color={colors[p]}>{p}</Tag>;
-    }},
-    { title: 'الحالة', dataIndex: 'status', key: 'status', render: (s) => {
-      const colors = { 'لم تبدأ': 'default', 'قيد التنفيذ': 'processing', 'تحت المراجعة': 'warning', 'مكتملة': 'success', 'ملغاة': 'red' };
-      return <Tag color={colors[s]}>{s}</Tag>;
-    }},
+    {
+      title: 'الأولوية', dataIndex: 'priority', key: 'priority', render: (p) => {
+        const colors = { 'منخفضة': 'default', 'متوسطة': 'blue', 'عالية': 'orange', 'حرجة': 'red' };
+        return <Tag color={colors[p]}>{p}</Tag>;
+      }
+    },
+    {
+      title: 'الحالة', dataIndex: 'status', key: 'status', render: (s) => {
+        const colors = { 'لم تبدأ': 'default', 'قيد التنفيذ': 'processing', 'تحت المراجعة': 'warning', 'مكتملة': 'success', 'ملغاة': 'red' };
+        return <Tag color={colors[s]}>{s}</Tag>;
+      }
+    },
     {
       title: 'إجراءات', key: 'actions', width: 180,
       render: (_, record) => (
@@ -125,7 +180,16 @@ const ProjectDetail = () => {
 
       <Card
         title="المهام"
-        extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setShowTaskForm(!showTaskForm)}>إضافة مهمة</Button>}
+        extra={<Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowTaskForm(!showTaskForm)}>إضافة مهمة</Button>
+          <Button
+            type="dashed"
+            icon={<PlusOutlined />}
+            onClick={() => handleAddTasksFromTeam()}
+          >
+            توليد مهام من الفريق
+          </Button>
+        </Space>}
         style={{ borderRadius: 8 }}
       >
         {showTaskForm && (

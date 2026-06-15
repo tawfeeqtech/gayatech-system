@@ -10,10 +10,10 @@ const updateClientStats = async (clientId) => {
     Project.find({ client: clientId })
   ]);
 
-  // حساب الأرصدة حسب العملة
   const balances = {};
   const details = {};
   
+  // تجميع من أشهر العقود
   contractMonths.forEach(cm => {
     const currency = cm.currency || 'USD';
     if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
@@ -21,10 +21,12 @@ const updateClientStats = async (clientId) => {
     details[currency].paid += cm.paidAmount || 0;
   });
   
+  // 👈 تجميع من المشاريع (قيمتها تضاف كـ invoiced)
   projects.forEach(p => {
     const currency = p.currency || 'USD';
     if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
     details[currency].invoiced += p.totalValue || 0;
+    // المشاريع تدفع عبر فواتير منفصلة، لذلك paid تبقى 0 حتى يتم دفع فاتورة
   });
 
   // حساب الرصيد لكل عملة
@@ -32,18 +34,23 @@ const updateClientStats = async (clientId) => {
     balances[currency] = (details[currency].paid || 0) - (details[currency].invoiced || 0);
   });
 
-  // استخدام findById ثم save للتأكد من حفظ كل الحقول
   const client = await Client.findById(clientId);
   if (!client) return;
 
   client.computedStats.totalContracts = contracts.length;
   client.computedStats.activeContracts = contracts.filter(c => c.status === 'نشط').length;
   client.computedStats.totalProjects = projects.length;
-  client.computedStats.activeProjects = projects.filter(p => p.status === 'قيد التنفيذ').length;
+  // 👈 تعديل: المشاريع النشطة = كل المشاريع غير المكتملة أو الملغية
+  client.computedStats.activeProjects = projects.filter(
+    p => !['مكتمل', 'تم التسليم', 'ملغي'].includes(p.status)
+  ).length;
+  client.computedStats.completedProjects = projects.filter(
+    p => ['مكتمل', 'تم التسليم'].includes(p.status)
+  ).length;
+
   client.computedStats.balances = balances;
   client.computedStats.details = details;
-  client.markModified('computedStats'); 
-
+  client.markModified('computedStats');
   await client.save();
 };
 

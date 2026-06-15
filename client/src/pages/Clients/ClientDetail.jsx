@@ -129,10 +129,10 @@ const ClientDetail = () => {
 
       {/* بطاقات المؤشرات */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={12}>
           <StatCard title="العقود النشطة" value={stats.activeContracts || 0} color="#3b82f6" icon="📋" />
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={12}>
           <StatCard title="المشاريع النشطة" value={stats.activeProjects || 0} color="#8b5cf6" icon="🚀" />
         </Col>
         {stats.details && Object.entries(stats.details).map(([currency, data]) => (
