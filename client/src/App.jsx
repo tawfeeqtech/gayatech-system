@@ -36,13 +36,14 @@ import ImportData from './pages/Import/ImportData';
 import UserManagement from './pages/Settings/UserManagement';
 import SystemSettings from './pages/Settings/SystemSettings';
 import ReportList from './pages/Reports/ReportList';
+import TransactionDetail from './pages/Transactions/TransactionDetail';
 import MonthlyRevenue from './pages/Reports/MonthlyRevenue';
 import ProfitLoss from './pages/Reports/ProfitLoss';
 import OutstandingDebts from './pages/Reports/OutstandingDebts';
 import ClientBalances from './pages/Reports/ClientBalances';
 import ActiveContracts from './pages/Reports/ActiveContracts';
 import SubscriptionsReport from './pages/Reports/SubscriptionsReport';
-
+import PageTitleUpdater from './components/layout/PageTitleUpdater';
 import CompletedProjects from './pages/Reports/CompletedProjects';
 import PartnerBalances from './pages/Reports/PartnerBalances';
 import EmployeePerformance from './pages/Reports/EmployeePerformance';
@@ -81,9 +82,10 @@ function App() {
           },
         }}
       />
+      <PageTitleUpdater />
       <Routes>
         <Route path="/login" element={<Login />} />
-
+        
         <Route path="/" element={
           <ProtectedRoute>
             <MainLayout />
@@ -105,9 +107,10 @@ function App() {
           <Route path="projects/edit/:id" element={<ProjectForm />} />
           <Route path="projects/:id" element={<ProjectDetail />} />
 
-          <Route path="transactions" element={<TransactionList />} />
           <Route path="transactions/new" element={<TransactionForm />} />
           <Route path="transactions/edit/:id" element={<TransactionForm />} />
+          <Route path="transactions/:id" element={<TransactionDetail />} />
+          <Route path="transactions" element={<TransactionList />} />
 
           <Route path="invoices" element={<InvoiceList />} />
           <Route path="invoices/new" element={<InvoiceForm />} />

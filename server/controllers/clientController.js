@@ -142,32 +142,29 @@ exports.deleteClient = asyncHandler(async (req, res, next) => {
 // @access  Private
 exports.getClientStats = asyncHandler(async (req, res, next) => {
   const client = await Client.findById(req.params.id);
-
-  if (!client) {
-    return next(new ApiError('العميل غير موجود', 404));
-  }
+  if (!client) return next(new ApiError('العميل غير موجود', 404));
 
   const Contract = require('../models/Contract');
-  const ContractMonth = require('../models/ContractMonth');
   const Project = require('../models/Project');
   const Transaction = require('../models/Transaction');
+  const Invoice = require('../models/Invoice');
 
-  const [contracts, projects, transactions, contractMonths] = await Promise.all([
+  const [contracts, projects, transactions, invoices] = await Promise.all([
     Contract.find({ client: req.params.id }),
     Project.find({ client: req.params.id }),
     Transaction.find({ client: req.params.id }),
-    ContractMonth.find({ client: req.params.id })
+    Invoice.find({ client: req.params.id })
   ]);
 
-  // حساب الأرصدة حسب العملة
+  // 👈 من الفواتير فقط + المشاريع
   const balances = {};
   const details = {};
   
-  contractMonths.forEach(cm => {
-    const currency = cm.currency || 'USD';
+  invoices.forEach(inv => {
+    const currency = inv.currency || 'USD';
     if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
-    details[currency].invoiced += cm.value || 0;
-    details[currency].paid += cm.paidAmount || 0;
+    details[currency].invoiced += inv.totalAmount || 0;
+    details[currency].paid += inv.paidAmount || 0;
   });
   
   projects.forEach(p => {
@@ -180,20 +177,21 @@ exports.getClientStats = asyncHandler(async (req, res, next) => {
     balances[currency] = (details[currency].paid || 0) - (details[currency].invoiced || 0);
   });
 
+  const totalInvoiced = Object.values(details).reduce((sum, d) => sum + (d.invoiced || 0), 0);
+  const totalPaid = Object.values(details).reduce((sum, d) => sum + (d.paid || 0), 0);
+
   const stats = {
     totalContracts: contracts.length,
     activeContracts: contracts.filter(c => c.status === 'نشط').length,
     totalProjects: projects.length,
     activeProjects: projects.filter(p => p.status === 'قيد التنفيذ').length,
     totalTransactions: transactions.length,
-    balances,
-    details,
+    totalInvoiced, totalPaid, balances, details,
     lastTransaction: transactions.length > 0 
-      ? transactions.sort((a, b) => b.transactionDate - a.transactionDate)[0]
-      : null
+      ? transactions.sort((a, b) => b.transactionDate - a.transactionDate)[0] : null
   };
 
-  // 👈 حدث بيانات العميل أيضاً
+  // تحديث بيانات العميل
   await Client.findByIdAndUpdate(req.params.id, {
     computedStats: {
       ...client.computedStats,
@@ -201,15 +199,13 @@ exports.getClientStats = asyncHandler(async (req, res, next) => {
       activeContracts: contracts.filter(c => c.status === 'نشط').length,
       totalProjects: projects.length,
       activeProjects: projects.filter(p => p.status === 'قيد التنفيذ').length,
-      balances,
-      details,
+      totalInvoiced, totalPaid,
+      balance: totalPaid - totalInvoiced,
+      balances, details,
     }
   });
 
-  res.status(200).json({
-    status: 'success',
-    data: { stats }
-  });
+  res.status(200).json({ status: 'success', data: { stats } });
 });
 
 // @desc    الحصول على عقود العميل

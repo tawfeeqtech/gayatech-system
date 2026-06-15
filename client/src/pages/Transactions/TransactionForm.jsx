@@ -230,6 +230,8 @@ const TransactionForm = () => {
           allocations,
           client: values.client,
           type: 'دخل',
+          invoice: undefined,
+          contractMonth: undefined,
         };
         
         await transactionAPI.create(data);
@@ -432,7 +434,7 @@ const TransactionForm = () => {
           </Row>
 
           {/* الصف الثالث: العميل + الفاتورة + شهر العقد (للدخل فقط) */}
-          {type === 'دخل' && (
+          {type === 'دخل' && !allocationMode && (
             <>
               <Row gutter={24}>
                 <Col xs={24} md={12}>
@@ -470,6 +472,15 @@ const TransactionForm = () => {
                 </Col>
               </Row>
             </>
+          )}
+          {type === 'دخل' && allocationMode && (
+            <Row gutter={24} style={{ marginBottom: 16 }}>
+              <Col span={24}>
+                <div style={{ padding: 16, borderRadius: 8, background: '#f8fafc', color: '#334155' }}>
+                  <strong>توزيع الدفعة نشط.</strong> سيتم استخدام الفواتير المحددة في قسم التوزيع فقط، ولن يتم ربط المعاملة مباشرة بفاتورة واحدة.
+                </div>
+              </Col>
+            </Row>
           )}
 
           {/* قسم توزيع الدفعة على عدة فواتير */}

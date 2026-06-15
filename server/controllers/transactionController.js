@@ -145,15 +145,30 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
     return next(new ApiError('يرجى تحديد الحساب المدفوع منه', 400));
   }
 
+  const hasAllocations = req.body.allocations && Array.isArray(req.body.allocations) && req.body.allocations.length > 0;
+  if (hasAllocations) {
+    // لا نربط المعاملة مباشرة بفاتورة واحدة إذا كانت هناك توزيعات
+    req.body.invoice = undefined;
+    req.body.contractMonth = undefined;
+  }
+
+  // إذا لم يُحدد العميل، حاول الحصول عليه من الفاتورة المرتبطة
+  if (!req.body.client && req.body.invoice) {
+    const invoice = await Invoice.findById(req.body.invoice).select('client');
+    if (invoice && invoice.client) {
+      req.body.client = invoice.client;
+    }
+  }
+
   const transaction = await Transaction.create(req.body);
 
   // 👈 معالجة التوزيعات (allocations) - مرة واحدة فقط
-  if (req.body.allocations && Array.isArray(req.body.allocations) && req.body.allocations.length > 0) {
+  if (hasAllocations) {
     for (const allocation of req.body.allocations) {
       if (allocation.invoice) {
         await updateInvoiceStatus(allocation.invoice, allocation.amount);
         await Invoice.findByIdAndUpdate(allocation.invoice, {
-          $push: { transactions: transaction._id }
+          $addToSet: { transactions: transaction._id }
         });
       }
       
@@ -171,7 +186,7 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
     if (transaction.invoice && transaction.type === 'دخل') {
       await updateInvoiceStatus(transaction.invoice, transaction.amount);
       await Invoice.findByIdAndUpdate(transaction.invoice, {
-        $push: { transactions: transaction._id }
+        $addToSet: { transactions: transaction._id }
       });
     }
 
@@ -306,11 +321,24 @@ exports.updateTransaction = asyncHandler(async (req, res, next) => {
     });
   }
 
+  const oldInvoiceId = oldTransaction.invoice ? oldTransaction.invoice.toString() : null;
+  const oldClientId = oldTransaction.client ? oldTransaction.client.toString() : null;
+
   // حذف old transaction effects on invoice
   if (oldTransaction.invoice) {
     await Invoice.findByIdAndUpdate(oldTransaction.invoice, {
-      $inc: { paidAmount: -oldTransaction.amount }
+      $inc: { paidAmount: -oldTransaction.amount },
+      $pull: { transactions: oldTransaction._id }
     });
+    await updateInvoiceStatus(oldTransaction.invoice);
+  }
+
+  // إذا لم يُحدد العميل، حاول الحصول عليه من الفاتورة الجديدة
+  if (!req.body.client && req.body.invoice) {
+    const invoice = await Invoice.findById(req.body.invoice).select('client');
+    if (invoice && invoice.client) {
+      req.body.client = invoice.client;
+    }
   }
 
   // تحديث المعاملة
@@ -339,6 +367,17 @@ exports.updateTransaction = asyncHandler(async (req, res, next) => {
   // تحديث الفاتورة
   if (transaction.invoice) {
     await updateInvoiceStatus(transaction.invoice, transaction.amount);
+    await Invoice.findByIdAndUpdate(transaction.invoice, {
+      $addToSet: { transactions: transaction._id }
+    });
+  }
+
+  // تحديث إحصائيات العميل
+  if (oldClientId && oldClientId !== transaction.client?.toString()) {
+    await updateClientStats(oldClientId);
+  }
+  if (transaction.client) {
+    await updateClientStats(transaction.client);
   }
 
   res.status(200).json({
@@ -537,6 +576,10 @@ const updateInvoiceStatus = async (invoiceId, additionalAmount = 0) => {
     contractMonth.paidAmount = invoice.paidAmount;
     await contractMonth.save();
     await updateContractMonthStatus(contractMonth._id);
+  }
+  if (invoice.client) {
+    const { updateClientStats } = require('../services/clientStatsService');
+    await updateClientStats(invoice.client);
   }
 };
 

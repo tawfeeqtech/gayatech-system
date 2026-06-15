@@ -6,7 +6,6 @@ import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import contractAPI from '../../api/contracts';
 import { formatCurrency } from '../../utils/formatters';
-
 const ContractList = () => {
   const navigate = useNavigate();
   const [contracts, setContracts] = useState([]);

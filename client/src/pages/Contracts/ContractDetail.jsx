@@ -126,7 +126,12 @@ const ContractDetail = () => {
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
   if (!contract) return null;
 
-  const stats = contract.computedStats || {};
+  const stats = months.length > 0 ? {
+    totalMonths: months.length,
+    paidMonths: months.filter(m => m.status === 'paid').length,
+    totalValue: months.reduce((sum, m) => sum + (m.value || 0), 0),
+    totalRemaining: months.reduce((sum, m) => sum + ((m.value || 0) - (m.paidAmount || 0)), 0)
+  } : (contract.computedStats || {});
 
   return (
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>

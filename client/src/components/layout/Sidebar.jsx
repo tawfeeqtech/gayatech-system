@@ -38,10 +38,9 @@ const Sidebar = () => {
 
   // الأقسام الرئيسية (قابلة للطي)
   const menuItems = [
-    // العنصر الوحيد بدون طي
     { key: '/', icon: <DashboardOutlined />, label: 'لوحة التحكم' },
 
-    // 📋 العملاء والعقود (قسم قابل للطي)
+    // 📋 العملاء والعقود
     {
       key: 'clients-contracts',
       icon: <UserOutlined />,
@@ -53,7 +52,7 @@ const Sidebar = () => {
       ]
     },
 
-    // 💰 المالية (قسم قابل للطي)
+    // 💰 المالية
     {
       key: 'finance',
       icon: <MoneyCollectOutlined />,
@@ -66,7 +65,7 @@ const Sidebar = () => {
       ]
     },
 
-    // 👔 الموارد البشرية (قسم قابل للطي)
+    // 👔 الموارد البشرية
     {
       key: 'hr',
       icon: <TeamOutlined />,
@@ -78,7 +77,7 @@ const Sidebar = () => {
       ]
     },
 
-    // 🤝 الشركاء والاشتراكات (قسم قابل للطي)
+    // 🤝 الشركاء والاشتراكات
     {
       key: 'partners',
       icon: <UsergroupAddOutlined />,
@@ -90,7 +89,7 @@ const Sidebar = () => {
       ]
     },
 
-    // 📈 التقارير والاستيراد (قسم قابل للطي)
+    // 📈 التقارير والاستيراد
     {
       key: 'reports-data',
       icon: <FundOutlined />,
@@ -101,63 +100,67 @@ const Sidebar = () => {
       ]
     },
 
-    // ⚙️ الإعدادات (قسم قابل للطي)
+    // ⚙️ الإعدادات
     {
       key: 'settings',
       icon: <SettingOutlined />,
       label: 'الإعدادات',
       children: [
-        { key: '/settings', label: 'إعدادات النظام' },
+        { key: '/settings/system', label: 'إعدادات النظام' }, // تم تعديلها لتجنب تداخل الأب والابن
         { key: '/settings/users', label: 'إدارة المستخدمين' },
       ]
     },
   ];
 
-  // تحديد المسار النشط
+  // تحديد العنصر الفرعي النشط الذكي
   const getActiveKey = () => {
     const path = location.pathname;
     
     if (path === '/') return '/';
-    if (path === '/settings/users') return '/settings/users';
-    if (path === '/settings') return '/settings';
-    if (path === '/currency-exchange') return '/currency-exchange';
-    if (path === '/import') return '/import';
+
+    // البحث في القائمة عن عنصر يبدأ به الرابط الحالي
+    for (const item of menuItems) {
+      if (item.children) {
+        const activeChild = item.children.find(child => path.startsWith(child.key));
+        if (activeChild) return activeChild.key;
+      }
+    }
     
     return path;
   };
 
-  // تحديد الأقسام المفتوحة تلقائياً حسب المسار الحالي
+  // تحديد القسم الأب المفتوح تلقائياً
   const getOpenKeys = () => {
     const path = location.pathname;
     const openSections = [];
 
-    // العملاء والعقود
-    if (['/clients', '/contracts', '/projects'].includes(path)) {
+    // فحص العملاء والعقود (مثال: /contracts أو /contracts/new)
+    if (path.startsWith('/clients') || path.startsWith('/contracts') || path.startsWith('/projects')) {
       openSections.push('clients-contracts');
     }
     
     // المالية
-    if (['/transactions', '/invoices', '/accounts', '/expenses'].includes(path)) {
+    if (path.startsWith('/transactions') || path.startsWith('/invoices') || path.startsWith('/accounts') || path.startsWith('/expenses')) {
       openSections.push('finance');
     }
     
     // الموارد البشرية
-    if (['/employees', '/salaries', '/advances'].includes(path)) {
+    if (path.startsWith('/employees') || path.startsWith('/salaries') || path.startsWith('/advances')) {
       openSections.push('hr');
     }
     
     // الشركاء والاشتراكات
-    if (['/partners', '/subscriptions', '/currency-exchange'].includes(path)) {
+    if (path.startsWith('/partners') || path.startsWith('/subscriptions') || path.startsWith('/currency-exchange')) {
       openSections.push('partners');
     }
     
     // التقارير والبيانات
-    if (['/reports', '/import'].includes(path)) {
+    if (path.startsWith('/reports') || path.startsWith('/import')) {
       openSections.push('reports-data');
     }
     
     // الإعدادات
-    if (path === '/settings' || path === '/settings/users') {
+    if (path.startsWith('/settings')) {
       openSections.push('settings');
     }
     
@@ -203,7 +206,8 @@ const Sidebar = () => {
         theme="dark"
         mode="inline"
         selectedKeys={[getActiveKey()]}
-        defaultOpenKeys={getOpenKeys()}
+        // تم استبدال defaultOpenKeys بـ openKeys لضمان فتح المجلد عند الانتقال المباشر للرابط
+        defaultOpenKeys={getOpenKeys()} 
         onClick={({ key }) => navigate(key)}
         style={{
           backgroundColor: COLORS.BRAND_DARK,
