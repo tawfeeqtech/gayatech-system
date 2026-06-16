@@ -3,30 +3,38 @@ const Contract = require('../models/Contract');
 const Project = require('../models/Project');
 const Invoice = require('../models/Invoice');
 
+/**
+ * Updates client statistics and balances
+ * Optimization: Uses O(N) lookup instead of O(N^2) and selects only necessary fields
+ */
 const updateClientStats = async (clientId) => {
   const [contracts, projects, invoices] = await Promise.all([
-    Contract.find({ client: clientId }),
-    Project.find({ client: clientId }),
-    Invoice.find({ client: clientId })
+    Contract.find({ client: clientId }).select('status'),
+    Project.find({ client: clientId }).select('status currency totalValue'),
+    Invoice.find({ client: clientId }).select('currency totalAmount paidAmount project')
   ]);
 
   const balances = {};
   const details = {};
   
+  // Track project IDs that already have invoices to avoid double counting
+  const projectIdsWithInvoices = new Set();
+
   invoices.forEach(inv => {
     const currency = inv.currency || 'USD';
     if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
     details[currency].invoiced += inv.totalAmount || 0;
     details[currency].paid += inv.paidAmount || 0;
+
+    if (inv.project) {
+      projectIdsWithInvoices.add(inv.project.toString());
+    }
   });
-  // المشاريع التي ليس لها فواتير مرتبطة (لم تدفع بعد)
+
+  // Projects without linked invoices (not yet invoiced/paid)
+  // Optimization: O(P) instead of O(P * I) using projectIdsWithInvoices Set
   projects.forEach(p => {
-    // تحقق إذا كان للمشروع فواتير
-    const hasInvoices = invoices.some(inv => 
-      inv.project && (inv.project.toString() === p._id.toString())
-    );
-    
-    if (!hasInvoices) {
+    if (!projectIdsWithInvoices.has(p._id.toString())) {
       const currency = p.currency || 'USD';
       if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
       details[currency].invoiced += p.totalValue || 0;
