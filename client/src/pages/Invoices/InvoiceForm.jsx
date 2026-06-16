@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 import FormField from '../../components/ui/FormField';
 import invoiceAPI from '../../api/invoices';
 import clientAPI from '../../api/clients';
+import projectAPI from '../../api/projects';
 
 const { Title } = Typography;
 
@@ -17,9 +18,11 @@ const InvoiceForm = () => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [clients, setClients] = useState([]);
+  const [projects, setProjects] = useState([]);
 
   useEffect(() => {
     clientAPI.getAll({ limit: 100 }).then(r => setClients(r.data.data.clients || [])).catch(() => { });
+    projectAPI.getAll({ limit: 100 }).then(r => setProjects(r.data.data.projects || [])).catch(() => {});
     if (isEdit) fetchInvoice();
   }, [id]);
 
@@ -77,6 +80,12 @@ const InvoiceForm = () => {
               <Form.Item name="client" label="العميل" rules={[{ required: true }]}>
                 <Select placeholder="اختر العميل" showSearch optionFilterProp="label"
                   options={clients.map(c => ({ value: c._id, label: c.company ? `${c.name} - ${c.company}` : c.name }))} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="project" label="المشروع (اختياري)">
+                <Select placeholder="اختر المشروع" allowClear showSearch optionFilterProp="label"
+                  options={projects.map(p => ({ value: p._id, label: `${p.title} (${p.totalValue} ${p.currency})` }))} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>

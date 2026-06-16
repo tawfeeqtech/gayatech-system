@@ -9,6 +9,7 @@ import invoiceAPI from '../../api/invoices';
 import api from '../../api/axios';
 import { useParams } from 'react-router-dom';
 import contractAPI from '../../api/contracts';
+import projectAPI from '../../api/projects';
 
 const { Title } = Typography;
 
@@ -40,10 +41,12 @@ const TransactionForm = () => {
 
   const [selectedInvoices, setSelectedInvoices] = useState([]);
   const [allocationMode, setAllocationMode] = useState(false);
+  const [projects, setProjects] = useState([]);
 
   useEffect(() => { 
     clientAPI.getAll({ limit: 100 }).then(r => setClients(r.data.data.clients || [])).catch(() => {});
     accountAPI.getAll().then(r => setAccounts(r.data.data.accounts || [])).catch(() => {});
+    projectAPI.getAll({ limit: 100 }).then(r => setProjects(r.data.data.projects || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -442,6 +445,18 @@ const TransactionForm = () => {
                     <Select placeholder="اختر العميل" allowClear showSearch optionFilterProp="label"
                       onChange={handleClientChange}
                       options={clients.map(c => ({ value: c._id, label: c.company ? `${c.name} - ${c.company}` : c.name }))} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item name="project" label="المشروع (اختياري)">
+                    <Select placeholder="اختر المشروع" allowClear showSearch optionFilterProp="label"
+                      options={projects
+                        .filter(p => {
+                          const clientId = form.getFieldValue('client');
+                          const pClientId = typeof p.client === 'object' ? p.client?._id : p.client;
+                          return clientId && pClientId === clientId;
+                        })
+                        .map(p => ({ value: p._id, label: `${p.title} | ${p.totalValue} ${p.currency}` }))} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>

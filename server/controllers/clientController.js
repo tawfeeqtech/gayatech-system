@@ -168,10 +168,16 @@ exports.getClientStats = asyncHandler(async (req, res, next) => {
   });
   
   projects.forEach(p => {
-    const currency = p.currency || 'USD';
-    if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
-    details[currency].invoiced += p.totalValue || 0;
+    const hasInvoices = invoices.some(inv => 
+      inv.project && (inv.project.toString() === p._id.toString())
+    );
+    if (!hasInvoices) {
+      const currency = p.currency || 'USD';
+      if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
+      details[currency].invoiced += p.totalValue || 0;
+    }
   });
+
 
   Object.keys(details).forEach(currency => {
     balances[currency] = (details[currency].paid || 0) - (details[currency].invoiced || 0);

@@ -581,6 +581,17 @@ const updateInvoiceStatus = async (invoiceId, additionalAmount = 0) => {
     const { updateClientStats } = require('../services/clientStatsService');
     await updateClientStats(invoice.client);
   }
+
+  // 👈 تحديث المشروع المرتبط بالفاتورة
+  if (invoice.project) {
+    const Project = require('../models/Project');
+    const project = await Project.findById(invoice.project);
+    if (project) {
+      project.computedStats.totalPaid = invoice.paidAmount;
+      project.computedStats.totalRemaining = project.totalValue - invoice.paidAmount;
+      await project.save();
+    }
+  }
 };
 
 // const updateClientStats = async (clientId) => {

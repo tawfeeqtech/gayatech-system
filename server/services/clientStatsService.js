@@ -19,12 +19,18 @@ const updateClientStats = async (clientId) => {
     details[currency].invoiced += inv.totalAmount || 0;
     details[currency].paid += inv.paidAmount || 0;
   });
-  
-  // 👈 تجميع من المشاريع
+  // المشاريع التي ليس لها فواتير مرتبطة (لم تدفع بعد)
   projects.forEach(p => {
-    const currency = p.currency || 'USD';
-    if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
-    details[currency].invoiced += p.totalValue || 0;
+    // تحقق إذا كان للمشروع فواتير
+    const hasInvoices = invoices.some(inv => 
+      inv.project && (inv.project.toString() === p._id.toString())
+    );
+    
+    if (!hasInvoices) {
+      const currency = p.currency || 'USD';
+      if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
+      details[currency].invoiced += p.totalValue || 0;
+    }
   });
 
   // حساب الرصيد لكل عملة
