@@ -41,6 +41,19 @@ const TransactionDetail = () => {
 
   const allocations = transaction.allocations || [];
 
+  // بناء مصدر بيانات الجدول: التوزيعات إن وُجدت، وإلا الدفع المباشر على الفاتورة/شهر العقد
+  let tableData = [];
+  if (allocations.length > 0) {
+    tableData = allocations;
+  } else if (transaction.invoice || transaction.contractMonth) {
+    tableData = [{
+      invoice: transaction.invoice,
+      contractMonth: transaction.contractMonth,
+      amount: transaction.amount,
+      description: transaction.description,
+    }];
+  }
+
   return (
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -89,6 +102,39 @@ const TransactionDetail = () => {
         </Col>
       </Row>
 
+      {transaction.invoice && (
+        <Card
+          style={{ borderRadius: 8, marginBottom: 24 }}
+          title={<span>تفاصيل الفاتورة المرتبطة <Tag color="blue">{transaction.invoice.invoiceNumber || '—'}</Tag></span>}
+        >
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={8}>
+              <div style={{ fontSize: 14, color: '#475569', marginBottom: 8 }}>مبلغ الفاتورة</div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>
+                {formatCurrency(transaction.invoice.totalAmount, transaction.invoice.currency || transaction.currency)}
+              </div>
+            </Col>
+            <Col xs={24} sm={8}>
+              <div style={{ fontSize: 14, color: '#475569', marginBottom: 8 }}>المدفوع</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: (transaction.invoice.paidAmount || 0) > 0 ? '#10b981' : '#94a3b8' }}>
+                {formatCurrency(transaction.invoice.paidAmount || 0, transaction.invoice.currency || transaction.currency)}
+              </div>
+            </Col>
+            <Col xs={24} sm={8}>
+              <div style={{ fontSize: 14, color: '#475569', marginBottom: 8 }}>المتبقي</div>
+              {(() => {
+                const rem = (transaction.invoice.totalAmount || 0) - (transaction.invoice.paidAmount || 0);
+                return (
+                  <div style={{ fontSize: 22, fontWeight: 700, color: rem > 0 ? '#ef4444' : '#10b981' }}>
+                    {formatCurrency(rem, transaction.invoice.currency || transaction.currency)}
+                  </div>
+                );
+              })()}
+            </Col>
+          </Row>
+        </Card>
+      )}
+
       <Card style={{ borderRadius: 8, marginBottom: 24 }}>
         <Descriptions title="معلومات المعاملة" column={{ xs: 1, sm: 2, md: 3 }}>
           <Descriptions.Item label="العميل">{transaction.client?.name || '—'}</Descriptions.Item>
@@ -104,17 +150,41 @@ const TransactionDetail = () => {
         </Descriptions>
       </Card>
 
-      {allocations.length > 0 && (
+      {tableData.length > 0 && (
         <Card title="التوزيعات" style={{ borderRadius: 8, marginBottom: 24 }}>
           <Table
-            dataSource={allocations}
-            rowKey={(record) => record.invoice || record.contractMonth || Math.random()}
+            dataSource={tableData}
+            rowKey={(record) => record.invoice?._id || record.invoice || record.contractMonth?._id || record.contractMonth || Math.random()}
             pagination={false}
             columns={[
               { title: 'نوع التوزيع', key: 'type', render: (_, record) => record.invoice ? 'فاتورة' : 'شهر عقد' },
               { title: 'المرجع', key: 'reference', render: (_, record) => record.invoice ? record.invoice?.invoiceNumber || record.invoice : record.contractMonth?.month || '—' },
               { title: 'المبلغ', key: 'amount', render: (value, record) => formatCurrency(record.amount, transaction.currency) },
-              { title: 'الفاتورة / الشهر', key: 'details', render: (_, record) => record.invoice ? record.invoice?.invoiceNumber || record.invoice : record.contractMonth?.month || '—' }
+              {
+                title: 'مبلغ الفاتورة', key: 'total', render: (_, record) => {
+                  const inv = record.invoice;
+                  if (!inv) return '—';
+                  return formatCurrency(inv.totalAmount, inv.currency || transaction.currency);
+                },
+              },
+              {
+                title: 'المدفوع', key: 'paid', render: (_, record) => {
+                  if (record.invoice) {
+                    const paid = record.invoice.paidAmount || 0;
+                    return <span style={{ color: paid > 0 ? '#10b981' : '#94a3b8' }}>{formatCurrency(paid, record.invoice.currency || transaction.currency)}</span>;
+                  }
+                  return '—';
+                },
+              },
+              {
+                title: 'المتبقي', key: 'remaining', render: (_, record) => {
+                  if (record.invoice) {
+                    const rem = (record.invoice.totalAmount || 0) - (record.invoice.paidAmount || 0);
+                    return <span style={{ color: rem > 0 ? '#ef4444' : '#10b981', fontWeight: 600 }}>{formatCurrency(rem, record.invoice.currency || transaction.currency)}</span>;
+                  }
+                  return '—';
+                },
+              },
             ]}
           />
         </Card>

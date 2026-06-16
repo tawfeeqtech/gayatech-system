@@ -73,7 +73,7 @@ exports.getTransactions = asyncHandler(async (req, res, next) => {
     .populate('fromWallet', 'name currency')
     .populate('toWallet', 'name currency')
     .populate('contractMonth', 'month value')
-    .populate('invoice', 'invoiceNumber totalAmount')
+    .populate('invoice', 'invoiceNumber totalAmount paidAmount currency')
     .populate('project', 'title')
     .populate('createdBy', 'fullName')
     .sort('-transactionDate')
@@ -103,10 +103,10 @@ exports.getTransaction = asyncHandler(async (req, res, next) => {
     .populate('fromWallet', 'name currency')
     .populate('toWallet', 'name currency')
     .populate('contractMonth', 'month value status')
-    .populate('invoice', 'invoiceNumber totalAmount')
+    .populate('invoice', 'invoiceNumber totalAmount paidAmount currency')
     .populate('project', 'title')
     .populate('allocations.contractMonth', 'month value')
-    .populate('allocations.invoice', 'invoiceNumber totalAmount')
+    .populate('allocations.invoice', 'invoiceNumber totalAmount paidAmount currency')
     .populate('createdBy', 'fullName');
 
   if (!transaction) {
