@@ -11,6 +11,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
 import StatCard from '../../components/ui/StatCard';
 import clientAPI from '../../api/clients';
+import { formatCurrency } from '../../utils/formatters';
 
 const ClientDetail = () => {
   const navigate = useNavigate();
@@ -64,13 +65,23 @@ const ClientDetail = () => {
 
   // أعمدة العقود
   const contractColumns = [
-    { title: 'العقد', dataIndex: 'title', key: 'title' },
+    { 
+      title: 'العقد', dataIndex: 'title', key: 'title',
+      render: (text, record) => (
+        <a 
+          onClick={() => navigate(`/contracts/${record._id}`)}
+          style={{ color: '#2563eb', cursor: 'pointer', fontWeight: 500 }}
+        >
+          {text}
+        </a>
+      ),
+    },
     { title: 'الخدمة', dataIndex: 'serviceType', key: 'serviceType' },
     {
       title: 'القيمة الشهرية',
       dataIndex: 'defaultMonthlyValue',
       key: 'value',
-      render: (v) => `${v} $`,
+      render: (v, record) => formatCurrency(v, record.currency),
     },
     {
       title: 'الحالة',
@@ -82,13 +93,23 @@ const ClientDetail = () => {
 
   // أعمدة المشاريع
   const projectColumns = [
-    { title: 'المشروع', dataIndex: 'title', key: 'title' },
+    { 
+      title: 'المشروع', dataIndex: 'title', key: 'title',
+      render: (text, record) => (
+        <a 
+          onClick={() => navigate(`/projects/${record._id}`)}
+          style={{ color: '#2563eb', cursor: 'pointer', fontWeight: 500 }}
+        >
+          {text}
+        </a>
+      ),
+    },
     { title: 'الخدمة', dataIndex: 'serviceType', key: 'serviceType' },
     {
       title: 'القيمة',
       dataIndex: 'totalValue',
       key: 'value',
-      render: (v) => `${v} $`,
+      render: (v, record) => formatCurrency(v, record.currency),
     },
     {
       title: 'الحالة',
@@ -213,19 +234,44 @@ const ClientDetail = () => {
             },
             {
               key: 'transactions',
-              label: 'المعاملات المالية',
+              label: `المعاملات المالية (${transactions.length})`,
               children: (
                 <Table
                   columns={[
-                    { title: 'التاريخ', dataIndex: 'transactionDate', key: 'date', render: (d) => d ? new Date(d).toLocaleDateString('ar-SA') : '—' },
-                    { title: 'النوع', dataIndex: 'type', key: 'type' },
-                    { title: 'المبلغ', dataIndex: 'amount', key: 'amount', render: (v, r) => formatCurrency(v, r.currency) },
-                    { title: 'الوصف', dataIndex: 'description', key: 'desc' },
+                    { 
+                      title: 'التاريخ', dataIndex: 'transactionDate', key: 'date', width: 110,
+                      render: (d) => d ? new Date(d).toLocaleDateString('ar-SA') : '—' 
+                    },
+                    { 
+                      title: 'النوع', dataIndex: 'type', key: 'type', width: 90,
+                      render: (t) => <Tag color={t === 'دخل' ? 'green' : t === 'مصروف' ? 'red' : 'blue'}>{t}</Tag>
+                    },
+                    { 
+                      title: 'المبلغ', dataIndex: 'amount', key: 'amount', width: 120,
+                      render: (v, r) => (
+                        <span style={{ color: r.type === 'دخل' ? '#10b981' : '#ef4444', fontWeight: 600 }}>
+                          {r.type === 'دخل' ? '+' : '-'} {formatCurrency(v, r.currency)}
+                        </span>
+                      ),
+                    },
+                    { title: 'وسيلة الدفع', dataIndex: 'paymentMethod', key: 'method', width: 110 },
+                    { title: 'الوصف', dataIndex: 'description', key: 'desc', ellipsis: true },
+                    {
+                      title: 'رقم المعاملة', dataIndex: 'transactionNumber', key: 'number', width: 130,
+                      render: (text, record) => (
+                        <a 
+                          onClick={() => navigate(`/transactions/${record._id}`)}
+                          style={{ color: '#2563eb', cursor: 'pointer' }}
+                        >
+                          {text || '—'}
+                        </a>
+                      ),
+                    },
                   ]}
                   dataSource={transactions}
                   rowKey="_id"
                   locale={{ emptyText: 'لا توجد معاملات' }}
-                  pagination={false}
+                  pagination={{ pageSize: 10 }}
                 />
               ),
             },

@@ -150,34 +150,35 @@ exports.getClientStats = asyncHandler(async (req, res, next) => {
   const Invoice = require('../models/Invoice');
 
   const [contracts, projects, transactions, invoices] = await Promise.all([
-    Contract.find({ client: req.params.id }),
-    Project.find({ client: req.params.id }),
-    Transaction.find({ client: req.params.id }),
-    Invoice.find({ client: req.params.id })
+    Contract.find({ client: req.params.id }).select('status'), 
+    Project.find({ client: req.params.id }).select('status currency totalValue'), 
+    Transaction.find({ client: req.params.id }).select('transactionDate'), 
+    Invoice.find({ client: req.params.id }).select('currency totalAmount paidAmount project') 
   ]);
 
-  // 👈 من الفواتير فقط + المشاريع
   const balances = {};
   const details = {};
+  const projectIdsWithInvoices = new Set(); 
   
   invoices.forEach(inv => {
     const currency = inv.currency || 'USD';
     if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
     details[currency].invoiced += inv.totalAmount || 0;
     details[currency].paid += inv.paidAmount || 0;
+    
+    if (inv.project) {
+      projectIdsWithInvoices.add(inv.project.toString()); 
+    }
   });
   
+  //  استخدم Set للتحقق
   projects.forEach(p => {
-    const hasInvoices = invoices.some(inv => 
-      inv.project && (inv.project.toString() === p._id.toString())
-    );
-    if (!hasInvoices) {
+    if (!projectIdsWithInvoices.has(p._id.toString())) {
       const currency = p.currency || 'USD';
       if (!details[currency]) details[currency] = { invoiced: 0, paid: 0 };
       details[currency].invoiced += p.totalValue || 0;
     }
   });
-
 
   Object.keys(details).forEach(currency => {
     balances[currency] = (details[currency].paid || 0) - (details[currency].invoiced || 0);
@@ -197,7 +198,6 @@ exports.getClientStats = asyncHandler(async (req, res, next) => {
       ? transactions.sort((a, b) => b.transactionDate - a.transactionDate)[0] : null
   };
 
-  // تحديث بيانات العميل
   await Client.findByIdAndUpdate(req.params.id, {
     computedStats: {
       ...client.computedStats,
@@ -251,5 +251,51 @@ exports.updateAllClientStats = asyncHandler(async (req, res, next) => {
     status: 'success',
     message: `تم تحديث ${updated} من ${clients.length} عميل`,
     data: { updated, total: clients.length }
+  });
+});
+
+// @desc    الحصول على مشاريع العميل
+// @route   GET /api/clients/:id/projects
+// @access  Private
+exports.getClientProjects = asyncHandler(async (req, res, next) => {
+  const Project = require('../models/Project');
+  
+  const projects = await Project.find({ client: req.params.id })
+    .populate('team.employee', 'name jobTitle')
+    .sort('-createdAt');
+
+  res.status(200).json({
+    status: 'success',
+    results: projects.length,
+    data: { projects }
+  });
+});
+
+// @desc    الحصول على معاملات العميل
+// @route   GET /api/clients/:id/transactions
+// @access  Private
+exports.getClientTransactions = asyncHandler(async (req, res, next) => {
+  const Transaction = require('../models/Transaction');
+  
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const skip = (page - 1) * limit;
+
+  const transactions = await Transaction.find({ client: req.params.id })
+    .populate('invoice', 'invoiceNumber')
+    .populate('project', 'title')
+    .sort('-transactionDate')
+    .skip(skip)
+    .limit(limit);
+
+  const total = await Transaction.countDocuments({ client: req.params.id });
+
+  res.status(200).json({
+    status: 'success',
+    results: transactions.length,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+    data: { transactions }
   });
 });

@@ -171,15 +171,6 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
           $addToSet: { transactions: transaction._id }
         });
       }
-      
-      if (allocation.contractMonth) {
-        const month = await ContractMonth.findById(allocation.contractMonth);
-        if (month) {
-          month.paidAmount = (month.paidAmount || 0) + allocation.amount;
-          await month.save();
-          await updateContractMonthStatus(allocation.contractMonth);
-        }
-      }
     }
   } else {
     // 👈 إذا لم تكن هناك توزيعات، استخدم الطريقة المباشرة
@@ -569,20 +560,35 @@ const updateInvoiceStatus = async (invoiceId, additionalAmount = 0) => {
   invoice.remainingAmount = invoice.totalAmount - invoice.paidAmount;
   await invoice.save();
 
-  // تحديث شهر العقد إذا كانت الفاتورة لعقد شهري
   const ContractMonth = require('../models/ContractMonth');
   const contractMonth = await ContractMonth.findOne({ invoice: invoice._id });
   if (contractMonth) {
     contractMonth.paidAmount = invoice.paidAmount;
+    contractMonth.remainingAmount = contractMonth.value - invoice.paidAmount;
+    
+    if (invoice.paidAmount >= contractMonth.value) {
+      contractMonth.status = 'paid';
+      contractMonth.paidDate = new Date();
+    } else if (invoice.paidAmount > 0) {
+      contractMonth.status = 'partially_paid';
+    }
     await contractMonth.save();
-    await updateContractMonthStatus(contractMonth._id);
-  }
-  if (invoice.client) {
-    const { updateClientStats } = require('../services/clientStatsService');
-    await updateClientStats(invoice.client);
+    
+    // تحديث إحصائيات العقد
+    const Contract = require('../models/Contract');
+    const allMonths = await ContractMonth.find({ contract: contractMonth.contract });
+    const stats = {
+      totalMonths: allMonths.length,
+      paidMonths: allMonths.filter(m => m.status === 'paid').length,
+      pendingMonths: allMonths.filter(m => ['confirmed', 'overdue', 'partially_paid'].includes(m.status)).length,
+      totalValue: allMonths.reduce((sum, m) => sum + m.value, 0),
+      totalPaid: allMonths.reduce((sum, m) => sum + (m.paidAmount || 0), 0)
+    };
+    stats.totalRemaining = stats.totalValue - stats.totalPaid;
+    await Contract.findByIdAndUpdate(contractMonth.contract, { computedStats: stats });
   }
 
-  // 👈 تحديث المشروع المرتبط بالفاتورة
+  // تحديث المشروع المرتبط
   if (invoice.project) {
     const Project = require('../models/Project');
     const project = await Project.findById(invoice.project);
@@ -591,6 +597,12 @@ const updateInvoiceStatus = async (invoiceId, additionalAmount = 0) => {
       project.computedStats.totalRemaining = project.totalValue - invoice.paidAmount;
       await project.save();
     }
+  }
+
+  // تحديث العميل
+  if (invoice.client) {
+    const { updateClientStats } = require('../services/clientStatsService');
+    await updateClientStats(invoice.client);
   }
 };
 

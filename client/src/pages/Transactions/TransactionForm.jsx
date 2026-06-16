@@ -232,6 +232,7 @@ const TransactionForm = () => {
           ...values,
           allocations,
           client: values.client,
+          project: values.project || undefined,
           type: 'دخل',
           invoice: undefined,
           contractMonth: undefined,
@@ -489,13 +490,36 @@ const TransactionForm = () => {
             </>
           )}
           {type === 'دخل' && allocationMode && (
-            <Row gutter={24} style={{ marginBottom: 16 }}>
-              <Col span={24}>
-                <div style={{ padding: 16, borderRadius: 8, background: '#f8fafc', color: '#334155' }}>
-                  <strong>توزيع الدفعة نشط.</strong> سيتم استخدام الفواتير المحددة في قسم التوزيع فقط، ولن يتم ربط المعاملة مباشرة بفاتورة واحدة.
-                </div>
-              </Col>
-            </Row>
+            <>
+              <Row gutter={24} style={{ marginBottom: 16 }}>
+                <Col span={24}>
+                  <div style={{ padding: 16, borderRadius: 8, background: '#f8fafc', color: '#334155' }}>
+                    <strong>توزيع الدفعة نشط.</strong> اختر العميل والمشروع ثم حدد الفواتير في قسم التوزيع.
+                  </div>
+                </Col>
+              </Row>
+              <Row gutter={24}>
+                <Col xs={24} md={12}>
+                  <Form.Item name="client" label="العميل" rules={[{ required: true, message: 'اختر العميل' }]}>
+                    <Select placeholder="اختر العميل" allowClear showSearch optionFilterProp="label"
+                      onChange={handleClientChange}
+                      options={clients.map(c => ({ value: c._id, label: c.company ? `${c.name} - ${c.company}` : c.name }))} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item name="project" label="المشروع (اختياري)">
+                    <Select placeholder="اختر المشروع" allowClear showSearch optionFilterProp="label"
+                      options={projects
+                        .filter(p => {
+                          const clientId = form.getFieldValue('client');
+                          const pClientId = typeof p.client === 'object' ? p.client?._id : p.client;
+                          return clientId && pClientId === clientId;
+                        })
+                        .map(p => ({ value: p._id, label: `${p.title} | ${p.totalValue} ${p.currency}` }))} />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </>
           )}
 
           {/* قسم توزيع الدفعة على عدة فواتير */}
