@@ -13,6 +13,8 @@ const CurrencyExchangeList = () => {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [fromCurrencyFilter, setFromCurrencyFilter] = useState('');
+  const [toCurrencyFilter, setToCurrencyFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
@@ -20,7 +22,10 @@ const CurrencyExchangeList = () => {
   const fetchExchanges = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await currencyAPI.getAll({ page, limit: pageSize });
+      const params = { page, limit: pageSize };
+      if (fromCurrencyFilter) params.fromCurrency = fromCurrencyFilter;
+      if (toCurrencyFilter) params.toCurrency = toCurrencyFilter;
+      const response = await currencyAPI.getAll(params);
       setExchanges(response.data.data.exchanges);
       setTotal(response.data.total);
     } catch (error) {
@@ -31,6 +36,19 @@ const CurrencyExchangeList = () => {
   }, [page, pageSize]);
 
   useEffect(() => { fetchExchanges(); }, [fetchExchanges]);
+
+  const filterBar = (
+    <Space wrap>
+      <Select placeholder="من عملة" allowClear style={{ width: 120 }}
+        value={fromCurrencyFilter || undefined}
+        onChange={(v) => { setFromCurrencyFilter(v || ''); setPage(1); }}
+        options={currencies} />
+      <Select placeholder="إلى عملة" allowClear style={{ width: 120 }}
+        value={toCurrencyFilter || undefined}
+        onChange={(v) => { setToCurrencyFilter(v || ''); setPage(1); }}
+        options={currencies} />
+    </Space>
+  );
 
   const handleSubmit = async (values) => {
     setSubmitting(true);
@@ -55,13 +73,13 @@ const CurrencyExchangeList = () => {
     {
       title: 'من', key: 'from', width: 140,
       render: (_, r) => (
-        <span>{formatCurrency(r.fromAmount)} <Tag>{r.fromCurrency}</Tag></span>
+        <span>{formatCurrency(r.fromAmount, r.fromCurrency)}</span>
       ),
     },
     {
       title: 'إلى', key: 'to', width: 140,
       render: (_, r) => (
-        <span>{formatCurrency(r.toAmount)} <Tag color="green">{r.toCurrency}</Tag></span>
+        <span>{formatCurrency(r.toAmount, r.toCurrency)}</span>
       ),
     },
     {
@@ -96,6 +114,7 @@ const CurrencyExchangeList = () => {
         onPageChange={(p, ps) => { setPage(p); if (ps !== pageSize) { setPageSize(ps); setPage(1); } }}
         onRefresh={fetchExchanges}
         showActions={false}
+        filters={filterBar}
       />
 
       <Modal

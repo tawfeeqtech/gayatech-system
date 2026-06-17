@@ -1,7 +1,9 @@
 const Salary = require('../models/Salary');
-const Employee = require('../models/Employee');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
+const salaryService = require('../services/salaryService');
+const invoiceFactoryService = require('../services/invoiceFactoryService');
+const deductionService = require('../services/deductionService');
 
 exports.getSalaries = asyncHandler(async (req, res, next) => {
   const filter = {};
@@ -15,6 +17,7 @@ exports.getSalaries = asyncHandler(async (req, res, next) => {
 
   const salaries = await Salary.find(filter)
     .populate('employee', 'name jobTitle')
+    .populate('invoice', 'invoiceNumber status')
     .sort('-month')
     .skip(skip)
     .limit(limit);
@@ -29,7 +32,34 @@ exports.getSalaries = asyncHandler(async (req, res, next) => {
 
 exports.createSalary = asyncHandler(async (req, res, next) => {
   req.body.createdBy = req.user._id;
-  const salary = await Salary.create(req.body);
+
+  const salary = new Salary(req.body);
+
+  // تطبيق الخصومات تلقائياً إذا لم تكن مدخلة يدوياً بالكامل
+  if (!salary.deductionItems || salary.deductionItems.length === 0) {
+    await deductionService.applyDeductions(salary);
+  }
+
+  await salary.save();
+
+  // إنشاء فاتورة للراتب
+  const invoice = await invoiceFactoryService.createInvoice({
+    type: 'راتب',
+    amount: salary.totalAmount,
+    currency: salary.currency,
+    issueDate: new Date(),
+    dueDate: new Date(),
+    refId: salary._id,
+    refModel: 'salary',
+    recipientId: salary.employee,
+    recipientType: 'employee',
+    description: `راتب شهر ${salary.month}`,
+    userId: req.user._id
+  });
+
+  salary.invoice = invoice._id;
+  await salary.save();
+
   res.status(201).json({ status: 'success', data: { salary } });
 });
 
@@ -39,16 +69,9 @@ exports.updateSalary = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: { salary } });
 });
 
-exports.paySalary = asyncHandler(async (req, res, next) => {
-  const { amount } = req.body;
-  const salary = await Salary.findById(req.params.id);
-  if (!salary) return next(new ApiError('الراتب غير موجود', 404));
-
-  salary.paidAmount += amount || salary.totalAmount;
-  salary.paymentDate = Date.now();
-  await salary.save();
-
-  res.status(200).json({ status: 'success', data: { salary } });
+exports.generateMonthlySalaries = asyncHandler(async (req, res) => {
+  const count = await salaryService.generateAllSalaries(req.user._id);
+  res.status(200).json({ status: 'success', message: `تم توليد ${count} راتب بنجاح` });
 });
 
 exports.getPendingSalaries = asyncHandler(async (req, res, next) => {
@@ -58,25 +81,17 @@ exports.getPendingSalaries = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', results: salaries.length, data: { salaries } });
 });
 
-// @desc    حذف راتب
-// @route   DELETE /api/salaries/:id
-// @access  Private (admin)
 exports.deleteSalary = asyncHandler(async (req, res, next) => {
   const salary = await Salary.findById(req.params.id);
+  if (!salary) return next(new ApiError('الراتب غير موجود', 404));
+  if (salary.transaction) return next(new ApiError('لا يمكن حذف الراتب لوجود معاملة مالية مرتبطة به', 400));
 
-  if (!salary) {
-    return next(new ApiError('الراتب غير موجود', 404));
-  }
-
-  // تحقق من وجود معاملة مرتبطة
-  if (salary.transaction) {
-    return next(new ApiError('لا يمكن حذف الراتب لوجود معاملة مالية مرتبطة به', 400));
+  // حذف الفاتورة المرتبطة إن وجدت
+  if (salary.invoice) {
+    const Invoice = require('../models/Invoice');
+    await Invoice.findByIdAndDelete(salary.invoice);
   }
 
   await Salary.findByIdAndDelete(req.params.id);
-
-  res.status(200).json({
-    status: 'success',
-    message: 'تم حذف الراتب بنجاح'
-  });
+  res.status(200).json({ status: 'success', message: 'تم حذف الراتب بنجاح' });
 });

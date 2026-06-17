@@ -109,16 +109,16 @@ const PartnerDetail = () => {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={8}>
-          <StatCard title="إجمالي التمويل" value={stats.totalFunded || 0} prefix="$" color="#10b981" icon="💰" />
+          <StatCard title="إجمالي التمويل" value={stats.totalFunded || 0} prefix={partner.currency || '$'} color="#10b981" icon="💰" />
         </Col>
         <Col xs={24} sm={8}>
-          <StatCard title="إجمالي المسدد" value={stats.totalRepaid || 0} prefix="$" color="#3b82f6" icon="💵" />
+          <StatCard title="إجمالي المسدد" value={stats.totalRepaid || 0} prefix={partner.currency || '$'} color="#3b82f6" icon="💵" />
         </Col>
         <Col xs={24} sm={8}>
           <StatCard
             title="المستحق"
             value={Math.abs(balance)}
-            prefix="$"
+            prefix={partner.currency || '$'}
             color={balance < 0 ? '#ef4444' : '#10b981'}
             icon={balance < 0 ? '⚠️' : '✅'}
           />
@@ -135,16 +135,16 @@ const PartnerDetail = () => {
             <Col xs={24} md={6}>
               <span style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>المبلغ المستحق:</span>
               <div style={{ fontSize: 20, color: '#ef4444', fontWeight: 700 }}>
-                {formatCurrency(Math.abs(balance))}
+                {formatCurrency(Math.abs(balance), partner.currency)}
               </div>
             </Col>
             <Col xs={24} md={6}>
               <span style={{ display: 'block', marginBottom: 4 }}>إجمالي التمويل:</span>
-              <div style={{ fontWeight: 600 }}>{formatCurrency(stats.totalFunded || 0)}</div>
+              <div style={{ fontWeight: 600 }}>{formatCurrency(stats.totalFunded || 0, partner.currency)}</div>
             </Col>
             <Col xs={24} md={6}>
               <span style={{ display: 'block', marginBottom: 4 }}>إجمالي المسدد:</span>
-              <div style={{ fontWeight: 600, color: '#10b981' }}>{formatCurrency(stats.totalRepaid || 0)}</div>
+              <div style={{ fontWeight: 600, color: '#10b981' }}>{formatCurrency(stats.totalRepaid || 0, partner.currency)}</div>
             </Col>
             <Col xs={24} md={6}>
               <Button 
@@ -240,12 +240,12 @@ const PartnerDetail = () => {
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0} colSpan={2}><strong>الإجمالي</strong></Table.Summary.Cell>
                 <Table.Summary.Cell index={1}>
-                  <span style={{ color: '#10b981' }}>+{formatCurrency(totalIn)}</span>
+                  <span style={{ color: '#10b981' }}>+{formatCurrency(totalIn, partner.currency)}</span>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} colSpan={4}>
-                  <span style={{ color: '#ef4444' }}>-{formatCurrency(totalOut)}</span>
+                  <span style={{ color: '#ef4444' }}>-{formatCurrency(totalOut, partner.currency)}</span>
                   <span style={{ marginLeft: 16, fontWeight: 700 }}>
-                    الصافي: {formatCurrency(totalIn - totalOut)}
+                    الصافي: {formatCurrency(totalIn - totalOut, partner.currency)}
                   </span>
                 </Table.Summary.Cell>
               </Table.Summary.Row>

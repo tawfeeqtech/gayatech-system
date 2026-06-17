@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, message, Typography, InputNumber, DatePicker } from 'antd';
+import { Card, Form, Button, Space, Row, Col, Select, message, Typography, InputNumber, DatePicker, List, Divider } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import salaryAPI from '../../api/salaries';
 import employeeAPI from '../../api/employees';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import { formatCurrency } from '../../utils/formatters';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { MonthPicker } = DatePicker;
 
 const SalaryForm = () => {
@@ -15,14 +16,13 @@ const SalaryForm = () => {
   const { currencies } = useCurrencies();
   const [submitting, setSubmitting] = useState(false);
   const [employees, setEmployees] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [deductionItems, setDeductionItems] = useState([]);
 
   useEffect(() => {
     employeeAPI.getAll({ limit: 100 }).then(r => setEmployees(r.data.data.employees || [])).catch(() => {});
   }, []);
 
   const handleEmployeeChange = (value) => {
-    setSelectedEmployee(value);
     const emp = employees.find(e => e._id === value);
     if (emp) {
       form.setFieldsValue({
@@ -36,8 +36,8 @@ const SalaryForm = () => {
     setSubmitting(true);
     try {
       const monthValue = values.month ? values.month.format('YYYY-MM') : undefined;
-      await salaryAPI.create({ ...values, month: monthValue });
-      message.success('تم إضافة الراتب');
+      await salaryAPI.create({ ...values, month: monthValue, deductionItems });
+      message.success('تم إضافة الراتب وتوليد الفاتورة');
       navigate('/salaries');
     } catch (e) { message.error(e.response?.data?.message || 'فشل في الحفظ'); }
     finally { setSubmitting(false); }
@@ -47,7 +47,7 @@ const SalaryForm = () => {
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
         <Button icon={<ArrowRightOutlined />} onClick={() => navigate('/salaries')}>العودة</Button>
-        <Title level={4} style={{ margin: 0 }}>صرف راتب جديد</Title>
+        <Title level={4} style={{ margin: 0 }}>إعداد راتب جديد</Title>
       </div>
       <Card style={{ borderRadius: 8 }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}
@@ -82,7 +82,7 @@ const SalaryForm = () => {
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="deductions" label="الخصومات">
+              <Form.Item name="deductions" label="خصومات أساسية">
                 <InputNumber min={0} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -92,10 +92,16 @@ const SalaryForm = () => {
               </Form.Item>
             </Col>
           </Row>
+
+          <Divider orientation="right">السلف والخصومات التلقائية</Divider>
+          <div style={{ background: '#fff7ed', padding: 16, borderRadius: 8, marginBottom: 16 }}>
+            <Text type="secondary">سيتم جلب السلف النشطة تلقائياً عند حفظ الراتب وتطبيق الخصومات بناءً على آلية السداد المعتمدة.</Text>
+          </div>
+
           <div style={{ textAlign: 'left', marginTop: 24, borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
             <Space>
               <Button onClick={() => navigate('/salaries')}>إلغاء</Button>
-              <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={submitting}>حفظ</Button>
+              <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={submitting}>حفظ وتوليد فاتورة</Button>
             </Space>
           </div>
         </Form>

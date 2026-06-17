@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, DatePicker, message, Tag, Button, Modal, Form, InputNumber, Row, Col } from 'antd';
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Space, Select, DatePicker, message, Tag, Button, Modal, Form, InputNumber, Row, Col, Alert } from 'antd';
+import { EditOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import salaryAPI from '../../api/salaries';
@@ -12,6 +13,7 @@ import dayjs from 'dayjs';
 const { MonthPicker } = DatePicker;
 
 const SalaryList = () => {
+  const navigate = useNavigate();
   const [salaries, setSalaries] = useState([]);
   const [employees, setEmployees] = useState([]);
   const { currencies } = useCurrencies();
@@ -19,6 +21,7 @@ const SalaryList = () => {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [generating, setGenerating] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
@@ -32,28 +35,25 @@ const SalaryList = () => {
     employeeAPI.getAll({ limit: 100 }).then(r => setEmployees(r.data.data.employees || [])).catch(() => {});
   }, []);
 
-  const fetchSalaries = useCallback(async () => {
-    setLoading(true);
+  const handleGenerate = async () => {
+    setGenerating(true);
     try {
-      const params = { page, limit: pageSize };
-      if (statusFilter) params.status = statusFilter;
-      if (employeeFilter) params.employee = employeeFilter;
-      if (monthFilter) params.month = monthFilter;
-      const response = await salaryAPI.getAll(params);
-      setSalaries(response.data.data.salaries);
-      setTotal(response.data.total);
-    } catch (error) { message.error('فشل في جلب الرواتب'); }
-    finally { setLoading(false); }
-  }, [page, pageSize, statusFilter, employeeFilter, monthFilter]);
-
-  useEffect(() => { fetchSalaries(); }, [fetchSalaries]);
-
-  const handlePay = async (id) => {
-    try {
-      await salaryAPI.pay(id);
-      message.success('تم تسجيل الدفع');
+      await salaryAPI.generate();
+      message.success('تم توليد الرواتب بنجاح');
       fetchSalaries();
-    } catch (e) { message.error('فشل في الدفع'); }
+    } catch (e) {
+      message.error('فشل توليد الرواتب');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handlePay = (record) => {
+    if (!record.invoice) {
+      message.error('لا توجد فاتورة مرتبطة بهذا الراتب');
+      return;
+    }
+    navigate(`/transactions/new?type=مصروف&invoice=${record.invoice._id}&amount=${record.remainingAmount}&client=${record.employee?._id}`);
   };
 
   const handleEdit = async (values) => {
@@ -95,8 +95,16 @@ const SalaryList = () => {
       },
     },
     {
-      title: 'المبلغ', dataIndex: 'totalAmount', key: 'amount', width: 120,
+      title: 'الراتب الأساسي', dataIndex: 'baseAmount', key: 'base', width: 110,
       render: (v, r) => formatCurrency(v, r.currency || 'USD'),
+    },
+    {
+      title: 'الخصومات', dataIndex: 'deductions', key: 'ded', width: 100,
+      render: (v, r) => v > 0 ? <span style={{ color: '#ef4444' }}>-{formatCurrency(v, r.currency)}</span> : '0',
+    },
+    {
+      title: 'الصافي', dataIndex: 'totalAmount', key: 'amount', width: 120,
+      render: (v, r) => <span style={{ fontWeight: 'bold' }}>{formatCurrency(v, r.currency || 'USD')}</span>,
     },
     {
       title: 'المدفوع', dataIndex: 'paidAmount', key: 'paid', width: 120,
@@ -104,7 +112,12 @@ const SalaryList = () => {
     },
     {
       title: 'الحالة', dataIndex: 'status', key: 'status', width: 100,
-      render: (s) => <Tag color={s === 'مدفوع' ? 'green' : s === 'مدفوع جزئياً' ? 'blue' : 'orange'}>{s}</Tag>,
+      render: (s, r) => (
+        <Space direction="vertical" size={0}>
+          <Tag color={s === 'مدفوع' ? 'green' : s === 'مدفوع جزئياً' ? 'blue' : 'orange'}>{s}</Tag>
+          {r.invoice && <small style={{ fontSize: 10 }}>{r.invoice.invoiceNumber}</small>}
+        </Space>
+      ),
     },
     {
       title: 'تاريخ الدفع', dataIndex: 'paymentDate', key: 'payDate', width: 120,
@@ -115,7 +128,7 @@ const SalaryList = () => {
       render: (_, r) => (
         <Space size="small">
           {r.status !== 'مدفوع' && (
-            <Button size="small" type="primary" onClick={() => handlePay(r._id)}>دفع</Button>
+            <Button size="small" type="primary" onClick={() => handlePay(r)}>دفع</Button>
           )}
           <Button size="small" icon={<EditOutlined />} onClick={() => {
             setEditingSalary(r);
@@ -130,12 +143,34 @@ const SalaryList = () => {
     },
   ];
 
+  const [currencyFilter, setCurrencyFilter] = useState('');
+
+  const fetchSalaries = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = { page, limit: pageSize };
+      if (statusFilter) params.status = statusFilter;
+      if (employeeFilter) params.employee = employeeFilter;
+      if (monthFilter) params.month = monthFilter;
+      if (currencyFilter) params.currency = currencyFilter;
+      const response = await salaryAPI.getAll(params);
+      setSalaries(response.data.data.salaries);
+      setTotal(response.data.total);
+    } catch (error) { message.error('فشل في جلب الرواتب'); }
+    finally { setLoading(false); }
+  }, [page, pageSize, statusFilter, employeeFilter, monthFilter, currencyFilter]);
+
   const filterBar = (
     <Space wrap>
+      <Button icon={<SyncOutlined />} loading={generating} onClick={handleGenerate}>توليد الرواتب</Button>
       <Select placeholder="الموظف" allowClear style={{ width: 150 }}
         value={employeeFilter || undefined}
         onChange={(v) => { setEmployeeFilter(v || ''); setPage(1); }}
         options={employees.map(e => ({ value: e._id, label: e.name }))} />
+      <Select placeholder="العملة" allowClear style={{ width: 120 }}
+        value={currencyFilter || undefined}
+        onChange={(v) => { setCurrencyFilter(v || ''); setPage(1); }}
+        options={currencies} />
       <Select placeholder="الحالة" allowClear style={{ width: 130 }}
         value={statusFilter || undefined}
         onChange={(v) => { setStatusFilter(v || ''); setPage(1); }}

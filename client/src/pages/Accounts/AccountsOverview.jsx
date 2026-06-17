@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Table, Spin, message, Typography, Tag, Button, Space, Popconfirm, Tooltip } from 'antd';
+import { Card, Row, Col, Table, Spin, message, Typography, Tag, Button, Space, Popconfirm, Tooltip, Select } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import StatCard from '../../components/ui/StatCard';
 import accountAPI from '../../api/accounts';
 import walletAPI from '../../api/wallets';
 import { formatCurrency } from '../../utils/formatters';
+import { useCurrencies } from '../../hooks/useCurrencies';
 import WalletForm from './WalletForm';
 
 const { Title } = Typography;
@@ -13,6 +14,7 @@ const AccountsOverview = () => {
   const [accounts, setAccounts] = useState([]);
   const [walletsMap, setWalletsMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const { currencies } = useCurrencies();
 
   // State for Wallet Modal
   const [modalVisible, setModalVisible] = useState(false);
@@ -192,14 +194,29 @@ const AccountsOverview = () => {
               </div>
             }
             extra={
-              <Button
-                type="primary"
-                size="small"
-                icon={<PlusOutlined />}
-                onClick={() => handleAddWallet(acc._id)}
-              >
-                إضافة محفظة
-              </Button>
+              <Space>
+                <Select
+                  placeholder="اختر المحفظة"
+                  style={{ width: 200 }}
+                  options={wallets.map(w => ({
+                    value: w._id,
+                    label: `${w.name} (${formatCurrency(w.balance, w.currency)})`
+                  }))}
+                  onChange={(val) => {
+                    const wallet = wallets.find(w => w._id === val);
+                    if (wallet) handleEditWallet(acc._id, wallet);
+                  }}
+                  value={undefined}
+                />
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => handleAddWallet(acc._id)}
+                >
+                  إضافة محفظة
+                </Button>
+              </Space>
             }
             style={{ borderRadius: 8, marginBottom: 16 }}
           >

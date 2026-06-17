@@ -1,5 +1,5 @@
 // تنسيق العملات
-export const formatCurrency = (amount, currency = 'USD') => {
+export const formatCurrency = (amount, currency = 'USD', customSymbol = null) => {
   const symbols = {
     USD: '$',
     ILS: '₪',
@@ -8,13 +8,18 @@ export const formatCurrency = (amount, currency = 'USD') => {
     EUR: '€',
   };
 
+  const symbol = customSymbol || symbols[currency] || currency;
+
   try {
-    return `${symbols[currency] || ''}${Number(amount).toLocaleString('en-US', {
+    const formattedAmount = Number(amount).toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    })}`;
+    });
+
+    // وضع الرمز قبل أو بعد المبلغ حسب العملة (اختياري، هنا سنبقيها بسيطة)
+    return `${symbol} ${formattedAmount}`;
   } catch {
-    return `${amount}`;
+    return `${amount} ${symbol}`;
   }
 };
 

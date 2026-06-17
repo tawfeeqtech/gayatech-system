@@ -24,6 +24,7 @@ const TransactionForm = () => {
   const [clients, setClients] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [otherInvoices, setOtherInvoices] = useState([]); // فواتير الرواتب والمصاريف الخ
   const [contractMonths, setContractMonths] = useState([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [type, setType] = useState('دخل');
@@ -43,6 +44,23 @@ const TransactionForm = () => {
     clientAPI.getAll({ limit: 100 }).then(r => setClients(r.data.data.clients || [])).catch(() => {});
     accountAPI.getAll().then(r => setAccounts(r.data.data.accounts || [])).catch(() => {});
     projectAPI.getAll({ limit: 100 }).then(r => setProjects(r.data.data.projects || [])).catch(() => {});
+
+    // قراءة البيانات من الرابط (Query Params)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('type')) {
+      setType(params.get('type'));
+      form.setFieldsValue({ type: params.get('type') });
+    }
+    if (params.get('invoice')) {
+      form.setFieldsValue({ invoice: params.get('invoice') });
+    }
+    if (params.get('amount')) {
+      form.setFieldsValue({ amount: parseFloat(params.get('amount')) });
+    }
+    if (params.get('client')) {
+      form.setFieldsValue({ client: params.get('client') });
+      handleClientChange(params.get('client'));
+    }
   }, []);
 
   useEffect(() => {
@@ -140,20 +158,29 @@ const TransactionForm = () => {
     setLoadingInvoices(true);
     try {
       // جلب الفواتير
-      const invRes = await invoiceAPI.getAll({ limit: 200 });
+      const invRes = await invoiceAPI.getAll({ limit: 500 });
       const allInvoices = invRes.data.data.invoices || [];
+
       const clientInvoices = allInvoices
         .filter(inv => {
           const invClientId = typeof inv.client === 'object' ? inv.client?._id : inv.client;
-          return invClientId === clientId && inv.status !== 'مدفوعة' && inv.status !== 'ملغاة';
+          const invEmpId = typeof inv.employee === 'object' ? inv.employee?._id : inv.employee;
+          const invVendorId = typeof inv.vendor === 'object' ? inv.vendor?._id : inv.vendor;
+
+          return (invClientId === clientId || invEmpId === clientId || invVendorId === clientId) &&
+                 inv.status !== 'مدفوعة' && inv.status !== 'ملغاة';
         })
-        .map(inv => {
-          return {
-            ...inv,
-            contractMonthId: inv.contractMonth || null,
-          };
-        });
+        .map(inv => ({ ...inv, contractMonthId: inv.contractMonth || null }));
+
       setInvoices(clientInvoices);
+
+      // فواتير أخرى تظهر عندما لا يكون هناك عميل محدد (للمصاريف العامة)
+      const others = allInvoices.filter(inv =>
+        ['راتب', 'سلفة', 'مصروف', 'اشتراك'].includes(inv.invoiceType) &&
+        inv.status !== 'مدفوعة' && inv.status !== 'ملغاة' &&
+        !inv.client && !inv.employee && !inv.vendor
+      );
+      setOtherInvoices(others);
 
       // جلب العقود النشطة للعميل
       const contractsRes = await contractAPI.getAll({ client: clientId, status: 'نشط', limit: 100 });
@@ -429,37 +456,43 @@ const TransactionForm = () => {
           </Row>
 
           {/* الصف الثالث: العميل + الفاتورة + شهر العقد (للدخل فقط) */}
-          {type === 'دخل' && !allocationMode && (
+          {(type === 'دخل' || type === 'مصروف') && !allocationMode && (
             <>
               <Row gutter={24}>
-                <Col xs={24} md={12}>
-                  <Form.Item name="client" label="العميل">
+                <Col xs={24} md={type === 'دخل' ? 12 : 8}>
+                  <Form.Item name="client" label={type === 'دخل' ? "العميل" : "العميل (اختياري)"}>
                     <Select placeholder="اختر العميل" allowClear showSearch optionFilterProp="label"
                       onChange={handleClientChange}
                       options={clients.map(c => ({ value: c._id, label: c.company ? `${c.name} - ${c.company}` : c.name }))} />
                   </Form.Item>
                 </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item name="project" label="المشروع (اختياري)">
-                    <Select placeholder="اختر المشروع" allowClear showSearch optionFilterProp="label"
-                      options={projects
-                        .filter(p => {
-                          const clientId = form.getFieldValue('client');
-                          const pClientId = typeof p.client === 'object' ? p.client?._id : p.client;
-                          return clientId && pClientId === clientId;
-                        })
-                        .map(p => ({ value: p._id, label: `${p.title} | ${p.totalValue} ${p.currency}` }))} />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
+
+                {type === 'دخل' && (
+                  <Col xs={24} md={12}>
+                    <Form.Item name="project" label="المشروع (اختياري)">
+                      <Select placeholder="اختر المشروع" allowClear showSearch optionFilterProp="label"
+                        options={projects
+                          .filter(p => {
+                            const clientId = form.getFieldValue('client');
+                            const pClientId = typeof p.client === 'object' ? p.client?._id : p.client;
+                            return clientId && pClientId === clientId;
+                          })
+                          .map(p => ({ value: p._id, label: `${p.title} | ${p.totalValue} ${p.currency}` }))} />
+                    </Form.Item>
+                  </Col>
+                )}
+
+                <Col xs={24} md={type === 'دخل' ? 12 : 16}>
                   <Form.Item name="invoice" label="ربط بفاتورة">
                     <Select placeholder={loadingInvoices ? 'جاري...' : 'اختر الفاتورة'} allowClear
                       loading={loadingInvoices}
                       notFoundContent="لا توجد فواتير"
-                      options={invoices.map(inv => ({
-                        value: inv._id,
-                        label: `${inv.invoiceNumber || '—'} | متبقي: ${formatCurrency(inv.totalAmount - inv.paidAmount, inv.currency)}`
-                      }))} />
+                      options={[
+                        ...(type === 'دخل' ? invoices : otherInvoices).map(inv => ({
+                          value: inv._id,
+                          label: `[${inv.invoiceType}] ${inv.invoiceNumber || '—'} | متبقي: ${formatCurrency(inv.totalAmount - inv.paidAmount, inv.currency)}`
+                        }))
+                      ]} />
                   </Form.Item>
                 </Col>
               </Row>

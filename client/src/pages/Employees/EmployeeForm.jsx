@@ -63,13 +63,18 @@ const EmployeeForm = () => {
             <Col xs={24} md={8}><FormField name="department" label="القسم" /></Col>
           </Row>
           <Row gutter={24}>
-            <Col xs={24} md={8}><FormField name="baseSalary" label="الراتب الأساسي" type="number" rules={[{ required: true }]} min={0} /></Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={6}><FormField name="baseSalary" label="الراتب الأساسي" type="number" rules={[{ required: true }]} min={0} /></Col>
+            <Col xs={24} md={6}>
               <Form.Item name="salaryCurrency" label="العملة">
                 <Select options={currencies} />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}><FormField name="joiningDate" label="تاريخ الانضمام" type="date" rules={[{ required: true }]} /></Col>
+            <Col xs={24} md={6}>
+              <Form.Item name="autoGenerateSalary" label="توليد الرواتب تلقائياً" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={6}><FormField name="joiningDate" label="تاريخ الانضمام" type="date" rules={[{ required: true }]} /></Col>
           </Row>
           <Row gutter={24}>
             <Col xs={24} md={12}>

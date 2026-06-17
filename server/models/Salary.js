@@ -19,6 +19,15 @@ const SalarySchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+
+  // بنود الخصم التفصيلية
+  deductionItems: [{
+    amount: Number,
+    reason: String,
+    advance: { type: mongoose.Schema.Types.ObjectId, ref: 'Advance' },
+    date: { type: Date, default: Date.now }
+  }],
+
   deductions: {
     type: Number,
     default: 0
@@ -54,6 +63,12 @@ const SalarySchema = new mongoose.Schema({
   // تاريخ الدفع
   paymentDate: Date,
   
+  // الفاتورة المرتبطة
+  invoice: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Invoice'
+  },
+
   // المعاملة المرتبطة
   transaction: {
     type: mongoose.Schema.Types.ObjectId,
@@ -74,6 +89,11 @@ SalarySchema.index({ employee: 1, month: 1 });
 SalarySchema.index({ status: 1 });
 
 SalarySchema.pre('save', function(next) {
+  // حساب إجمالي الخصومات من البنود
+  if (this.deductionItems && this.deductionItems.length > 0) {
+    this.deductions = this.deductionItems.reduce((acc, item) => acc + item.amount, 0);
+  }
+
   this.totalAmount = this.baseAmount - this.deductions + this.bonuses;
   this.remainingAmount = this.totalAmount - this.paidAmount;
   

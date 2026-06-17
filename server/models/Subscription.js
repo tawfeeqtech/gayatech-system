@@ -5,6 +5,10 @@ const SubscriptionSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  vendorRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vendor'
+  },
   serviceName: {
     type: String,
     required: true
@@ -38,12 +42,30 @@ const SubscriptionSchema = new mongoose.Schema({
     default: 'سنوي'
   },
   
+  billingPreference: {
+    type: String,
+    enum: ['بداية الفترة', 'تاريخ الاستحقاق'],
+    default: 'تاريخ الاستحقاق'
+  },
+
   status: {
     type: String,
     enum: ['نشط', 'منتهي', 'ملغي', 'بانتظار التجديد'],
     default: 'نشط'
   },
   
+  // الفواتير المرتبطة
+  invoices: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Invoice'
+  }],
+
+  // هل الفاتورة الحالية مدفوعة
+  isPaid: {
+    type: Boolean,
+    default: false
+  },
+
   // تنبيهات
   reminderDays: {
     type: [Number],

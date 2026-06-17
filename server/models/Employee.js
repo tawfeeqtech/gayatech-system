@@ -32,6 +32,18 @@ const EmployeeSchema = new mongoose.Schema({
     default: 'USD'
   },
   
+  // توليد الرواتب تلقائياً
+  autoGenerateSalary: {
+    type: Boolean,
+    default: true
+  },
+  salaryDayOfMonth: {
+    type: Number,
+    default: 1,
+    min: 1,
+    max: 28
+  },
+
   // التواريخ
   joiningDate: {
     type: Date,

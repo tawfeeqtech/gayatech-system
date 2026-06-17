@@ -1,6 +1,7 @@
 const Advance = require('../models/Advance');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
+const invoiceFactoryService = require('../services/invoiceFactoryService');
 
 exports.getAdvances = asyncHandler(async (req, res, next) => {
   const filter = {};
@@ -14,6 +15,7 @@ exports.getAdvances = asyncHandler(async (req, res, next) => {
   const advances = await Advance.find(filter)
     .populate('employee', 'name jobTitle')
     .populate('approvedBy', 'fullName')
+    .populate('invoice', 'invoiceNumber status')
     .sort('-requestDate')
     .skip(skip)
     .limit(limit);
@@ -39,12 +41,42 @@ exports.updateAdvance = asyncHandler(async (req, res, next) => {
 });
 
 exports.approveAdvance = asyncHandler(async (req, res, next) => {
-  const advance = await Advance.findByIdAndUpdate(req.params.id, {
-    status: 'موافق عليها',
-    approvedBy: req.user._id,
-    approvedAt: Date.now()
-  }, { new: true });
+  let advance = await Advance.findById(req.params.id);
   if (!advance) return next(new ApiError('السلفة غير موجودة', 404));
+
+  if (advance.status !== 'معلقة') {
+    return next(new ApiError('لا يمكن الموافقة على سلفة غير معلقة', 400));
+  }
+
+  // تحديث حالة السلفة
+  advance.status = 'موافق عليها';
+  advance.approvedBy = req.user._id;
+  advance.approvedAt = Date.now();
+
+  if (req.body.installmentAmount) {
+    advance.installmentAmount = req.body.installmentAmount;
+  }
+
+  await advance.save();
+
+  // إنشاء فاتورة للسلفة
+  const invoice = await invoiceFactoryService.createInvoice({
+    type: 'سلفة',
+    amount: advance.amount,
+    currency: advance.currency,
+    issueDate: new Date(),
+    dueDate: new Date(),
+    refId: advance._id,
+    refModel: 'advance',
+    recipientId: advance.employee,
+    recipientType: 'employee',
+    description: `سلفة للموظف - ${advance.reason || ''}`,
+    userId: req.user._id
+  });
+
+  advance.invoice = invoice._id;
+  await advance.save();
+
   res.status(200).json({ status: 'success', data: { advance } });
 });
 
@@ -74,24 +106,16 @@ exports.getPendingAdvances = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', results: advances.length, data: { advances } });
 });
 
-// @desc    حذف سلفة
-// @route   DELETE /api/advances/:id
-// @access  Private (admin)
 exports.deleteAdvance = asyncHandler(async (req, res, next) => {
   const advance = await Advance.findById(req.params.id);
+  if (!advance) return next(new ApiError('السلفة غير موجودة', 404));
+  if (advance.transaction) return next(new ApiError('لا يمكن حذف السلفة لوجود معاملة مالية مرتبطة بها', 400));
 
-  if (!advance) {
-    return next(new ApiError('السلفة غير موجودة', 404));
-  }
-
-  if (advance.transaction) {
-    return next(new ApiError('لا يمكن حذف السلفة لوجود معاملة مالية مرتبطة بها', 400));
+  if (advance.invoice) {
+    const Invoice = require('../models/Invoice');
+    await Invoice.findByIdAndDelete(advance.invoice);
   }
 
   await Advance.findByIdAndDelete(req.params.id);
-
-  res.status(200).json({
-    status: 'success',
-    message: 'تم حذف السلفة بنجاح'
-  });
+  res.status(200).json({ status: 'success', message: 'تم حذف السلفة بنجاح' });
 });

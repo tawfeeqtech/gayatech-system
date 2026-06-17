@@ -62,6 +62,7 @@ const Sidebar = () => {
         { key: '/invoices', icon: <SolutionOutlined />, label: 'الفواتير' },
         { key: '/accounts', icon: <BankOutlined />, label: 'الحسابات والمحافظ' },
         { key: '/expenses', icon: <WalletOutlined />, label: 'المصاريف' },
+        { key: '/vendors', icon: <UsergroupAddOutlined />, label: 'المزودون' },
       ]
     },
 

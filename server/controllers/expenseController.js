@@ -3,6 +3,7 @@ const ExpenseCategory = require('../models/ExpenseCategory');
 const Transaction = require('../models/Transaction');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
+const invoiceFactoryService = require('../services/invoiceFactoryService');
 
 // @desc    الحصول على جميع المصاريف
 // @route   GET /api/expenses
@@ -34,7 +35,9 @@ exports.getExpenses = asyncHandler(async (req, res, next) => {
 
   const expenses = await Expense.find(filter)
     .populate('category', 'name icon color')
+    .populate('vendorRef', 'name')
     .populate('paidFrom', 'name')
+    .populate('invoice', 'invoiceNumber status')
     .populate('createdBy', 'fullName')
     .sort('-expenseDate')
     .skip(skip)
@@ -58,8 +61,10 @@ exports.getExpenses = asyncHandler(async (req, res, next) => {
 exports.getExpense = asyncHandler(async (req, res, next) => {
   const expense = await Expense.findById(req.params.id)
     .populate('category', 'name icon color')
+    .populate('vendorRef', 'name phone email')
     .populate('paidFrom', 'name accountType')
     .populate('transaction')
+    .populate('invoice', 'invoiceNumber status')
     .populate('createdBy', 'fullName');
 
   if (!expense) {
@@ -79,6 +84,24 @@ exports.createExpense = asyncHandler(async (req, res, next) => {
   req.body.createdBy = req.user._id;
 
   const expense = await Expense.create(req.body);
+
+  // إنشاء فاتورة للمصروف
+  const invoice = await invoiceFactoryService.createInvoice({
+    type: 'مصروف',
+    amount: expense.amount,
+    currency: expense.currency,
+    issueDate: expense.expenseDate,
+    dueDate: expense.expenseDate,
+    refId: expense._id,
+    refModel: 'expense',
+    recipientId: expense.vendorRef || undefined,
+    recipientType: 'vendor',
+    description: expense.description,
+    userId: req.user._id
+  });
+
+  expense.invoice = invoice._id;
+  await expense.save();
 
   res.status(201).json({
     status: 'success',
@@ -100,6 +123,17 @@ exports.updateExpense = asyncHandler(async (req, res, next) => {
     return next(new ApiError('المصروف غير موجود', 404));
   }
 
+  // تحديث الفاتورة المرتبطة إن وجدت
+  if (expense.invoice) {
+    const Invoice = require('../models/Invoice');
+    await Invoice.findByIdAndUpdate(expense.invoice, {
+      totalAmount: expense.amount,
+      issueDate: expense.expenseDate,
+      dueDate: expense.expenseDate,
+      vendor: expense.vendorRef
+    });
+  }
+
   res.status(200).json({
     status: 'success',
     data: { expense }
@@ -118,6 +152,11 @@ exports.deleteExpense = asyncHandler(async (req, res, next) => {
 
   if (expense.transaction) {
     return next(new ApiError('لا يمكن حذف المصروف لوجود معاملة مالية مرتبطة به', 400));
+  }
+
+  if (expense.invoice) {
+    const Invoice = require('../models/Invoice');
+    await Invoice.findByIdAndDelete(expense.invoice);
   }
 
   await Expense.findByIdAndDelete(req.params.id);

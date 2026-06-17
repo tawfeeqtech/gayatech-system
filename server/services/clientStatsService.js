@@ -11,7 +11,10 @@ const updateClientStats = async (clientId) => {
   const [contracts, projects, invoices] = await Promise.all([
     Contract.find({ client: clientId }).select('status'),
     Project.find({ client: clientId }).select('status currency totalValue'),
-    Invoice.find({ client: clientId }).select('currency totalAmount paidAmount project')
+    Invoice.find({
+      client: clientId,
+      invoiceType: { $in: ['مشروع', 'خدمة', 'عقد شهري', 'استقطاب', 'متجر', 'أخرى'] }
+    }).select('currency totalAmount paidAmount project')
   ]);
 
   const balances = {};
