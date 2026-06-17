@@ -6,6 +6,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import salaryAPI from '../../api/salaries';
 import employeeAPI from '../../api/employees';
 import { formatCurrency } from '../../utils/formatters';
+import { useCurrencies } from '../../hooks/useCurrencies';
 import dayjs from 'dayjs';
 
 const { MonthPicker } = DatePicker;
@@ -13,6 +14,7 @@ const { MonthPicker } = DatePicker;
 const SalaryList = () => {
   const [salaries, setSalaries] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const { currencies } = useCurrencies();
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -186,10 +188,7 @@ const SalaryList = () => {
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="currency" label="العملة">
-            <Select options={[
-              { value: 'USD', label: 'دولار $' }, { value: 'ILS', label: 'شيكل ₪' },
-              { value: 'SAR', label: 'ريال ﷼' }, { value: 'JOD', label: 'دينار د.أ' },
-            ]} />
+            <Select options={currencies} />
           </Form.Item>
         </Form>
       </Modal>

@@ -12,6 +12,7 @@ const { MonthPicker } = DatePicker;
 const SalaryForm = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const { currencies } = useCurrencies();
   const [submitting, setSubmitting] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -70,10 +71,7 @@ const SalaryForm = () => {
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="currency" label="العملة">
-                <Select options={[
-                  { value: 'USD', label: 'دولار $' }, { value: 'ILS', label: 'شيكل ₪' },
-                  { value: 'SAR', label: 'ريال ﷼' }, { value: 'JOD', label: 'دينار د.أ' },
-                ]} />
+                <Select options={currencies} />
               </Form.Item>
             </Col>
           </Row>

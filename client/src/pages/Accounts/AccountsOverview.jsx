@@ -1,24 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Table, Spin, message, Typography, Tag } from 'antd';
+import { Card, Row, Col, Table, Spin, message, Typography, Tag, Button, Space, Popconfirm, Tooltip } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import StatCard from '../../components/ui/StatCard';
 import accountAPI from '../../api/accounts';
-import api from '../../api/axios';
+import walletAPI from '../../api/wallets';
+import { formatCurrency } from '../../utils/formatters';
+import WalletForm from './WalletForm';
 
 const { Title } = Typography;
-
-const CURRENCY_SYMBOLS = { USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' };
-
-const formatCurrency = (amount, currency = 'USD') => {
-  const symbol = CURRENCY_SYMBOLS[currency] || '';
-  try {
-    return `${symbol}${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  } catch { return `${symbol}${amount}`; }
-};
 
 const AccountsOverview = () => {
   const [accounts, setAccounts] = useState([]);
   const [walletsMap, setWalletsMap] = useState({});
   const [loading, setLoading] = useState(true);
+
+  // State for Wallet Modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingWallet, setEditingWallet] = useState(null);
+  const [currentAccountId, setCurrentAccountId] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -30,15 +29,53 @@ const AccountsOverview = () => {
       setAccounts(accountsData);
 
       const walletsData = {};
-      for (const acc of accountsData) {
+      await Promise.all(accountsData.map(async (acc) => {
         try {
-          const wRes = await api.get(`/accounts/${acc._id}/wallets`);
+          const wRes = await walletAPI.getByAccount(acc._id);
           walletsData[acc._id] = wRes.data.data.wallets || [];
         } catch { walletsData[acc._id] = []; }
-      }
+      }));
       setWalletsMap(walletsData);
     } catch { message.error('فشل في جلب الحسابات'); }
     finally { setLoading(false); }
+  };
+
+  const handleAddWallet = (accountId) => {
+    setCurrentAccountId(accountId);
+    setEditingWallet(null);
+    setModalVisible(true);
+  };
+
+  const handleEditWallet = (accountId, wallet) => {
+    setCurrentAccountId(accountId);
+    setEditingWallet(wallet);
+    setModalVisible(true);
+  };
+
+  const handleDeleteWallet = async (accountId, walletId) => {
+    try {
+      await walletAPI.remove(accountId, walletId);
+      message.success('تم حذف المحفظة بنجاح');
+      loadData();
+    } catch (error) {
+      message.error(error.response?.data?.message || 'فشل في حذف المحفظة');
+    }
+  };
+
+  const handleModalSuccess = async (values) => {
+    try {
+      if (editingWallet) {
+        await walletAPI.update(currentAccountId, editingWallet._id, values);
+        message.success('تم تحديث المحفظة بنجاح');
+      } else {
+        await walletAPI.create(currentAccountId, values);
+        message.success('تم إضافة المحفظة بنجاح');
+      }
+      setModalVisible(false);
+      loadData();
+    } catch (error) {
+      message.error(error.response?.data?.message || 'فشل في حفظ المحفظة');
+    }
   };
 
   // تجميع الأرصدة حسب العملة
@@ -51,7 +88,18 @@ const AccountsOverview = () => {
   });
 
   const walletColumns = [
-    { title: 'المحفظة', dataIndex: 'name', key: 'name' },
+    {
+      title: 'المحفظة',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text, record) => (
+        <Space>
+          {text}
+          {record.isDefault && <Tag color="gold">افتراضية</Tag>}
+          {!record.isActive && <Tag color="default">غير نشطة</Tag>}
+        </Space>
+      )
+    },
     { title: 'العملة', dataIndex: 'currency', key: 'currency', render: (c) => <Tag color="blue">{c}</Tag> },
     { 
       title: 'الرصيد', dataIndex: 'balance', key: 'balance',
@@ -61,9 +109,39 @@ const AccountsOverview = () => {
         </span>
       ),
     },
+    {
+      title: 'إجراءات',
+      key: 'actions',
+      width: 100,
+      render: (_, record) => (
+        <Space>
+          <Tooltip title="تعديل">
+            <Button
+              type="text"
+              icon={<EditOutlined style={{ color: '#3b82f6' }} />}
+              onClick={() => handleEditWallet(record.account, record)}
+            />
+          </Tooltip>
+          <Popconfirm
+            title="هل أنت متأكد من حذف هذه المحفظة؟"
+            onConfirm={() => handleDeleteWallet(record.account, record._id)}
+            okText="نعم"
+            cancelText="لا"
+          >
+            <Tooltip title="حذف">
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+              />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
+      )
+    }
   ];
 
-  if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
+  if (loading && accounts.length === 0) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
 
   return (
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
@@ -76,7 +154,7 @@ const AccountsOverview = () => {
             <StatCard 
               title={`رصيد ${currency}`} 
               value={balance} 
-              prefix={CURRENCY_SYMBOLS[currency]} 
+              prefix={currency}
               color="#3b82f6" 
               icon="💰" 
             />
@@ -113,13 +191,38 @@ const AccountsOverview = () => {
                 </span>
               </div>
             }
+            extra={
+              <Button
+                type="primary"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => handleAddWallet(acc._id)}
+              >
+                إضافة محفظة
+              </Button>
+            }
             style={{ borderRadius: 8, marginBottom: 16 }}
           >
-            <Table columns={walletColumns} dataSource={wallets} rowKey="_id" pagination={false}
-              locale={{ emptyText: 'لا توجد محافظ' }} size="small" />
+            <Table
+              columns={walletColumns}
+              dataSource={wallets}
+              rowKey="_id"
+              pagination={false}
+              locale={{ emptyText: 'لا توجد محافظ' }}
+              size="small"
+              loading={loading && wallets.length === 0}
+            />
           </Card>
         );
       })}
+
+      <WalletForm
+        visible={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        onSuccess={handleModalSuccess}
+        initialValues={editingWallet}
+        accountId={currentAccountId}
+      />
     </div>
   );
 };

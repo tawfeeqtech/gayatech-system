@@ -7,12 +7,14 @@ import StatCard from '../../components/ui/StatCard';
 import partnerAPI from '../../api/partners';
 import accountAPI from '../../api/accounts';
 import { formatCurrency } from '../../utils/formatters';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
 
 const PartnerDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { currencies } = useCurrencies();
   const [partner, setPartner] = useState(null);
   const [fundings, setFundings] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -196,12 +198,7 @@ const PartnerDetail = () => {
               </Form.Item>
 
               <Form.Item name="currency">
-                <Select style={{ width: 80 }} options={[
-                  { value: 'USD', label: '$' },
-                  { value: 'ILS', label: '₪' },
-                  { value: 'SAR', label: '﷼' },
-                  { value: 'JOD', label: 'د.أ' },
-                ]} />
+                <Select style={{ width: 120 }} options={currencies} />
               </Form.Item>
 
               <Form.Item name="fundingDate" rules={[{ required: true }]}>

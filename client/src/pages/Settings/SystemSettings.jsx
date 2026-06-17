@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Card, Form, Button, Space, Row, Col, Select, message, Switch, Typography, Divider, InputNumber } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title, Text } = Typography;
 
 const SystemSettings = () => {
   const [form] = Form.useForm();
+  const { currencies } = useCurrencies();
 
   const handleSave = (values) => {
     message.success('تم حفظ الإعدادات (محلياً)');
@@ -35,10 +37,7 @@ const SystemSettings = () => {
             </Col>
             <Col xs={24} md={12}>
               <Form.Item name="defaultCurrency" label="العملة الافتراضية">
-                <Select options={[
-                  { value: 'USD', label: 'دولار $' }, { value: 'ILS', label: 'شيكل ₪' },
-                  { value: 'SAR', label: 'ريال ﷼' }, { value: 'JOD', label: 'دينار د.أ' },
-                ]} />
+                <Select options={currencies} />
               </Form.Item>
             </Col>
           </Row>

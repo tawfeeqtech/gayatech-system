@@ -4,12 +4,14 @@ import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import advanceAPI from '../../api/advances';
 import employeeAPI from '../../api/employees';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
 
 const AdvanceForm = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const { currencies } = useCurrencies();
   const [submitting, setSubmitting] = useState(false);
   const [employees, setEmployees] = useState([]);
 
@@ -50,10 +52,7 @@ const AdvanceForm = () => {
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="currency" label="العملة">
-                <Select options={[
-                  { value: 'USD', label: 'دولار $' }, { value: 'ILS', label: 'شيكل ₪' },
-                  { value: 'SAR', label: 'ريال ﷼' }, { value: 'JOD', label: 'دينار د.أ' },
-                ]} />
+                <Select options={currencies} />
               </Form.Item>
             </Col>
           </Row>
