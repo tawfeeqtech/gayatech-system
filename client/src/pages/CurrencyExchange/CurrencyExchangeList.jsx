@@ -4,8 +4,10 @@ import { PlusOutlined } from '@ant-design/icons';
 import DataTable from '../../components/ui/DataTable';
 import currencyAPI from '../../api/currencyExchange';
 import { formatCurrency } from '../../utils/formatters';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const CurrencyExchangeList = () => {
+  const { currencies } = useCurrencies();
   const [exchanges, setExchanges] = useState([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -110,16 +112,10 @@ const CurrencyExchangeList = () => {
           <Space direction="vertical" style={{ width: '100%' }}>
             <Space>
               <Form.Item name="fromCurrency" label="من عملة" rules={[{ required: true }]}>
-                <Select options={[
-                  { value: 'USD', label: 'USD' }, { value: 'ILS', label: 'ILS' },
-                  { value: 'SAR', label: 'SAR' }, { value: 'JOD', label: 'JOD' }, { value: 'EUR', label: 'EUR' },
-                ]} />
+                <Select style={{ width: 120 }} options={currencies} />
               </Form.Item>
               <Form.Item name="toCurrency" label="إلى عملة" rules={[{ required: true }]}>
-                <Select options={[
-                  { value: 'USD', label: 'USD' }, { value: 'ILS', label: 'ILS' },
-                  { value: 'SAR', label: 'SAR' }, { value: 'JOD', label: 'JOD' }, { value: 'EUR', label: 'EUR' },
-                ]} />
+                <Select style={{ width: 120 }} options={currencies} />
               </Form.Item>
             </Space>
             <Form.Item name="fromAmount" label="المبلغ الأصلي" rules={[{ required: true }]}>

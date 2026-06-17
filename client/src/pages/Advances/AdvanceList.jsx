@@ -6,12 +6,14 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import advanceAPI from '../../api/advances';
 import employeeAPI from '../../api/employees';
 import { formatCurrency } from '../../utils/formatters';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { RangePicker } = DatePicker;
 
 const AdvanceList = () => {
   const [advances, setAdvances] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const { currencies } = useCurrencies();
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -161,10 +163,7 @@ const AdvanceList = () => {
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="currency" label="العملة">
-            <Select options={[
-              { value: 'USD', label: 'دولار $' }, { value: 'ILS', label: 'شيكل ₪' },
-              { value: 'SAR', label: 'ريال ﷼' }, { value: 'JOD', label: 'دينار د.أ' },
-            ]} />
+            <Select options={currencies} />
           </Form.Item>
         </Form>
       </Modal>
