@@ -106,8 +106,9 @@ const Sidebar = () => {
       icon: <SettingOutlined />,
       label: 'الإعدادات',
       children: [
-        { key: '/settings/system', label: 'إعدادات النظام' }, // تم تعديلها لتجنب تداخل الأب والابن
+        { key: '/settings', label: 'إعدادات النظام' },
         { key: '/settings/users', label: 'إدارة المستخدمين' },
+        { key: '/settings/currencies', label: 'إدارة العملات' },
       ]
     },
   ];

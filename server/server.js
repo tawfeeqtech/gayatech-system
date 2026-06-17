@@ -65,6 +65,7 @@ app.use('/api/advances', require('./routes/advanceRoutes'));
 app.use('/api/partners', require('./routes/partnerRoutes'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/api/currency', require('./routes/currencyRoutes'));
+app.use('/api/currencies', require('./routes/currencyListRoutes'));
 app.use('/api/income-sources', require('./routes/incomeSourceRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/import', require('./routes/importRoutes'));

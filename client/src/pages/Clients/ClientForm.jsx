@@ -4,6 +4,7 @@ import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import FormField from '../../components/ui/FormField';
 import clientAPI from '../../api/clients';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
 
@@ -12,6 +13,7 @@ const ClientForm = () => {
   const { id } = useParams();
   const isEdit = !!id;
   const [form] = Form.useForm();
+  const { currencies } = useCurrencies();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -165,13 +167,7 @@ const ClientForm = () => {
               >
                 <Select
                   placeholder="اختر العملة"
-                  options={[
-                    { value: 'USD', label: 'دولار USD' },
-                    { value: 'ILS', label: 'شيكل ILS' },
-                    { value: 'SAR', label: 'ريال SAR' },
-                    { value: 'JOD', label: 'دينار JOD' },
-                    { value: 'EUR', label: 'يورو EUR' },
-                  ]}
+                  options={currencies}
                 />
               </Form.Item>
             </Col>

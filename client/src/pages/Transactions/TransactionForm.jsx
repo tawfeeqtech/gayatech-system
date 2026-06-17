@@ -10,15 +10,10 @@ import api from '../../api/axios';
 import { useParams } from 'react-router-dom';
 import contractAPI from '../../api/contracts';
 import projectAPI from '../../api/projects';
+import { useCurrencies } from '../../hooks/useCurrencies';
+import { formatCurrency } from '../../utils/formatters';
 
 const { Title } = Typography;
-
-const formatCurrency = (amount, currency = 'USD') => {
-  const symbols = { USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' };
-  try {
-    return `${symbols[currency] || ''}${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  } catch { return `${amount}`; }
-};
 
 const TransactionForm = () => {
   const { id } = useParams();
@@ -32,6 +27,7 @@ const TransactionForm = () => {
   const [contractMonths, setContractMonths] = useState([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [type, setType] = useState('دخل');
+  const { currencies } = useCurrencies();
 
   // المحافظ
   const [toWallets, setToWallets] = useState([]);
@@ -348,12 +344,7 @@ const TransactionForm = () => {
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="currency" label="العملة">
-                <Select options={[
-                  { value: 'USD', label: 'دولار $' },
-                  { value: 'ILS', label: 'شيكل ₪' },
-                  { value: 'SAR', label: 'ريال ﷼' },
-                  { value: 'JOD', label: 'دينار د.أ' },
-                ]} />
+                <Select options={currencies} />
               </Form.Item>
             </Col>
           </Row>

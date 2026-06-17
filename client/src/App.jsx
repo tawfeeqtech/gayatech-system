@@ -35,6 +35,7 @@ import CurrencyExchangeList from './pages/CurrencyExchange/CurrencyExchangeList'
 import ImportData from './pages/Import/ImportData';
 import UserManagement from './pages/Settings/UserManagement';
 import SystemSettings from './pages/Settings/SystemSettings';
+import CurrenciesManagement from './pages/Settings/CurrenciesManagement';
 import ReportList from './pages/Reports/ReportList';
 import TransactionDetail from './pages/Transactions/TransactionDetail';
 import MonthlyRevenue from './pages/Reports/MonthlyRevenue';
@@ -163,6 +164,7 @@ function App() {
 
           <Route path="settings" element={<SystemSettings />} />
           <Route path="settings/users" element={<UserManagement />} />
+          <Route path="settings/currencies" element={<CurrenciesManagement />} />
 
         </Route>
 

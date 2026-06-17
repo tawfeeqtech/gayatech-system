@@ -4,6 +4,7 @@ import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import salaryAPI from '../../api/salaries';
 import employeeAPI from '../../api/employees';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
 const { MonthPicker } = DatePicker;

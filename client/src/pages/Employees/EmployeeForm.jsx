@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import FormField from '../../components/ui/FormField';
 import employeeAPI from '../../api/employees';
 import dayjs from 'dayjs';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
 
@@ -13,6 +14,7 @@ const EmployeeForm = () => {
   const { id } = useParams();
   const isEdit = !!id;
   const [form] = Form.useForm();
+  const { currencies } = useCurrencies();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -64,7 +66,7 @@ const EmployeeForm = () => {
             <Col xs={24} md={8}><FormField name="baseSalary" label="الراتب الأساسي" type="number" rules={[{ required: true }]} min={0} /></Col>
             <Col xs={24} md={8}>
               <Form.Item name="salaryCurrency" label="العملة">
-                <Select options={[{ value: 'USD', label: '$' }, { value: 'ILS', label: '₪' }, { value: 'SAR', label: '﷼' }]} />
+                <Select options={currencies} />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}><FormField name="joiningDate" label="تاريخ الانضمام" type="date" rules={[{ required: true }]} /></Col>

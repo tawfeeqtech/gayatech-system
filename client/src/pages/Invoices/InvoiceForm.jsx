@@ -7,6 +7,7 @@ import FormField from '../../components/ui/FormField';
 import invoiceAPI from '../../api/invoices';
 import clientAPI from '../../api/clients';
 import projectAPI from '../../api/projects';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
 
@@ -15,6 +16,7 @@ const InvoiceForm = () => {
   const { id } = useParams();
   const isEdit = !!id;
   const [form] = Form.useForm();
+  const { currencies } = useCurrencies();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [clients, setClients] = useState([]);
@@ -104,7 +106,7 @@ const InvoiceForm = () => {
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="currency" label="العملة">
-                <Select options={[{ value: 'USD', label: '$' }, { value: 'ILS', label: '₪' }, { value: 'SAR', label: '﷼' }]} />
+                <Select options={currencies} />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>

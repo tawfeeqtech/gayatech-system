@@ -8,6 +8,7 @@ import projectTaskAPI from '../../api/projectTasks';
 import clientAPI from '../../api/clients';
 import employeeAPI from '../../api/employees';
 import dayjs from 'dayjs';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
 
@@ -16,6 +17,7 @@ const ProjectForm = () => {
   const { id } = useParams();
   const isEdit = !!id;
   const [form] = Form.useForm();
+  const { currencies } = useCurrencies();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [clients, setClients] = useState([]);
@@ -157,7 +159,7 @@ const ProjectForm = () => {
             </Col>
             <Col xs={24} md={6}>
               <Form.Item name="currency" label="العملة">
-                <Select options={[{ value: 'USD', label: '$' }, { value: 'ILS', label: '₪' }, { value: 'SAR', label: '﷼' }]} />
+                <Select options={currencies} />
               </Form.Item>
             </Col>
           </Row>

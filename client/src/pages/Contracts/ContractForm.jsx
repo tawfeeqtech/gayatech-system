@@ -6,6 +6,7 @@ import FormField from '../../components/ui/FormField';
 import contractAPI from '../../api/contracts';
 import clientAPI from '../../api/clients';
 import dayjs from 'dayjs';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
 
@@ -16,6 +17,7 @@ const ContractForm = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { currencies } = useCurrencies();
   const [clients, setClients] = useState([]);
 
   useEffect(() => {
@@ -127,14 +129,7 @@ const ContractForm = () => {
             </Col>
             <Col xs={24} md={6}>
               <Form.Item name="currency" label="العملة">
-                <Select
-                  options={[
-                    { value: 'USD', label: 'دولار $' },
-                    { value: 'ILS', label: 'شيكل ₪' },
-                    { value: 'SAR', label: 'ريال ﷼' },
-                    { value: 'JOD', label: 'دينار د.أ' },
-                  ]}
-                />
+                <Select options={currencies} />
               </Form.Item>
             </Col>
           </Row>

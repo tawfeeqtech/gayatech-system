@@ -3,6 +3,7 @@ import { Card, Form, Button, Space, Row, Col, Select, message, Typography, AutoC
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import subscriptionAPI from '../../api/subscriptions';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
 
@@ -27,6 +28,7 @@ const SubscriptionForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const { currencies } = useCurrencies();
   const [status, setStatus] = useState('نشط');
 
   useEffect(() => {
@@ -169,13 +171,7 @@ const SubscriptionForm = () => {
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="currency" label="العملة">
-                <Select options={[
-                  { value: 'USD', label: 'دولار $' },
-                  { value: 'ILS', label: 'شيكل ₪' },
-                  { value: 'SAR', label: 'ريال ﷼' },
-                  { value: 'JOD', label: 'دينار د.أ' },
-                  { value: 'EUR', label: 'يورو €' },
-                ]} />
+                <Select options={currencies} />
               </Form.Item>
             </Col>
           </Row>

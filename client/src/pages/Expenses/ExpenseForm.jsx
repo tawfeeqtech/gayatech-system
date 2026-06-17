@@ -6,6 +6,7 @@ import FormField from '../../components/ui/FormField';
 import expenseAPI from '../../api/expenses';
 import categoryAPI from '../../api/expenseCategories';
 import accountAPI from '../../api/accounts';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
 
@@ -13,6 +14,7 @@ const ExpenseForm = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const { currencies } = useCurrencies();
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
 
@@ -50,7 +52,7 @@ const ExpenseForm = () => {
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="currency" label="العملة">
-                <Select options={[{ value: 'USD', label: '$' }, { value: 'ILS', label: '₪' }, { value: 'SAR', label: '﷼' }]} />
+                <Select options={currencies} />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
