@@ -1,6 +1,7 @@
 const Subscription = require('../models/Subscription');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
+const invoiceFactoryService = require('../services/invoiceFactoryService');
 
 exports.getSubscriptions = asyncHandler(async (req, res, next) => {
   const filter = {};
@@ -12,6 +13,7 @@ exports.getSubscriptions = asyncHandler(async (req, res, next) => {
   const skip = (page - 1) * limit;
 
   const subscriptions = await Subscription.find(filter)
+    .populate('vendorRef', 'name')
     .sort('endDate')
     .skip(skip)
     .limit(limit);
@@ -27,6 +29,27 @@ exports.getSubscriptions = asyncHandler(async (req, res, next) => {
 exports.createSubscription = asyncHandler(async (req, res, next) => {
   req.body.createdBy = req.user._id;
   const subscription = await Subscription.create(req.body);
+
+  // إنشاء فاتورة للاشتراك
+  // المستخدم طلب التحديد المسبق: بداية الفترة أو تاريخ الاستحقاق.
+  // سنفترض حالياً تاريخ الاستحقاق هو البداية.
+  const invoice = await invoiceFactoryService.createInvoice({
+    type: 'اشتراك',
+    amount: subscription.amount,
+    currency: subscription.currency,
+    issueDate: new Date(),
+    dueDate: subscription.startDate,
+    refId: subscription._id,
+    refModel: 'subscription',
+    recipientId: subscription.vendorRef || undefined,
+    recipientType: 'vendor',
+    description: `اشتراك: ${subscription.serviceName} - ${subscription.provider}`,
+    userId: req.user._id
+  });
+
+  subscription.invoices.push(invoice._id);
+  await subscription.save();
+
   res.status(201).json({ status: 'success', data: { subscription } });
 });
 
@@ -64,11 +87,33 @@ exports.getExpired = asyncHandler(async (req, res, next) => {
 });
 
 exports.renewSubscription = asyncHandler(async (req, res, next) => {
-  const { newEndDate } = req.body;
-  const subscription = await Subscription.findByIdAndUpdate(req.params.id, {
-    endDate: new Date(newEndDate),
-    status: 'نشط'
-  }, { new: true });
+  const { newEndDate, amount, startDate } = req.body;
+  const subscription = await Subscription.findById(req.params.id);
   if (!subscription) return next(new ApiError('الاشتراك غير موجود', 404));
+
+  subscription.endDate = new Date(newEndDate);
+  subscription.status = 'نشط';
+  if (amount) subscription.amount = amount;
+  if (startDate) subscription.startDate = new Date(startDate);
+
+  // إنشاء فاتورة جديدة للتجديد
+  const invoice = await invoiceFactoryService.createInvoice({
+    type: 'اشتراك',
+    amount: subscription.amount,
+    currency: subscription.currency,
+    issueDate: new Date(),
+    dueDate: subscription.startDate,
+    refId: subscription._id,
+    refModel: 'subscription',
+    recipientId: subscription.vendorRef || undefined,
+    recipientType: 'vendor',
+    description: `تجديد اشتراك: ${subscription.serviceName}`,
+    userId: req.user._id
+  });
+
+  subscription.invoices.push(invoice._id);
+  subscription.isPaid = false;
+  await subscription.save();
+
   res.status(200).json({ status: 'success', data: { subscription } });
 });

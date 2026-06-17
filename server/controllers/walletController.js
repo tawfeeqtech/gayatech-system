@@ -1,5 +1,6 @@
 const Wallet = require('../models/Wallet');
 const Account = require('../models/Account');
+const Transaction = require('../models/Transaction');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -31,6 +32,11 @@ exports.createWallet = asyncHandler(async (req, res, next) => {
     return next(new ApiError('توجد محفظة بنفس العملة لهذا الحساب', 400));
   }
 
+  // إذا تم تحديدها كافتراضية، قم بإلغاء الافتراضية عن المحافظ الأخرى لنفس الحساب
+  if (req.body.isDefault) {
+    await Wallet.updateMany({ account: req.params.accountId }, { isDefault: false });
+  }
+
   const wallet = await Wallet.create(req.body);
 
   // إضافة المحفظة للحساب
@@ -47,7 +53,17 @@ exports.createWallet = asyncHandler(async (req, res, next) => {
 // @desc    تحديث محفظة
 // @route   PUT /api/wallets/:id
 exports.updateWallet = asyncHandler(async (req, res, next) => {
-  const wallet = await Wallet.findByIdAndUpdate(
+  let wallet = await Wallet.findById(req.params.id);
+  if (!wallet) {
+    return next(new ApiError('المحفظة غير موجودة', 404));
+  }
+
+  // إذا تم تغيير المحفظة لتصبح افتراضية
+  if (req.body.isDefault && !wallet.isDefault) {
+    await Wallet.updateMany({ account: wallet.account }, { isDefault: false });
+  }
+
+  wallet = await Wallet.findByIdAndUpdate(
     req.params.id,
     req.body,
     { new: true, runValidators: true }
@@ -70,6 +86,20 @@ exports.deleteWallet = asyncHandler(async (req, res, next) => {
 
   if (!wallet) {
     return next(new ApiError('المحفظة غير موجودة', 404));
+  }
+
+  // قيود الحذف: منع الحذف إذا كان الرصيد غير صفري
+  if (wallet.balance !== 0) {
+    return next(new ApiError('لا يمكن حذف محفظة بها رصيد، يرجى تصفير الرصيد أولاً', 400));
+  }
+
+  // قيود الحذف: منع الحذف إذا كانت مرتبطة بمعاملات
+  const hasTransactions = await Transaction.findOne({
+    $or: [{ fromWallet: req.params.id }, { toWallet: req.params.id }]
+  });
+
+  if (hasTransactions) {
+    return next(new ApiError('لا يمكن حذف محفظة مرتبطة بمعاملات سابقة، يمكنك تعطيلها بدلاً من حذفها', 400));
   }
 
   // إزالة المحفظة من الحساب

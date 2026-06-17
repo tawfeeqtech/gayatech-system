@@ -3,6 +3,7 @@ import { Card, Form, Button, Space, Row, Col, Select, message, Typography, AutoC
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import subscriptionAPI from '../../api/subscriptions';
+import vendorAPI from '../../api/vendors';
 import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
@@ -27,11 +28,14 @@ const SubscriptionForm = () => {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [vendors, setVendors] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const { currencies } = useCurrencies();
   const [status, setStatus] = useState('نشط');
 
   useEffect(() => {
+    vendorAPI.getAll().then(r => setVendors(r.data.data.vendors || [])).catch(() => {});
+
     // تحميل التصنيفات المحفوظة من localStorage
     const saved = localStorage.getItem('subscription_categories');
     if (saved) {
@@ -137,7 +141,13 @@ const SubscriptionForm = () => {
           
           <Row gutter={24}>
             <Col xs={24} md={12}>
-              <Form.Item name="provider" label="المزود" rules={[{ required: true, message: 'المزود مطلوب' }]}>
+              <Form.Item name="vendorRef" label="المزود (من القائمة)">
+                <Select placeholder="اختر المزود" allowClear showSearch optionFilterProp="label"
+                  options={vendors.map(v => ({ value: v._id, label: v.name }))} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="provider" label="اسم المزود (نص)" rules={[{ required: true, message: 'المزود مطلوب' }]}>
                 <input placeholder="مثال: Vercel, AWS, Google..." 
                   style={{ padding: '4px 11px', borderRadius: 6, border: '1px solid #d1d5db', width: '100%', fontFamily: 'Cairo, sans-serif' }} />
               </Form.Item>

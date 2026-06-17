@@ -6,9 +6,11 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import expenseAPI from '../../api/expenses';
 import categoryAPI from '../../api/expenseCategories';
 import { formatCurrency } from '../../utils/formatters';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const ExpenseList = () => {
   const navigate = useNavigate();
+  const { currencies } = useCurrencies();
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -16,6 +18,7 @@ const ExpenseList = () => {
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [currencyFilter, setCurrencyFilter] = useState('');
   const [categories, setCategories] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -30,6 +33,7 @@ const ExpenseList = () => {
       const params = { page, limit: pageSize };
       if (search) params.search = search;
       if (categoryFilter) params.category = categoryFilter;
+      if (currencyFilter) params.currency = currencyFilter;
 
       const response = await expenseAPI.getAll(params);
       setExpenses(response.data.data.expenses);
@@ -74,10 +78,16 @@ const ExpenseList = () => {
   ];
 
   const filterBar = (
-    <Select placeholder="التصنيف" allowClear style={{ width: 160 }}
-      value={categoryFilter || undefined}
-      onChange={(v) => { setCategoryFilter(v || ''); setPage(1); }}
-      options={categories.map(c => ({ value: c._id, label: c.name }))} />
+    <Space wrap>
+      <Select placeholder="العملة" allowClear style={{ width: 120 }}
+        value={currencyFilter || undefined}
+        onChange={(v) => { setCurrencyFilter(v || ''); setPage(1); }}
+        options={currencies} />
+      <Select placeholder="التصنيف" allowClear style={{ width: 160 }}
+        value={categoryFilter || undefined}
+        onChange={(v) => { setCategoryFilter(v || ''); setPage(1); }}
+        options={categories.map(c => ({ value: c._id, label: c.name }))} />
+    </Space>
   );
 
   return (

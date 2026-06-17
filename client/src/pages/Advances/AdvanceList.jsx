@@ -20,6 +20,7 @@ const AdvanceList = () => {
   const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('');
+  const [currencyFilter, setCurrencyFilter] = useState('');
   const [editingAdvance, setEditingAdvance] = useState(null);
   const [editForm] = Form.useForm();
   const [editSubmitting, setEditSubmitting] = useState(false);
@@ -36,6 +37,7 @@ const AdvanceList = () => {
       const params = { page, limit: pageSize };
       if (statusFilter) params.status = statusFilter;
       if (employeeFilter) params.employee = employeeFilter;
+      if (currencyFilter) params.currency = currencyFilter;
       const response = await advanceAPI.getAll(params);
       setAdvances(response.data.data.advances);
       setTotal(response.data.total);
@@ -47,7 +49,10 @@ const AdvanceList = () => {
 
   const handleAction = async (id, action) => {
     try {
-      if (action === 'approve') await advanceAPI.approve(id);
+      if (action === 'approve') {
+        const installment = prompt('أدخل مبلغ القسط الشهري (اتركه فارغاً للخصم الكامل من أول راتب):');
+        await advanceAPI.approve(id, { installmentAmount: installment ? parseFloat(installment) : undefined });
+      }
       else if (action === 'reject') await advanceAPI.reject(id);
       message.success('تم بنجاح');
       fetchAdvances();
@@ -94,9 +99,14 @@ const AdvanceList = () => {
     { title: 'السبب', dataIndex: 'reason', key: 'reason', width: 150, ellipsis: true },
     {
       title: 'الحالة', dataIndex: 'status', key: 'status', width: 120,
-      render: (s) => {
+      render: (s, r) => {
         const colors = { 'مسددة': 'green', 'موافق عليها': 'blue', 'مرفوضة': 'red', 'معلقة': 'orange', 'مسددة جزئياً': 'purple' };
-        return <Tag color={colors[s] || 'default'}>{s}</Tag>;
+        return (
+          <Space direction="vertical" size={0}>
+            <Tag color={colors[s] || 'default'}>{s}</Tag>
+            {r.invoice && <small style={{ fontSize: 10 }}>{r.invoice.invoiceNumber}</small>}
+          </Space>
+        );
       },
     },
     {
@@ -125,6 +135,10 @@ const AdvanceList = () => {
         value={employeeFilter || undefined}
         onChange={(v) => { setEmployeeFilter(v || ''); setPage(1); }}
         options={employees.map(e => ({ value: e._id, label: e.name }))} />
+      <Select placeholder="العملة" allowClear style={{ width: 120 }}
+        value={currencyFilter || undefined}
+        onChange={(v) => { setCurrencyFilter(v || ''); setPage(1); }}
+        options={currencies} />
       <Select placeholder="الحالة" allowClear style={{ width: 130 }}
         value={statusFilter || undefined}
         onChange={(v) => { setStatusFilter(v || ''); setPage(1); }}

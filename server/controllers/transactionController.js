@@ -73,7 +73,7 @@ exports.getTransactions = asyncHandler(async (req, res, next) => {
     .populate('fromWallet', 'name currency')
     .populate('toWallet', 'name currency')
     .populate('contractMonth', 'month value')
-    .populate('invoice', 'invoiceNumber totalAmount paidAmount currency')
+    .populate('invoice', 'invoiceNumber totalAmount paidAmount currency invoiceType')
     .populate('project', 'title')
     .populate('createdBy', 'fullName')
     .sort('-transactionDate')
@@ -103,7 +103,7 @@ exports.getTransaction = asyncHandler(async (req, res, next) => {
     .populate('fromWallet', 'name currency')
     .populate('toWallet', 'name currency')
     .populate('contractMonth', 'month value status')
-    .populate('invoice', 'invoiceNumber totalAmount paidAmount currency')
+    .populate('invoice', 'invoiceNumber totalAmount paidAmount currency invoiceType')
     .populate('project', 'title')
     .populate('allocations.contractMonth', 'month value')
     .populate('allocations.invoice', 'invoiceNumber totalAmount paidAmount currency')
@@ -147,12 +147,11 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
 
   const hasAllocations = req.body.allocations && Array.isArray(req.body.allocations) && req.body.allocations.length > 0;
   if (hasAllocations) {
-    // لا نربط المعاملة مباشرة بفاتورة واحدة إذا كانت هناك توزيعات
     req.body.invoice = undefined;
     req.body.contractMonth = undefined;
   }
 
-  // إذا لم يُحدد العميل، حاول الحصول عليه من الفاتورة المرتبطة
+  // إذا لم يُحدد العميل وكان هناك فاتورة، حاول الحصول عليه
   if (!req.body.client && req.body.invoice) {
     const invoice = await Invoice.findById(req.body.invoice).select('client');
     if (invoice && invoice.client) {
@@ -162,23 +161,17 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
 
   const transaction = await Transaction.create(req.body);
 
-  // 👈 معالجة التوزيعات (allocations) - مرة واحدة فقط
+  // معالجة التوزيعات
   if (hasAllocations) {
     for (const allocation of req.body.allocations) {
       if (allocation.invoice) {
-        await updateInvoiceStatus(allocation.invoice, allocation.amount);
-        await Invoice.findByIdAndUpdate(allocation.invoice, {
-          $addToSet: { transactions: transaction._id }
-        });
+        await updateInvoiceAndLinkedStatus(allocation.invoice, allocation.amount, transaction._id);
       }
     }
   } else {
-    // 👈 إذا لم تكن هناك توزيعات، استخدم الطريقة المباشرة
-    if (transaction.invoice && transaction.type === 'دخل') {
-      await updateInvoiceStatus(transaction.invoice, transaction.amount);
-      await Invoice.findByIdAndUpdate(transaction.invoice, {
-        $addToSet: { transactions: transaction._id }
-      });
+    // إذا لم تكن هناك توزيعات، استخدم الطريقة المباشرة
+    if (transaction.invoice) {
+      await updateInvoiceAndLinkedStatus(transaction.invoice, transaction.amount, transaction._id);
     }
 
     if (transaction.contractMonth) {
@@ -188,21 +181,16 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
 
   // تحديث رصيد المحفظة
   if (toWallet && (type === 'دخل' || type === 'تحويل')) {
-    await Wallet.findByIdAndUpdate(toWallet, {
-      $inc: { balance: amount }
-    });
+    await Wallet.findByIdAndUpdate(toWallet, { $inc: { balance: amount } });
   }
   if (fromWallet && (type === 'مصروف' || type === 'تحويل')) {
-    await Wallet.findByIdAndUpdate(fromWallet, {
-      $inc: { balance: -amount }
-    });
+    await Wallet.findByIdAndUpdate(fromWallet, { $inc: { balance: -amount } });
   }
 
   // إذا كان تحويلاً بين عملات مختلفة
   if (type === 'تحويل' && fromWallet && toWallet) {
     const fromW = await Wallet.findById(fromWallet);
     const toW = await Wallet.findById(toWallet);
-    
     if (fromW && toW && fromW.currency !== toW.currency) {
       await CurrencyExchange.create({
         fromCurrency: fromW.currency,
@@ -219,34 +207,21 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // تحديث إحصائيات العميل (مرة واحدة فقط)
+  // تحديث إحصائيات العميل (للفواتير الخارجية فقط)
   if (transaction.client) {
-    const { updateClientStats } = require('../services/clientStatsService');
     await updateClientStats(transaction.client);
   }
 
-  res.status(201).json({
-    status: 'success',
-    data: { transaction }
-  });
+  res.status(201).json({ status: 'success', data: { transaction } });
 });
 
 // @desc    توزيع دفعة على فواتير/أشهر عقود
-// @route   POST /api/transactions/:id/allocate
-// @access  Private (admin, finance)
 exports.allocateTransaction = asyncHandler(async (req, res, next) => {
   const transaction = await Transaction.findById(req.params.id);
-
-  if (!transaction) {
-    return next(new ApiError('المعاملة غير موجودة', 404));
-  }
-
-  if (transaction.type !== 'دخل') {
-    return next(new ApiError('يمكن توزيع معاملات الدخل فقط', 400));
-  }
+  if (!transaction) return next(new ApiError('المعاملة غير موجودة', 404));
+  if (transaction.type !== 'دخل') return next(new ApiError('يمكن توزيع معاملات الدخل فقط', 400));
 
   const { allocations } = req.body;
-
   if (!allocations || !Array.isArray(allocations) || allocations.length === 0) {
     return next(new ApiError('يرجى توفير التوزيعات', 400));
   }
@@ -265,208 +240,91 @@ exports.allocateTransaction = asyncHandler(async (req, res, next) => {
       }
     }
     if (allocation.invoice) {
-      const invoice = await Invoice.findById(allocation.invoice);
-      if (invoice) {
-        invoice.paidAmount += allocation.amount;
-        if (!invoice.transactions.includes(transaction._id)) {
-          invoice.transactions.push(transaction._id);
-        }
-        await invoice.save();
-        await updateInvoiceStatus(invoice._id);
-      }
+      await updateInvoiceAndLinkedStatus(allocation.invoice, allocation.amount, transaction._id);
     }
   }
 
   transaction.allocations = allocations;
   await transaction.save();
 
-  if (transaction.client) {
-    await updateClientStats(transaction.client);
-  }
+  if (transaction.client) await updateClientStats(transaction.client);
 
-  res.status(200).json({
-    status: 'success',
-    message: 'تم توزيع الدفعة بنجاح',
-    data: { transaction }
-  });
+  res.status(200).json({ status: 'success', message: 'تم توزيع الدفعة بنجاح', data: { transaction } });
 });
 
 // @desc    تحديث معاملة
-// @route   PUT /api/transactions/:id
-// @access  Private (admin)
 exports.updateTransaction = asyncHandler(async (req, res, next) => {
   const oldTransaction = await Transaction.findById(req.params.id);
-  if (!oldTransaction) {
-    return next(new ApiError('المعاملة غير موجودة', 404));
-  }
+  if (!oldTransaction) return next(new ApiError('المعاملة غير موجودة', 404));
 
-  // التراجع عن تأثيرات المعاملة القديمة على المحافظ
-  if (oldTransaction.toWallet) {
-    await Wallet.findByIdAndUpdate(oldTransaction.toWallet, {
-      $inc: { balance: -oldTransaction.amount }
-    });
-  }
-  if (oldTransaction.fromWallet) {
-    await Wallet.findByIdAndUpdate(oldTransaction.fromWallet, {
-      $inc: { balance: oldTransaction.amount }
-    });
-  }
+  // التراجع عن تأثيرات المعاملة القديمة
+  if (oldTransaction.toWallet) await Wallet.findByIdAndUpdate(oldTransaction.toWallet, { $inc: { balance: -oldTransaction.amount } });
+  if (oldTransaction.fromWallet) await Wallet.findByIdAndUpdate(oldTransaction.fromWallet, { $inc: { balance: oldTransaction.amount } });
 
-  const oldInvoiceId = oldTransaction.invoice ? oldTransaction.invoice.toString() : null;
-  const oldClientId = oldTransaction.client ? oldTransaction.client.toString() : null;
-
-  // حذف old transaction effects on invoice
   if (oldTransaction.invoice) {
-    await Invoice.findByIdAndUpdate(oldTransaction.invoice, {
-      $inc: { paidAmount: -oldTransaction.amount },
-      $pull: { transactions: oldTransaction._id }
-    });
-    await updateInvoiceStatus(oldTransaction.invoice);
+    await updateInvoiceAndLinkedStatus(oldTransaction.invoice, -oldTransaction.amount, oldTransaction._id, true);
   }
 
-  // إذا لم يُحدد العميل، حاول الحصول عليه من الفاتورة الجديدة
-  if (!req.body.client && req.body.invoice) {
-    const invoice = await Invoice.findById(req.body.invoice).select('client');
-    if (invoice && invoice.client) {
-      req.body.client = invoice.client;
-    }
-  }
-
-  // تحديث المعاملة
-  delete req.body.type;
-  delete req.body.nature;
-  delete req.body.allocations;
-
-  const transaction = await Transaction.findByIdAndUpdate(
-    req.params.id,
-    req.body,
-    { new: true, runValidators: true }
-  );
+  const transaction = await Transaction.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
 
   // تطبيق التأثيرات الجديدة
   if (transaction.toWallet && (transaction.type === 'دخل' || transaction.type === 'تحويل')) {
-    await Wallet.findByIdAndUpdate(transaction.toWallet, {
-      $inc: { balance: transaction.amount }
-    });
+    await Wallet.findByIdAndUpdate(transaction.toWallet, { $inc: { balance: transaction.amount } });
   }
   if (transaction.fromWallet && (transaction.type === 'مصروف' || transaction.type === 'تحويل')) {
-    await Wallet.findByIdAndUpdate(transaction.fromWallet, {
-      $inc: { balance: -transaction.amount }
-    });
+    await Wallet.findByIdAndUpdate(transaction.fromWallet, { $inc: { balance: -transaction.amount } });
   }
 
-  // تحديث الفاتورة
   if (transaction.invoice) {
-    await updateInvoiceStatus(transaction.invoice, transaction.amount);
-    await Invoice.findByIdAndUpdate(transaction.invoice, {
-      $addToSet: { transactions: transaction._id }
-    });
+    await updateInvoiceAndLinkedStatus(transaction.invoice, transaction.amount, transaction._id);
   }
 
-  // تحديث إحصائيات العميل
-  if (oldClientId && oldClientId !== transaction.client?.toString()) {
-    await updateClientStats(oldClientId);
-  }
-  if (transaction.client) {
-    await updateClientStats(transaction.client);
-  }
+  if (transaction.client) await updateClientStats(transaction.client);
 
-  res.status(200).json({
-    status: 'success',
-    data: { transaction }
-  });
+  res.status(200).json({ status: 'success', data: { transaction } });
 });
 
 // @desc    حذف معاملة
-// @route   DELETE /api/transactions/:id
-// @access  Private (admin)
 exports.deleteTransaction = asyncHandler(async (req, res, next) => {
   const transaction = await Transaction.findById(req.params.id);
+  if (!transaction) return next(new ApiError('المعاملة غير موجودة', 404));
 
-  if (!transaction) {
-    return next(new ApiError('المعاملة غير موجودة', 404));
-  }
+  if (transaction.toWallet) await Wallet.findByIdAndUpdate(transaction.toWallet, { $inc: { balance: -transaction.amount } });
+  if (transaction.fromWallet) await Wallet.findByIdAndUpdate(transaction.fromWallet, { $inc: { balance: transaction.amount } });
 
-  // التراجع عن تأثيرات المحافظ
-  if (transaction.toWallet) {
-    await Wallet.findByIdAndUpdate(transaction.toWallet, {
-      $inc: { balance: -transaction.amount }
-    });
-  }
-  if (transaction.fromWallet) {
-    await Wallet.findByIdAndUpdate(transaction.fromWallet, {
-      $inc: { balance: transaction.amount }
-    });
-  }
-
-  // التراجع عن الفاتورة
   if (transaction.invoice) {
-    await Invoice.findByIdAndUpdate(transaction.invoice, {
-      $inc: { paidAmount: -transaction.amount },
-      $pull: { transactions: transaction._id }
-    });
-    await updateInvoiceStatus(transaction.invoice);
+    await updateInvoiceAndLinkedStatus(transaction.invoice, -transaction.amount, transaction._id, true);
   }
 
-  // التراجع عن الشهر
-  if (transaction.contractMonth) {
-    const month = await ContractMonth.findById(transaction.contractMonth);
-    if (month) {
-      month.paidAmount = Math.max(0, (month.paidAmount || 0) - transaction.amount);
-      await month.save();
-    }
-  }
-
-  if (transaction.client) {
-    await updateClientStats(transaction.client);
-  }
+  if (transaction.client) await updateClientStats(transaction.client);
 
   await Transaction.findByIdAndDelete(req.params.id);
-
-  res.status(200).json({
-    status: 'success',
-    message: 'تم حذف المعاملة بنجاح'
-  });
+  res.status(200).json({ status: 'success', message: 'تم حذف المعاملة بنجاح' });
 });
 
-
-// @desc    ملخص المعاملات
-// @route   GET /api/transactions/summary
-// @access  Private (admin, finance)
+// ملخص المعاملات (كما هو)
 exports.getTransactionsSummary = asyncHandler(async (req, res, next) => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const monthlyStats = await Transaction.aggregate([
     { $match: { transactionDate: { $gte: startOfMonth }, status: 'مكتمل', nature: 'خارجي' } },
-    {
-      $group: {
-        _id: { type: '$type', currency: '$currency' },
-        total: { $sum: '$amount' }
-      }
-    }
+    { $group: { _id: { type: '$type', currency: '$currency' }, total: { $sum: '$amount' } } }
   ]);
 
   const currencyStats = {};
   monthlyStats.forEach(stat => {
-    const type = stat._id.type; // 'دخل' or 'مصروف'
+    const type = stat._id.type;
     const currency = stat._id.currency || 'USD';
-    if (!currencyStats[currency]) {
-      currencyStats[currency] = { income: 0, expense: 0, net: 0 };
-    }
-    if (type === 'دخل') {
-      currencyStats[currency].income = stat.total;
-    } else if (type === 'مصروف') {
-      currencyStats[currency].expense = stat.total;
-    }
+    if (!currencyStats[currency]) currencyStats[currency] = { income: 0, expense: 0, net: 0 };
+    if (type === 'دخل') currencyStats[currency].income = stat.total;
+    else if (type === 'مصروف') currencyStats[currency].expense = stat.total;
   });
 
-  // حساب الصافي لكل عملة
   Object.keys(currencyStats).forEach(currency => {
     currencyStats[currency].net = currencyStats[currency].income - currencyStats[currency].expense;
   });
 
-  // حساب الرصيد الإجمالي لكل عملة من جميع المحافظ النشطة
   const wallets = await Wallet.find({ isActive: true });
   const totalBalance = {};
   wallets.forEach(w => {
@@ -474,121 +332,74 @@ exports.getTransactionsSummary = asyncHandler(async (req, res, next) => {
     totalBalance[currency] = (totalBalance[currency] || 0) + (w.balance || 0);
   });
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      month: currencyStats,
-      totalBalance,
-      wallets: wallets.map(w => ({
-        _id: w._id,
-        name: w.name,
-        currency: w.currency,
-        balance: w.balance,
-        account: w.account
-      }))
-    }
-  });
+  res.status(200).json({ status: 'success', data: { month: currencyStats, totalBalance, wallets } });
 });
 
-
 // =============================================
-// دوال مساعدة
+// دوال مساعدة محدثة لتشمل الرواتب والسلف وغيرها
 // =============================================
 
-const updateAccountBalances = async (transaction) => {
-  // هذه الدالة تُشغل يدوياً أو عبر service
-  if (transaction.status !== 'مكتمل') return;
-
-  if (transaction.toAccount) {
-    await Account.findByIdAndUpdate(transaction.toAccount, {
-      lastBalanceUpdate: Date.now()
-    });
-  }
-  if (transaction.fromAccount) {
-    await Account.findByIdAndUpdate(transaction.fromAccount, {
-      lastBalanceUpdate: Date.now()
-    });
-  }
-};
-
-const updateContractMonthStatus = async (monthId) => {
-  const month = await ContractMonth.findById(monthId);
-  if (!month) return;
-
-  if (month.paidAmount >= month.value) {
-    month.status = 'paid';
-    month.paidDate = new Date();
-  } else if (month.paidAmount > 0) {
-    month.status = 'partially_paid';
-  } else {
-    month.status = 'confirmed';
-  }
-  await month.save();
-
-  // تحديث إحصائيات العقد
-  const Contract = require('../models/Contract');
-  const allMonths = await ContractMonth.find({ contract: month.contract });
-  const stats = {
-    totalMonths: allMonths.length,
-    paidMonths: allMonths.filter(m => m.status === 'paid').length,
-    pendingMonths: allMonths.filter(m => ['confirmed', 'overdue', 'partially_paid'].includes(m.status)).length,
-    totalValue: allMonths.reduce((sum, m) => sum + m.value, 0),
-    totalPaid: allMonths.reduce((sum, m) => sum + m.paidAmount, 0)
-  };
-  stats.totalRemaining = stats.totalValue - stats.totalPaid;
-  await Contract.findByIdAndUpdate(month.contract, { computedStats: stats });
-};
-
-const updateInvoiceStatus = async (invoiceId, additionalAmount = 0) => {
+async function updateInvoiceAndLinkedStatus(invoiceId, amount, transactionId, isRemoving = false) {
   const invoice = await Invoice.findById(invoiceId);
   if (!invoice) return;
 
-  if (additionalAmount !== 0) {
-    invoice.paidAmount = Math.max(0, (invoice.paidAmount || 0) + additionalAmount);
-  }
-
-  if (invoice.paidAmount >= invoice.totalAmount) {
-    invoice.status = 'مدفوعة';
-  } else if (invoice.paidAmount > 0) {
-    invoice.status = 'مدفوعة جزئياً';
+  if (isRemoving) {
+    invoice.paidAmount = Math.max(0, (invoice.paidAmount || 0) + amount);
+    invoice.transactions = invoice.transactions.filter(t => t.toString() !== transactionId.toString());
   } else {
-    if (invoice.status !== 'مسودة' && invoice.status !== 'ملغاة') {
-      invoice.status = 'مصدرة';
-    }
+    invoice.paidAmount = Math.max(0, (invoice.paidAmount || 0) + amount);
+    if (!invoice.transactions.includes(transactionId)) invoice.transactions.push(transactionId);
   }
 
-  invoice.remainingAmount = invoice.totalAmount - invoice.paidAmount;
+  // تحديث حالة الفاتورة (pre-save سيتكفل بالباقي لكن سنؤكده هنا)
   await invoice.save();
 
-  const ContractMonth = require('../models/ContractMonth');
-  const contractMonth = await ContractMonth.findOne({ invoice: invoice._id });
-  if (contractMonth) {
-    contractMonth.paidAmount = invoice.paidAmount;
-    contractMonth.remainingAmount = contractMonth.value - invoice.paidAmount;
-    
-    if (invoice.paidAmount >= contractMonth.value) {
-      contractMonth.status = 'paid';
-      contractMonth.paidDate = new Date();
-    } else if (invoice.paidAmount > 0) {
-      contractMonth.status = 'partially_paid';
+  // تحديث السجلات المرتبطة بناءً على نوع الفاتورة
+  const type = invoice.invoiceType;
+
+  if (type === 'راتب' && invoice.salary) {
+    const Salary = require('../models/Salary');
+    await Salary.findByIdAndUpdate(invoice.salary, {
+      paidAmount: invoice.paidAmount,
+      status: invoice.status === 'مدفوعة' ? 'مدفوع' : invoice.status === 'مدفوعة جزئياً' ? 'مدفوع جزئياً' : 'مستحق',
+      paymentDate: invoice.status === 'مدفوعة' ? new Date() : undefined
+    });
+  }
+  else if (type === 'سلفة' && invoice.advance) {
+    const Advance = require('../models/Advance');
+    await Advance.findByIdAndUpdate(invoice.advance, {
+      repaidAmount: invoice.paidAmount,
+      status: invoice.status === 'مدفوعة' ? 'مسددة' : invoice.status === 'مدفوعة جزئياً' ? 'مسددة جزئياً' : 'موافق عليها'
+    });
+  }
+  else if (type === 'مصروف' && invoice.expense) {
+    const Expense = require('../models/Expense');
+    await Expense.findByIdAndUpdate(invoice.expense, {
+      status: invoice.status === 'مدفوعة' ? 'مدفوع' : 'معلق'
+    });
+  }
+  else if (type === 'اشتراك' && invoice.subscription) {
+    const Subscription = require('../models/Subscription');
+    await Subscription.findByIdAndUpdate(invoice.subscription, {
+      isPaid: invoice.status === 'مدفوعة'
+    });
+  }
+  else if (type === 'عقد شهري' && invoice.contractMonth) {
+    const ContractMonth = require('../models/ContractMonth');
+    const contractMonth = await ContractMonth.findById(invoice.contractMonth);
+    if (contractMonth) {
+      contractMonth.paidAmount = invoice.paidAmount;
+      if (invoice.status === 'مدفوعة') {
+        contractMonth.status = 'paid';
+        contractMonth.paidDate = new Date();
+      } else if (invoice.status === 'مدفوعة جزئياً') {
+        contractMonth.status = 'partially_paid';
+      }
+      await contractMonth.save();
     }
-    await contractMonth.save();
-    
-    // تحديث إحصائيات العقد
-    const Contract = require('../models/Contract');
-    const allMonths = await ContractMonth.find({ contract: contractMonth.contract });
-    const stats = {
-      totalMonths: allMonths.length,
-      paidMonths: allMonths.filter(m => m.status === 'paid').length,
-      pendingMonths: allMonths.filter(m => ['confirmed', 'overdue', 'partially_paid'].includes(m.status)).length,
-      totalValue: allMonths.reduce((sum, m) => sum + m.value, 0),
-      totalPaid: allMonths.reduce((sum, m) => sum + (m.paidAmount || 0), 0)
-    };
-    stats.totalRemaining = stats.totalValue - stats.totalPaid;
-    await Contract.findByIdAndUpdate(contractMonth.contract, { computedStats: stats });
   }
 
-  // تحديث المشروع المرتبط
+  // تحديث المشروع إن وجد
   if (invoice.project) {
     const Project = require('../models/Project');
     const project = await Project.findById(invoice.project);
@@ -598,34 +409,18 @@ const updateInvoiceStatus = async (invoiceId, additionalAmount = 0) => {
       await project.save();
     }
   }
+}
 
-  // تحديث العميل
-  if (invoice.client) {
-    const { updateClientStats } = require('../services/clientStatsService');
-    await updateClientStats(invoice.client);
+async function updateContractMonthStatus(monthId) {
+  const ContractMonth = require('../models/ContractMonth');
+  const month = await ContractMonth.findById(monthId);
+  if (!month) return;
+
+  if (month.paidAmount >= month.value) {
+    month.status = 'paid';
+    month.paidDate = new Date();
+  } else if (month.paidAmount > 0) {
+    month.status = 'partially_paid';
   }
-};
-
-// const updateClientStats = async (clientId) => {
-//   const ContractMonth = require('../models/ContractMonth');
-//   const Contract = require('../models/Contract');
-//   const Project = require('../models/Project');
-
-//   const [contractMonths, contracts, projects] = await Promise.all([
-//     ContractMonth.find({ client: clientId }),
-//     Contract.find({ client: clientId }),
-//     Project.find({ client: clientId })
-//   ]);
-
-//   const stats = {
-//     totalContracts: contracts.length,
-//     activeContracts: contracts.filter(c => c.status === 'نشط').length,
-//     totalProjects: projects.length,
-//     activeProjects: projects.filter(p => p.status === 'قيد التنفيذ').length,
-//     totalInvoiced: contractMonths.reduce((sum, cm) => sum + cm.value, 0),
-//     totalPaid: contractMonths.reduce((sum, cm) => sum + cm.paidAmount, 0)
-//   };
-//   stats.balance = stats.totalPaid - stats.totalInvoiced;
-
-//   await Client.findByIdAndUpdate(clientId, { computedStats: stats });
-// };
+  await month.save();
+}

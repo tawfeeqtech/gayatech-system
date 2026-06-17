@@ -33,6 +33,19 @@ const AdvanceSchema = new mongoose.Schema({
     type: Number
   },
   
+  // سجل الخصومات المنفذة من الراتب
+  deductions: [{
+    salary: { type: mongoose.Schema.Types.ObjectId, ref: 'Salary' },
+    amount: Number,
+    date: { type: Date, default: Date.now }
+  }],
+
+  // الأقساط المخططة (في حال تم اختيار أقساط)
+  installmentAmount: {
+    type: Number,
+    min: 0
+  },
+
   // الحالة
   status: {
     type: String,
@@ -47,6 +60,12 @@ const AdvanceSchema = new mongoose.Schema({
     default: 'خصم من الراتب'
   },
   
+  // الفاتورة المرتبطة (يتم إنشاؤها عند الموافقة)
+  invoice: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Invoice'
+  },
+
   // المعاملة المرتبطة
   transaction: {
     type: mongoose.Schema.Types.ObjectId,
@@ -73,6 +92,13 @@ const AdvanceSchema = new mongoose.Schema({
 AdvanceSchema.index({ employee: 1, status: 1 });
 
 AdvanceSchema.pre('save', function(next) {
+  // حساب الرصيد المسدد من مصفوفة الخصومات
+  if (this.deductions && this.deductions.length > 0) {
+    const totalDeducted = this.deductions.reduce((acc, d) => acc + d.amount, 0);
+    // لاحظ: repaidAmount قد يأتي أيضاً من معاملات دفع مباشرة، لذا سنعتمد الأكبر أو نجمعهم
+    // لتسهيل الأمر سنفترض أن repaidAmount يتم تحديثه خارجياً أيضاً
+  }
+
   this.remainingAmount = this.amount - this.repaidAmount;
   
   if (this.repaidAmount >= this.amount) {

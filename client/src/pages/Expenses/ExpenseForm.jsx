@@ -6,6 +6,7 @@ import FormField from '../../components/ui/FormField';
 import expenseAPI from '../../api/expenses';
 import categoryAPI from '../../api/expenseCategories';
 import accountAPI from '../../api/accounts';
+import vendorAPI from '../../api/vendors';
 import { useCurrencies } from '../../hooks/useCurrencies';
 
 const { Title } = Typography;
@@ -17,10 +18,12 @@ const ExpenseForm = () => {
   const { currencies } = useCurrencies();
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [vendors, setVendors] = useState([]);
 
   useEffect(() => {
     categoryAPI.getAll().then(r => setCategories(r.data.data.categories || [])).catch(() => {});
     accountAPI.getAll().then(r => setAccounts(r.data.data.accounts || [])).catch(() => {});
+    vendorAPI.getAll().then(r => setVendors(r.data.data.vendors || [])).catch(() => {});
   }, []);
 
   const handleSubmit = async (values) => {
@@ -84,7 +87,10 @@ const ExpenseForm = () => {
               <FormField name="description" label="الوصف" rules={[{ required: true }]} placeholder="وصف المصروف" />
             </Col>
             <Col xs={24} md={8}>
-              <FormField name="vendor" label="المزود" placeholder="اسم المزود" />
+              <Form.Item name="vendorRef" label="المزود">
+                <Select placeholder="اختر المزود" allowClear showSearch optionFilterProp="label"
+                  options={vendors.map(v => ({ value: v._id, label: v.name }))} />
+              </Form.Item>
             </Col>
           </Row>
           <Row gutter={24}>

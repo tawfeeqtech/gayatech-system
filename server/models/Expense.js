@@ -14,9 +14,17 @@ const ExpenseSchema = new mongoose.Schema({
     ref: 'ExpenseCategory',
     required: true
   },
+  vendorRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vendor'
+  },
   transaction: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Transaction'
+  },
+  invoice: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Invoice'
   },
   
   // المبلغ
@@ -42,7 +50,7 @@ const ExpenseSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  vendor: String,     // المزود/البائع
+  vendor: String,     // اسم المزود (للتوافق القديم)
   receipt: String,    // رقم الإيصال
   
   // وسيلة الدفع

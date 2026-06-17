@@ -18,6 +18,7 @@ import InvoiceList from './pages/Invoices/InvoiceList';
 import InvoiceForm from './pages/Invoices/InvoiceForm';
 import ExpenseList from './pages/Expenses/ExpenseList';
 import ExpenseForm from './pages/Expenses/ExpenseForm';
+import VendorList from './pages/Vendors/VendorList';
 import AccountsOverview from './pages/Accounts/AccountsOverview';
 import EmployeeList from './pages/Employees/EmployeeList';
 import EmployeeForm from './pages/Employees/EmployeeForm';
@@ -120,6 +121,7 @@ function App() {
 
           <Route path="expenses" element={<ExpenseList />} />
           <Route path="expenses/new" element={<ExpenseForm />} />
+          <Route path="vendors" element={<VendorList />} />
 
           <Route path="accounts" element={<AccountsOverview />} />
 

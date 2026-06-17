@@ -7,9 +7,11 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import StatCard from '../../components/ui/StatCard';
 import subscriptionAPI from '../../api/subscriptions';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const SubscriptionList = () => {
   const navigate = useNavigate();
+  const { currencies } = useCurrencies();
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -18,6 +20,7 @@ const SubscriptionList = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [currencyFilter, setCurrencyFilter] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -25,6 +28,7 @@ const SubscriptionList = () => {
       const params = { page, limit: pageSize };
       if (categoryFilter) params.category = categoryFilter;
       if (statusFilter) params.status = statusFilter;
+      if (currencyFilter) params.currency = currencyFilter;
 
       const res = await subscriptionAPI.getAll(params);
       const subs = res.data.data.subscriptions || [];
@@ -119,6 +123,14 @@ const SubscriptionList = () => {
 
   const filterBar = (
     <Space wrap>
+      <Select
+        placeholder="العملة"
+        allowClear
+        style={{ width: 120 }}
+        value={currencyFilter || undefined}
+        onChange={(v) => { setCurrencyFilter(v || ''); setPage(1); }}
+        options={currencies}
+      />
       <Select
         placeholder="التصنيف"
         allowClear
