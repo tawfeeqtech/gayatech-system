@@ -64,9 +64,24 @@ exports.createSalary = asyncHandler(async (req, res, next) => {
 });
 
 exports.updateSalary = asyncHandler(async (req, res, next) => {
-  const salary = await Salary.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const salary = await Salary.findById(req.params.id);
   if (!salary) return next(new ApiError('الراتب غير موجود', 404));
-  res.status(200).json({ status: 'success', data: { salary } });
+
+  const updated = Object.assign(salary, req.body);
+  if (!updated.deductionItems || updated.deductionItems.length === 0) {
+    await deductionService.applyDeductions(updated);
+  }
+  await updated.save();
+
+  if (updated.invoice) {
+    const Invoice = require('../models/Invoice');
+    await Invoice.findByIdAndUpdate(updated.invoice, {
+      totalAmount: updated.totalAmount,
+      status: updated.status
+    });
+  }
+
+  res.status(200).json({ status: 'success', data: { salary: updated } });
 });
 
 exports.generateMonthlySalaries = asyncHandler(async (req, res) => {

@@ -6,6 +6,8 @@ import transactionAPI from '../../api/transactions';
 import clientAPI from '../../api/clients';
 import accountAPI from '../../api/accounts';
 import invoiceAPI from '../../api/invoices';
+import employeeAPI from '../../api/employees';
+import vendorAPI from '../../api/vendors';
 import api from '../../api/axios';
 import { useParams } from 'react-router-dom';
 import contractAPI from '../../api/contracts';
@@ -39,11 +41,15 @@ const TransactionForm = () => {
   const [selectedInvoices, setSelectedInvoices] = useState([]);
   const [allocationMode, setAllocationMode] = useState(false);
   const [projects, setProjects] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [vendors, setVendors] = useState([]);
 
   useEffect(() => { 
     clientAPI.getAll({ limit: 100 }).then(r => setClients(r.data.data.clients || [])).catch(() => {});
     accountAPI.getAll().then(r => setAccounts(r.data.data.accounts || [])).catch(() => {});
     projectAPI.getAll({ limit: 100 }).then(r => setProjects(r.data.data.projects || [])).catch(() => {});
+    employeeAPI.getAll({ limit: 200 }).then(r => setEmployees(r.data.data.employees || [])).catch(() => {});
+    vendorAPI.getAll({ limit: 200 }).then(r => setVendors(r.data.data.vendors || [])).catch(() => {});
 
     // قراءة البيانات من الرابط (Query Params)
     const params = new URLSearchParams(window.location.search);
@@ -146,9 +152,9 @@ const TransactionForm = () => {
     }
   };
 
-  // عند اختيار العميل - جلب فواتيره
+  // عند اختيار العميل/الموظف/المورد - جلب الفواتير
   const handleClientChange = async (clientId) => {
-    form.setFieldsValue({ invoice: undefined, contractMonth: undefined });
+    form.setFieldsValue({ invoice: undefined, contractMonth: undefined, employee: undefined, vendor: undefined });
     if (!clientId) { 
       setInvoices([]); 
       setContractMonths([]); 
@@ -224,6 +230,72 @@ const TransactionForm = () => {
     } catch (e) {
       console.error('Error:', e);
       setInvoices([]);
+      setContractMonths([]);
+    } finally {
+      setLoadingInvoices(false);
+    }
+  };
+
+  const handleEmployeeChange = async (employeeId) => {
+    form.setFieldsValue({ invoice: undefined, contractMonth: undefined, client: undefined, vendor: undefined });
+    if (!employeeId) { setInvoices([]); setContractMonths([]); return; }
+
+    setLoadingInvoices(true);
+    try {
+      const invRes = await invoiceAPI.getAll({ limit: 500 });
+      const allInvoices = invRes.data.data.invoices || [];
+
+      const empInvoices = allInvoices
+        .filter(inv => {
+          const invEmpId = typeof inv.employee === 'object' ? inv.employee?._id : inv.employee;
+          return invEmpId === employeeId && inv.status !== 'مدفوعة' && inv.status !== 'ملغاة';
+        })
+        .map(inv => ({ ...inv, contractMonthId: inv.contractMonth || null }));
+
+      setInvoices(empInvoices);
+      setOtherInvoices([]);
+      setContractMonths([]);
+
+      if (empInvoices.length === 0) {
+        message.info('لا توجد فواتير غير مدفوعة مرتبطة بهذا الموظف');
+      }
+    } catch (e) {
+      console.error('Error loading employee invoices:', e);
+      setInvoices([]);
+      setOtherInvoices([]);
+      setContractMonths([]);
+    } finally {
+      setLoadingInvoices(false);
+    }
+  };
+
+  const handleVendorChange = async (vendorId) => {
+    form.setFieldsValue({ invoice: undefined, contractMonth: undefined, client: undefined, employee: undefined });
+    if (!vendorId) { setInvoices([]); setContractMonths([]); return; }
+
+    setLoadingInvoices(true);
+    try {
+      const invRes = await invoiceAPI.getAll({ limit: 500 });
+      const allInvoices = invRes.data.data.invoices || [];
+
+      const vendorInvoices = allInvoices
+        .filter(inv => {
+          const invVendorId = typeof inv.vendor === 'object' ? inv.vendor?._id : inv.vendor;
+          return invVendorId === vendorId && inv.status !== 'مدفوعة' && inv.status !== 'ملغاة';
+        })
+        .map(inv => ({ ...inv, contractMonthId: inv.contractMonth || null }));
+
+      setInvoices(vendorInvoices);
+      setOtherInvoices([]);
+      setContractMonths([]);
+
+      if (vendorInvoices.length === 0) {
+        message.info('لا توجد فواتير غير مدفوعة مرتبطة بهذا المورد');
+      }
+    } catch (e) {
+      console.error('Error loading vendor invoices:', e);
+      setInvoices([]);
+      setOtherInvoices([]);
       setContractMonths([]);
     } finally {
       setLoadingInvoices(false);

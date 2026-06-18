@@ -2,6 +2,8 @@ const Advance = require('../models/Advance');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 const invoiceFactoryService = require('../services/invoiceFactoryService');
+const Transaction = require('../models/Transaction');
+const Invoice = require('../models/Invoice');
 
 exports.getAdvances = asyncHandler(async (req, res, next) => {
   const filter = {};
@@ -97,8 +99,7 @@ exports.repayAdvance = asyncHandler(async (req, res, next) => {
     return next(new ApiError('يرجى تحديد مبلغ سداد صالح', 400));
   }
 
-  const remaining = advance.remainingAmount;
-  if (amount > remaining) {
+  if (amount > advance.remainingAmount) {
     return next(new ApiError('مبلغ السداد يتجاوز المتبقي من السلفة', 400));
   }
 

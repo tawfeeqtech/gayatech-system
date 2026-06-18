@@ -53,7 +53,7 @@ const SalaryList = () => {
       message.error('لا توجد فاتورة مرتبطة بهذا الراتب');
       return;
     }
-    navigate(`/transactions/new?type=مصروف&invoice=${record.invoice._id}&amount=${record.remainingAmount}&client=${record.employee?._id}`);
+    navigate(`/transactions/new?type=مصروف&invoice=${record.invoice._id}&amount=${record.remainingAmount}&employee=${record.employee?._id}`);
   };
 
   const handleEdit = async (values) => {
