@@ -73,7 +73,10 @@ const ExpenseList = () => {
       title: 'المبلغ', dataIndex: 'amount', key: 'amount', width: 120,
       render: (v, r) => <span style={{ color: '#ef4444', fontWeight: 600 }}>- {formatCurrency(v, r.currency)}</span>,
     },
-    { title: 'المزود', dataIndex: 'vendor', key: 'vendor', width: 130 },
+    {
+      title: 'المزود', key: 'vendor', width: 130,
+      render: (_, r) => r.vendor || r.vendorRef?.name || 'مصروف عام'
+    },
     { title: 'وسيلة الدفع', dataIndex: 'paymentMethod', key: 'method', width: 120 },
   ];
 

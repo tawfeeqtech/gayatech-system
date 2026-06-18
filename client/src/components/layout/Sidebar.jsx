@@ -142,7 +142,7 @@ const Sidebar = () => {
     }
     
     // المالية
-    if (path.startsWith('/transactions') || path.startsWith('/invoices') || path.startsWith('/accounts') || path.startsWith('/expenses')) {
+    if (path.startsWith('/transactions') || path.startsWith('/invoices') || path.startsWith('/accounts') || path.startsWith('/expenses') || path.startsWith('/vendors')) {
       openSections.push('finance');
     }
     

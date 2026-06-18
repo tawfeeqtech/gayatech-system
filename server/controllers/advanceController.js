@@ -4,6 +4,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const invoiceFactoryService = require('../services/invoiceFactoryService');
 const Transaction = require('../models/Transaction');
 const Invoice = require('../models/Invoice');
+const Wallet = require('../models/Wallet');
 
 exports.getAdvances = asyncHandler(async (req, res, next) => {
   const filter = {};
@@ -79,6 +80,39 @@ exports.approveAdvance = asyncHandler(async (req, res, next) => {
   advance.invoice = invoice._id;
   await advance.save();
 
+  // إذا كانت طريقة السداد دفعة واحدة، يمكن إنشاء معاملة تلقائية (اختياري حسب رغبة المستخدم)
+  // هنا سنقوم بإنشاء المعاملة إذا تم تحديد حساب الدفع
+  if (advance.repaymentMethod === 'دفعة واحدة' && req.body.accountId && req.body.walletId) {
+    const transaction = await Transaction.create({
+      type: 'مصروف',
+      amount: advance.amount,
+      currency: advance.currency,
+      fromAccount: req.body.accountId,
+      fromWallet: req.body.walletId,
+      invoice: invoice._id,
+      advance: advance._id,
+      employee: advance.employee,
+      transactionDate: new Date(),
+      description: `صرف سلفة للموظف - ${advance.reason || ''}`,
+      status: 'مكتمل',
+      createdBy: req.user._id
+    });
+
+    // تحديث رصيد المحفظة
+    await Wallet.findByIdAndUpdate(req.body.walletId, { $inc: { balance: -advance.amount } });
+
+    advance.transaction = transaction._id;
+    advance.repaidAmount = advance.amount;
+    advance.status = 'مسددة';
+    await advance.save();
+
+    // تحديث الفاتورة لتصبح مدفوعة
+    invoice.paidAmount = advance.amount;
+    invoice.status = 'مدفوعة';
+    invoice.transactions.push(transaction._id);
+    await invoice.save();
+  }
+
   res.status(200).json({ status: 'success', data: { advance } });
 });
 
@@ -87,25 +121,6 @@ exports.rejectAdvance = asyncHandler(async (req, res, next) => {
     status: 'مرفوضة'
   }, { new: true });
   if (!advance) return next(new ApiError('السلفة غير موجودة', 404));
-  res.status(200).json({ status: 'success', data: { advance } });
-});
-
-exports.repayAdvance = asyncHandler(async (req, res, next) => {
-  const { amount } = req.body;
-  const advance = await Advance.findById(req.params.id);
-  if (!advance) return next(new ApiError('السلفة غير موجودة', 404));
-
-  if (typeof amount !== 'number' || amount <= 0) {
-    return next(new ApiError('يرجى تحديد مبلغ سداد صالح', 400));
-  }
-
-  if (amount > advance.remainingAmount) {
-    return next(new ApiError('مبلغ السداد يتجاوز المتبقي من السلفة', 400));
-  }
-
-  advance.repaidAmount += amount;
-  await advance.save();
-
   res.status(200).json({ status: 'success', data: { advance } });
 });
 

@@ -562,7 +562,7 @@ const TransactionForm = () => {
                       options={[
                         ...(type === 'دخل' ? invoices : otherInvoices).map(inv => ({
                           value: inv._id,
-                          label: `[${inv.invoiceType}] ${inv.invoiceNumber || '—'} | متبقي: ${formatCurrency(inv.totalAmount - inv.paidAmount, inv.currency)}`
+                          label: `[${inv.invoiceType || ''}] ${inv.invoiceNumber || '—'} | متبقي: ${formatCurrency(inv.totalAmount - inv.paidAmount, inv.currency)}`
                         }))
                       ]} />
                   </Form.Item>
@@ -655,7 +655,7 @@ const TransactionForm = () => {
                               .filter(inv => !selectedInvoices.find(si => si._id === inv._id))
                               .map(inv => ({
                                 value: inv._id,
-                                label: `${inv.invoiceNumber || '—'} | ${formatCurrency(inv.totalAmount - (inv.paidAmount || 0), inv.currency)} متبقي | ${inv.invoiceType}`
+                                label: `${inv.invoiceNumber || '—'} | ${formatCurrency(inv.totalAmount - (inv.paidAmount || 0), inv.currency)} متبقي | ${inv.invoiceType || ''}`
                               }))}
                           />
                         </Col>
