@@ -93,6 +93,15 @@ exports.repayAdvance = asyncHandler(async (req, res, next) => {
   const advance = await Advance.findById(req.params.id);
   if (!advance) return next(new ApiError('السلفة غير موجودة', 404));
 
+  if (typeof amount !== 'number' || amount <= 0) {
+    return next(new ApiError('يرجى تحديد مبلغ سداد صالح', 400));
+  }
+
+  const remaining = advance.remainingAmount;
+  if (amount > remaining) {
+    return next(new ApiError('مبلغ السداد يتجاوز المتبقي من السلفة', 400));
+  }
+
   advance.repaidAmount += amount;
   await advance.save();
 
