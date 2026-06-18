@@ -56,12 +56,37 @@ exports.createSubscription = asyncHandler(async (req, res, next) => {
 exports.updateSubscription = asyncHandler(async (req, res, next) => {
   const subscription = await Subscription.findByIdAndUpdate(req.params.id, req.body, { new: true });
   if (!subscription) return next(new ApiError('الاشتراك غير موجود', 404));
+
+  // تحديث المبالغ في الفواتير غير المدفوعة المرتبطة بالاشتراك
+  if (req.body.amount) {
+    const Invoice = require('../models/Invoice');
+    await Invoice.updateMany(
+      {
+        subscription: subscription._id,
+        status: { $in: ['مسودة', 'مصدرة', 'متأخرة'] }
+      },
+      {
+        totalAmount: req.body.amount,
+        'items.0.unitPrice': req.body.amount,
+        'items.0.totalPrice': req.body.amount
+      }
+    );
+  }
+
   res.status(200).json({ status: 'success', data: { subscription } });
 });
 
 exports.deleteSubscription = asyncHandler(async (req, res, next) => {
-  const subscription = await Subscription.findByIdAndDelete(req.params.id);
+  const subscription = await Subscription.findById(req.params.id);
   if (!subscription) return next(new ApiError('الاشتراك غير موجود', 404));
+
+  // حذف الفواتير المرتبطة
+  if (subscription.invoices && subscription.invoices.length > 0) {
+    const Invoice = require('../models/Invoice');
+    await Invoice.deleteMany({ _id: { $in: subscription.invoices } });
+  }
+
+  await Subscription.findByIdAndDelete(req.params.id);
   res.status(200).json({ status: 'success', message: 'تم حذف الاشتراك' });
 });
 

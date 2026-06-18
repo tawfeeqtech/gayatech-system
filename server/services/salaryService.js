@@ -72,7 +72,10 @@ const salaryService = {
    * توليد الرواتب لجميع الموظفين النشطين
    */
   generateAllSalaries: async (userId) => {
-    const employees = await Employee.find({ status: 'نشط', autoGenerateSalary: true });
+    const employees = await Employee.find({
+      status: 'نشط',
+      autoGenerateSalary: { $ne: false }
+    });
     let totalGenerated = 0;
 
     for (const emp of employees) {

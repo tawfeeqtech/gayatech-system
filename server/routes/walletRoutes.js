@@ -7,7 +7,7 @@ const router = express.Router({ mergeParams: true });
 
 router.use(protect);
 
-router.get('/', roleCheck('admin', 'finance'), walletController.getWallets);
+router.get('/', roleCheck('admin', 'finance', 'accountant'), walletController.getWallets);
 router.post('/', roleCheck('admin'), walletController.createWallet);
 router.put('/:id', roleCheck('admin'), walletController.updateWallet);
 router.delete('/:id', roleCheck('admin'), walletController.deleteWallet);
