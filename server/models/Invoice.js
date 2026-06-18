@@ -165,7 +165,7 @@ InvoiceSchema.pre('save', async function(next) {
   }
   
   // حساب المتبقي
-  this.remainingAmount = this.totalAmount - this.paidAmount;
+  this.remainingAmount = (this.totalAmount || 0) - (this.paidAmount || 0);
   
   // تحديث الحالة
   if (this.paidAmount >= this.totalAmount && this.status !== 'ملغاة') {

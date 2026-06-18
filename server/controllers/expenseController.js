@@ -129,8 +129,7 @@ exports.updateExpense = asyncHandler(async (req, res, next) => {
     await Invoice.findByIdAndUpdate(expense.invoice, {
       totalAmount: expense.amount,
       issueDate: expense.expenseDate,
-      dueDate: expense.expenseDate,
-      vendor: expense.vendorRef
+      dueDate: expense.expenseDate
     });
   }
 
