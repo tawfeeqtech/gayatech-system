@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, message, Tag } from 'antd';
+import { Space, Select, message, Tag, Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { CreditCardOutlined } from '@ant-design/icons';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import expenseAPI from '../../api/expenses';
@@ -62,9 +63,18 @@ const ExpenseList = () => {
     }
   };
 
+  const handlePay = (record) => {
+    if (!record.invoice) {
+      message.error('لا توجد فاتورة مرتبطة بهذا المصروف');
+      return;
+    }
+    const recipientId = record.vendorRef?._id || '';
+    navigate(`/transactions/new?type=مصروف&invoice=${record.invoice._id}&amount=${record.amount}&client=${recipientId}`);
+  };
+
   const columns = [
     { title: 'التاريخ', dataIndex: 'expenseDate', key: 'date', width: 110, render: (d) => d ? new Date(d).toLocaleDateString('ar-SA') : '—' },
-    { title: 'الوصف', dataIndex: 'description', key: 'desc', width: 250, ellipsis: true },
+    { title: 'الوصف', dataIndex: 'description', key: 'desc', width: 200, ellipsis: true },
     {
       title: 'التصنيف', key: 'category', width: 120,
       render: (_, r) => r.category ? <Tag color={r.category.color || '#3b82f6'}>{r.category.name}</Tag> : '—',
@@ -73,8 +83,29 @@ const ExpenseList = () => {
       title: 'المبلغ', dataIndex: 'amount', key: 'amount', width: 120,
       render: (v, r) => <span style={{ color: '#ef4444', fontWeight: 600 }}>- {formatCurrency(v, r.currency)}</span>,
     },
-    { title: 'المزود', dataIndex: 'vendor', key: 'vendor', width: 130 },
+    { title: 'الحالة', key: 'status', width: 100,
+      render: (_, r) => {
+        const isPaid = r.invoice?.status === 'مدفوعة' || r.status === 'مدفوع';
+        return <Tag color={isPaid ? 'green' : 'orange'}>{isPaid ? 'مدفوع' : 'معلق'}</Tag>;
+      }
+    },
     { title: 'وسيلة الدفع', dataIndex: 'paymentMethod', key: 'method', width: 120 },
+    {
+      title: 'إجراءات الدفع', key: 'payAction', width: 100,
+      render: (_, r) => {
+        const isPaid = r.invoice?.status === 'مدفوعة' || r.status === 'مدفوع';
+        return !isPaid && (
+          <Button
+            size="small"
+            type="primary"
+            icon={<CreditCardOutlined />}
+            onClick={() => handlePay(r)}
+          >
+            دفع
+          </Button>
+        );
+      }
+    },
   ];
 
   const filterBar = (

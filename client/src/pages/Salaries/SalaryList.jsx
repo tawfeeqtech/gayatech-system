@@ -99,8 +99,23 @@ const SalaryList = () => {
       render: (v, r) => formatCurrency(v, r.currency || 'USD'),
     },
     {
-      title: 'الخصومات', dataIndex: 'deductions', key: 'ded', width: 100,
-      render: (v, r) => v > 0 ? <span style={{ color: '#ef4444' }}>-{formatCurrency(v, r.currency)}</span> : '0',
+      title: 'الخصومات', dataIndex: 'deductions', key: 'ded', width: 200,
+      render: (v, r) => (
+        <div>
+          {v > 0 ? (
+            <>
+              <span style={{ color: '#ef4444', fontWeight: 'bold' }}>-{formatCurrency(v, r.currency)}</span>
+              {r.deductionItems && r.deductionItems.length > 0 && (
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: 4 }}>
+                  {r.deductionItems.map((item, idx) => (
+                    <div key={idx}>• {item.reason}: {formatCurrency(item.amount, r.currency)}</div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : '0'}
+        </div>
+      ),
     },
     {
       title: 'الصافي', dataIndex: 'totalAmount', key: 'amount', width: 120,

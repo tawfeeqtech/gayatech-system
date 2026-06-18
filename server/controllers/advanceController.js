@@ -75,6 +75,9 @@ exports.approveAdvance = asyncHandler(async (req, res, next) => {
   });
 
   advance.invoice = invoice._id;
+
+  // إذا كان السداد دفعة واحدة، نعتبر الفاتورة تحتاج لسداد عبر معاملة
+  // أما إذا كان خصم من الراتب، فالسداد سيتم آلياً عند توليد الراتب
   await advance.save();
 
   res.status(200).json({ status: 'success', data: { advance } });
@@ -89,23 +92,7 @@ exports.rejectAdvance = asyncHandler(async (req, res, next) => {
 });
 
 exports.repayAdvance = asyncHandler(async (req, res, next) => {
-  const { amount } = req.body;
-  const advance = await Advance.findById(req.params.id);
-  if (!advance) return next(new ApiError('السلفة غير موجودة', 404));
-
-  if (typeof amount !== 'number' || amount <= 0) {
-    return next(new ApiError('يرجى تحديد مبلغ سداد صالح', 400));
-  }
-
-  const remaining = advance.remainingAmount;
-  if (amount > remaining) {
-    return next(new ApiError('مبلغ السداد يتجاوز المتبقي من السلفة', 400));
-  }
-
-  advance.repaidAmount += amount;
-  await advance.save();
-
-  res.status(200).json({ status: 'success', data: { advance } });
+  return next(new ApiError('يجب سداد السلف عبر المعاملات المالية أو الخصم التلقائي من الراتب فقط', 400));
 });
 
 exports.getPendingAdvances = asyncHandler(async (req, res, next) => {

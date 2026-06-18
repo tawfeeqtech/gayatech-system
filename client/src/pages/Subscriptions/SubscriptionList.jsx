@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, message, Tag, Select, Row, Col, Card } from 'antd';
+import { Space, message, Tag, Select, Row, Col, Card, Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { ExclamationCircleOutlined, CreditCardOutlined } from '@ant-design/icons';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import StatCard from '../../components/ui/StatCard';
@@ -75,6 +75,14 @@ const SubscriptionList = () => {
     }
   };
 
+  const handlePay = (record) => {
+    if (!record.invoice) {
+      message.error('لا توجد فاتورة مرتبطة بهذا الاشتراك');
+      return;
+    }
+    navigate(`/transactions/new?type=مصروف&invoice=${record.invoice._id}&amount=${record.amount}`);
+  };
+
   const statusColors = {
     'نشط': 'green',
     'قريب': 'orange',
@@ -112,7 +120,29 @@ const SubscriptionList = () => {
     },
     {
       title: 'الحالة', dataIndex: 'status', key: 'status', width: 120,
-      render: (s) => <Tag color={statusColors[s] || 'default'}>{s}</Tag>,
+      render: (s, r) => (
+        <Space direction="vertical" size={2}>
+          <Tag color={statusColors[s] || 'default'}>{s}</Tag>
+          {r.isPaid ? (
+            <Tag color="green" style={{ fontSize: '10px' }}>مدفوع</Tag>
+          ) : (
+            <Tag color="orange" style={{ fontSize: '10px' }}>بانتظار الدفع</Tag>
+          )}
+        </Space>
+      ),
+    },
+    {
+      title: 'إجراءات الدفع', key: 'payAction', width: 100,
+      render: (_, r) => !r.isPaid && (
+        <Button
+          size="small"
+          type="primary"
+          icon={<CreditCardOutlined />}
+          onClick={() => handlePay(r)}
+        >
+          دفع
+        </Button>
+      ),
     },
   ];
 
