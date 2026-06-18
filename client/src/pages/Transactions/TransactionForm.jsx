@@ -174,11 +174,10 @@ const TransactionForm = () => {
 
       setInvoices(clientInvoices);
 
-      // فواتير أخرى تظهر عندما لا يكون هناك عميل محدد (للمصاريف العامة)
+      // فواتير أخرى تظهر عندما لا يكون هناك عميل محدد (للمصاريف العامة أو الرواتب التي لم يتم تحديد موظف لها كعميل)
       const others = allInvoices.filter(inv =>
         ['راتب', 'سلفة', 'مصروف', 'اشتراك'].includes(inv.invoiceType) &&
-        inv.status !== 'مدفوعة' && inv.status !== 'ملغاة' &&
-        !inv.client && !inv.employee && !inv.vendor
+        inv.status !== 'مدفوعة' && inv.status !== 'ملغاة'
       );
       setOtherInvoices(others);
 
@@ -486,12 +485,17 @@ const TransactionForm = () => {
                   <Form.Item name="invoice" label="ربط بفاتورة">
                     <Select placeholder={loadingInvoices ? 'جاري...' : 'اختر الفاتورة'} allowClear
                       loading={loadingInvoices}
+                      showSearch
+                      optionFilterProp="label"
                       notFoundContent="لا توجد فواتير"
                       options={[
-                        ...(type === 'دخل' ? invoices : otherInvoices).map(inv => ({
-                          value: inv._id,
-                          label: `[${inv.invoiceType}] ${inv.invoiceNumber || '—'} | متبقي: ${formatCurrency(inv.totalAmount - inv.paidAmount, inv.currency)}`
-                        }))
+                        ...(type === 'دخل' ? invoices : otherInvoices).map(inv => {
+                          const recipientName = inv.client?.name || inv.employee?.name || inv.vendor?.name || '';
+                          return {
+                            value: inv._id,
+                            label: `[${inv.invoiceType}] ${inv.invoiceNumber || '—'} ${recipientName ? '| ' + recipientName : ''} | متبقي: ${formatCurrency(inv.totalAmount - inv.paidAmount, inv.currency)}`
+                          };
+                        })
                       ]} />
                   </Form.Item>
                 </Col>
