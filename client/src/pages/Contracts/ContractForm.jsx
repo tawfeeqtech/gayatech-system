@@ -59,6 +59,11 @@ const ContractForm = () => {
       const data = { ...values };
       if (!data.endDate) delete data.endDate;
 
+      // تحويل التواريخ من dayjs إلى نصوص YYYY-MM-DD
+      // لمنع مشكلة timezone (مثلاً 2026-01-01T00:00+02:00 تصبح 2025-12-31T22:00Z)
+      if (data.startDate) data.startDate = dayjs(data.startDate).format('YYYY-MM-DD');
+      if (data.endDate) data.endDate = dayjs(data.endDate).format('YYYY-MM-DD');
+
       if (isEdit) {
         await contractAPI.update(id, data);
         message.success('تم تحديث العقد بنجاح');

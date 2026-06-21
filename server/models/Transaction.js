@@ -144,6 +144,10 @@ const TransactionSchema = new mongoose.Schema({
     type: Number
     // إذا كانت المعاملة بعملة مختلفة عن الحساب
   },
+  toAmount: {
+    type: Number
+    // المبلغ بعد التحويل (للتحويلات بين عملات مختلفة)
+  },
   originalAmount: {
     type: Number
   },

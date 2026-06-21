@@ -24,6 +24,7 @@ const Advance = require('../models/Advance');
 const IncomeSource = require('../models/IncomeSource');
 const Subscription = require('../models/Subscription');
 const CurrencyExchange = require('../models/CurrencyExchange');
+const Currency = require('../models/Currency');
 const Notification = require('../models/Notification');
 
 // =============================================
@@ -218,9 +219,27 @@ const seedDB = async () => {
     console.log('\n🏷️  Creating expense categories...');
     const createdCategories = {};
     for (const c of expenseCategories) {
-      const category = await ExpenseCategory.create(c);
-      createdCategories[c.name] = category;
+      const cat = await ExpenseCategory.create(c);
+      createdCategories[c.name] = cat;
       console.log(`   ✅ ${c.name}`);
+    }
+
+    // 4. Currencies
+    console.log('\n💰 Seeding currencies...');
+    const currencyData = [
+      { code: 'USD', nameAr: 'دولار', symbol: '$', sortOrder: 1, isActive: true },
+      { code: 'ILS', nameAr: 'شيكل اسرائيلي', symbol: '₪', sortOrder: 2, isActive: true },
+      { code: 'SAR', nameAr: 'ريال سعودي', symbol: '﷼', sortOrder: 3, isActive: true },
+      { code: 'JOD', nameAr: 'دينار اردني', symbol: 'د.أ', sortOrder: 4, isActive: true },
+      { code: 'EUR', nameAr: 'يورو', symbol: '€', sortOrder: 5, isActive: true },
+    ];
+    for (const c of currencyData) {
+      await Currency.findOneAndUpdate(
+        { code: c.code },
+        { $set: c },
+        { upsert: true, new: true }
+      );
+      console.log(`   ✅ ${c.code} - ${c.nameAr}`);
     }
 
     // 5. Employees
@@ -519,6 +538,7 @@ const seedDB = async () => {
     console.log(`   🤝 Partners:          1`);
     console.log(`   💵 Partner Fundings:  1`);
     console.log(`   📑 Income Sources:    5`);
+    console.log(`   💰 Currencies:         ${Object.keys(currencyData).length}`);
     console.log(`   🏷️  Exp. Categories:  9`);
     console.log('='.repeat(50));
     

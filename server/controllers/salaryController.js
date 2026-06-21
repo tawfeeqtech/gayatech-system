@@ -42,13 +42,19 @@ exports.createSalary = asyncHandler(async (req, res, next) => {
 
   await salary.save();
 
+  // حساب تاريخ الاستحقاق من الشهر + يوم صرف الموظف
+  const Employee = require('../models/Employee');
+  const emp = await Employee.findById(salary.employee).select('salaryDayOfMonth');
+  const [y, m] = (salary.month || '').split('-').map(Number);
+  const dueDate = (y && m) ? new Date(y, m, emp?.salaryDayOfMonth || 1) : new Date();
+
   // إنشاء فاتورة للراتب
   const invoice = await invoiceFactoryService.createInvoice({
     type: 'راتب',
     amount: salary.totalAmount,
     currency: salary.currency,
     issueDate: new Date(),
-    dueDate: new Date(),
+    dueDate,
     refId: salary._id,
     refModel: 'salary',
     recipientId: salary.employee,

@@ -32,10 +32,20 @@ const CurrencyExchangeSchema = new mongoose.Schema({
   
   via: {
     type: String,
-    enum: ['ريم', 'بنك', 'نقد', 'صرافة', 'أخرى'],
+    enum: ['ريم', 'بنك', 'تحويل بنكي', 'نقد', 'صرافة', 'شيك', 'بطاقة ائتمان', 'أخرى'],
     default: 'بنك'
   },
   
+  // المحافظ المرتبطة
+  fromWallet: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Wallet'
+  },
+  toWallet: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Wallet'
+  },
+
   // المعاملة المرتبطة
   transaction: {
     type: mongoose.Schema.Types.ObjectId,

@@ -10,9 +10,9 @@ const Currency = require('../models/Currency');
 // (نفس القائمة الحالية في client/src/utils/constants.js)
 const currencies = [
   { code: 'USD', nameAr: 'دولار', symbol: '$', sortOrder: 1, isActive: true },
-  { code: 'ILS', nameAr: 'شيكل', symbol: '₪', sortOrder: 2, isActive: true },
-  { code: 'SAR', nameAr: 'ريال', symbol: '﷼', sortOrder: 3, isActive: true },
-  { code: 'JOD', nameAr: 'دينار', symbol: 'د.أ', sortOrder: 4, isActive: true },
+  { code: 'ILS', nameAr: 'شيكل اسرائيلي', symbol: '₪', sortOrder: 2, isActive: true },
+  { code: 'SAR', nameAr: 'ريال سعودي', symbol: '﷼', sortOrder: 3, isActive: true },
+  { code: 'JOD', nameAr: 'دينار اردني', symbol: 'د.أ', sortOrder: 4, isActive: true },
   { code: 'EUR', nameAr: 'يورو', symbol: '€', sortOrder: 5, isActive: true },
 ];
 

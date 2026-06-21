@@ -1,4 +1,5 @@
 const CurrencyExchange = require('../models/CurrencyExchange');
+const Wallet = require('../models/Wallet');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -23,7 +24,20 @@ exports.getExchanges = asyncHandler(async (req, res, next) => {
 
 exports.createExchange = asyncHandler(async (req, res, next) => {
   req.body.createdBy = req.user._id;
+
+  const { fromWallet, toWallet, fromAmount, toAmount } = req.body;
+
+  if (fromWallet && !toWallet) {
+    return next(new ApiError('يرجى تحديد محفظة الوجهة (toWallet)', 400));
+  }
+
   const exchange = await CurrencyExchange.create(req.body);
+
+  if (fromWallet && toWallet) {
+    await Wallet.findByIdAndUpdate(fromWallet, { $inc: { balance: -fromAmount } });
+    await Wallet.findByIdAndUpdate(toWallet, { $inc: { balance: toAmount } });
+  }
+
   res.status(201).json({ status: 'success', data: { exchange } });
 });
 

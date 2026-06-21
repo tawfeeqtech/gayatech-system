@@ -89,7 +89,7 @@ app.get('/', (req, res) => {
 app.use(errorHandler);
 
 // تشغيل الخادم
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 Server running in ${nodeEnv} mode on port ${port}`);
   console.log(`📡 API: http://localhost:${port}/api`);
 });

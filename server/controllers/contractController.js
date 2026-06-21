@@ -128,11 +128,14 @@ exports.createContract = asyncHandler(async (req, res, next) => {
     
     const startDate = new Date(contract.startDate);
     const now = new Date();
-    // Loop من شهر البداية حتى الشهر الحالي
-    let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    // استخراج الشهر من ISO string (UTC) بدلاً من getFullYear/getMonth
+    // لتجنب مشاكل timezone (2026-01-01T00:00+02:00 → 2025-12-31T22:00Z)
+    const startISO = startDate.toISOString().slice(0, 10);
+    const [sYear, sMonth] = startISO.split('-').map(Number);
+    let currentDate = new Date(Date.UTC(sYear, sMonth - 1, 1, 12, 0, 0));
     
     while (currentDate <= now) {
-      const month = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      const month = `${String(currentDate.getUTCFullYear()).padStart(4, '0')}-${String(currentDate.getUTCMonth() + 1).padStart(2, '0')}`;
       
       const exists = await ContractMonth.findOne({
         contract: contract._id,
@@ -140,7 +143,7 @@ exports.createContract = asyncHandler(async (req, res, next) => {
       });
       
       if (!exists) {
-        const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), contract.dueDayOfMonth || 10);
+        const dueDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), contract.dueDayOfMonth || 10, 12, 0, 0));
         
         const contractMonth = await ContractMonth.create({
           contract: contract._id,
@@ -178,7 +181,7 @@ exports.createContract = asyncHandler(async (req, res, next) => {
       }
       
       // الشهر التالي
-      currentDate.setMonth(currentDate.getMonth() + 1);
+      currentDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 1, 12, 0, 0));
     }
 
     // تحديث إحصائيات العقد
@@ -226,11 +229,13 @@ exports.updateContract = asyncHandler(async (req, res, next) => {
     
     const startDate = new Date(contract.startDate);
     const now = new Date();
-    let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const startISO = startDate.toISOString().slice(0, 10);
+    const [sYear, sMonth] = startISO.split('-').map(Number);
+    let currentDate = new Date(Date.UTC(sYear, sMonth - 1, 1, 12, 0, 0));
     let generatedCount = 0;
     
     while (currentDate <= now) {
-      const month = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      const month = `${String(currentDate.getUTCFullYear()).padStart(4, '0')}-${String(currentDate.getUTCMonth() + 1).padStart(2, '0')}`;
       
       const exists = await ContractMonth.findOne({
         contract: contract._id,
@@ -238,7 +243,7 @@ exports.updateContract = asyncHandler(async (req, res, next) => {
       });
       
       if (!exists) {
-        const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), contract.dueDayOfMonth || 10);
+        const dueDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), contract.dueDayOfMonth || 10, 12, 0, 0));
         
         const contractMonth = await ContractMonth.create({
           contract: contract._id,
@@ -276,7 +281,8 @@ exports.updateContract = asyncHandler(async (req, res, next) => {
         generatedCount++;
       }
       
-      currentDate.setMonth(currentDate.getMonth() + 1);
+      // الشهر التالي
+      currentDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 1, 12, 0, 0));
     }
 
     // تحديث إحصائيات العقد

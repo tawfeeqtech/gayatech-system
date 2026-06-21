@@ -160,6 +160,8 @@ const SalaryList = () => {
     finally { setLoading(false); }
   }, [page, pageSize, statusFilter, employeeFilter, monthFilter, currencyFilter]);
 
+  useEffect(() => { fetchSalaries(); }, [fetchSalaries]);
+
   const filterBar = (
     <Space wrap>
       <Button icon={<SyncOutlined />} loading={generating} onClick={handleGenerate}>توليد الرواتب</Button>

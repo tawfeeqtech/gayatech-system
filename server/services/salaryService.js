@@ -41,12 +41,13 @@ const salaryService = {
         await salary.save();
 
         // إنشاء فاتورة للراتب
+        const payDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, employee.salaryDayOfMonth || 1);
         const invoice = await invoiceFactoryService.createInvoice({
           type: 'راتب',
           amount: salary.totalAmount,
           currency: salary.currency,
           issueDate: new Date(),
-          dueDate: new Date(),
+          dueDate: payDate,
           refId: salary._id,
           refModel: 'salary',
           recipientId: employeeId,

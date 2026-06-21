@@ -181,7 +181,8 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
 
   // تحديث رصيد المحفظة
   if (toWallet && (type === 'دخل' || type === 'تحويل')) {
-    await Wallet.findByIdAndUpdate(toWallet, { $inc: { balance: amount } });
+    const creditAmount = (type === 'تحويل' && req.body.toAmount) ? req.body.toAmount : amount;
+    await Wallet.findByIdAndUpdate(toWallet, { $inc: { balance: creditAmount } });
   }
   if (fromWallet && (type === 'مصروف' || type === 'تحويل')) {
     await Wallet.findByIdAndUpdate(fromWallet, { $inc: { balance: -amount } });
@@ -200,6 +201,8 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
         exchangeRate: req.body.exchangeRate || (amount > 0 ? (req.body.toAmount || amount) / amount : 0),
         exchangeDate: transaction.transactionDate,
         via: req.body.paymentMethod || 'بنك',
+        fromWallet: fromWallet,
+        toWallet: toWallet,
         transaction: transaction._id,
         notes: `تحويل من معاملة #${transaction.transactionNumber}`,
         createdBy: req.user._id
@@ -258,7 +261,10 @@ exports.updateTransaction = asyncHandler(async (req, res, next) => {
   if (!oldTransaction) return next(new ApiError('المعاملة غير موجودة', 404));
 
   // التراجع عن تأثيرات المعاملة القديمة
-  if (oldTransaction.toWallet) await Wallet.findByIdAndUpdate(oldTransaction.toWallet, { $inc: { balance: -oldTransaction.amount } });
+  if (oldTransaction.toWallet) {
+    const oldCredit = oldTransaction.toAmount || oldTransaction.amount;
+    await Wallet.findByIdAndUpdate(oldTransaction.toWallet, { $inc: { balance: -oldCredit } });
+  }
   if (oldTransaction.fromWallet) await Wallet.findByIdAndUpdate(oldTransaction.fromWallet, { $inc: { balance: oldTransaction.amount } });
 
   if (oldTransaction.invoice) {
@@ -269,7 +275,8 @@ exports.updateTransaction = asyncHandler(async (req, res, next) => {
 
   // تطبيق التأثيرات الجديدة
   if (transaction.toWallet && (transaction.type === 'دخل' || transaction.type === 'تحويل')) {
-    await Wallet.findByIdAndUpdate(transaction.toWallet, { $inc: { balance: transaction.amount } });
+    const newCredit = (transaction.type === 'تحويل' && transaction.toAmount) ? transaction.toAmount : transaction.amount;
+    await Wallet.findByIdAndUpdate(transaction.toWallet, { $inc: { balance: newCredit } });
   }
   if (transaction.fromWallet && (transaction.type === 'مصروف' || transaction.type === 'تحويل')) {
     await Wallet.findByIdAndUpdate(transaction.fromWallet, { $inc: { balance: -transaction.amount } });
@@ -289,7 +296,10 @@ exports.deleteTransaction = asyncHandler(async (req, res, next) => {
   const transaction = await Transaction.findById(req.params.id);
   if (!transaction) return next(new ApiError('المعاملة غير موجودة', 404));
 
-  if (transaction.toWallet) await Wallet.findByIdAndUpdate(transaction.toWallet, { $inc: { balance: -transaction.amount } });
+  if (transaction.toWallet) {
+    const credit = transaction.toAmount || transaction.amount;
+    await Wallet.findByIdAndUpdate(transaction.toWallet, { $inc: { balance: -credit } });
+  }
   if (transaction.fromWallet) await Wallet.findByIdAndUpdate(transaction.fromWallet, { $inc: { balance: transaction.amount } });
 
   if (transaction.invoice) {
