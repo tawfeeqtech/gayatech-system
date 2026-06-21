@@ -17,17 +17,17 @@ const MainLayout = () => {
   return (
     <Layout style={{ minHeight: '100vh', direction: 'rtl' }}>
       <Sidebar />
-      <Layout style={{ marginRight: '260px', minHeight: '100vh' }}>
+      <Layout style={{ marginRight: '260px', minHeight: '100vh', background: '#f8fafc' }}>
         <TopBar />
         <Content
           style={{
-            margin: '24px',
-            padding: '24px',
-            background: '#f8fafc',
+            padding: '32px',
             minHeight: '280px',
           }}
         >
-          <Outlet />
+          <div className="max-w-[1600px] mx-auto">
+            <Outlet />
+          </div>
         </Content>
       </Layout>
     </Layout>

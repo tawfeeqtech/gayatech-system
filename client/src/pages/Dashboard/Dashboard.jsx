@@ -15,73 +15,64 @@ const data = [
   { name: 'يونيو', revenue: 3490, expenses: 4300 },
 ];
 
+import StatCard from '../../components/ui/StatCard';
+
 const Dashboard = () => {
   return (
-    <div style={{ fontFamily: 'Cairo, sans-serif' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <Title level={2} style={{ margin: 0, fontFamily: 'Cairo, sans-serif', color: '#1e3a8a' }}>
+    <div className="space-y-8">
+      <div>
+        <Title level={2} className="!m-0 text-slate-800">
           لوحة التحكم العامة
         </Title>
-        <Paragraph style={{ margin: '8px 0 0 0', color: '#64748b', fontFamily: 'Cairo, sans-serif' }}>
+        <Paragraph className="!mt-2 text-slate-500">
           مرحباً بك في نظام غايتك المالي والتشغيلي المتكامل.
         </Paragraph>
       </div>
 
-      <Row gutter={[16, 16]}>
+      <Row gutter={[24, 24]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} style={{ borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <Statistic
-              title={<span style={{ fontFamily: 'Cairo, sans-serif' }}>الإيرادات الشهرية</span>}
-              value={12500}
-              precision={2}
-              valueStyle={{ color: '#3f8600', fontFamily: 'Cairo, sans-serif' }}
-              prefix="$"
-              suffix={<ArrowUpOutlined />}
-            />
-          </Card>
+          <StatCard
+            title="الإيرادات الشهرية"
+            value={12500}
+            type="success"
+            trend="+12.5%"
+            description="مقارنة بالشهر الماضي"
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} style={{ borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <Statistic
-              title={<span style={{ fontFamily: 'Cairo, sans-serif' }}>المصاريف الشهرية</span>}
-              value={4800}
-              precision={2}
-              valueStyle={{ color: '#cf1322', fontFamily: 'Cairo, sans-serif' }}
-              prefix="$"
-              suffix={<ArrowDownOutlined />}
-            />
-          </Card>
+          <StatCard
+            title="المصاريف الشهرية"
+            value={4800}
+            type="error"
+            trend="+3.2%"
+            description="مقارنة بالشهر الماضي"
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} style={{ borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <Statistic
-              title={<span style={{ fontFamily: 'Cairo, sans-serif' }}>المشاريع النشطة</span>}
-              value={8}
-              valueStyle={{ color: '#1d4ed8', fontFamily: 'Cairo, sans-serif' }}
-              prefix={<ProjectOutlined style={{ marginLeft: '8px' }} />}
-            />
-          </Card>
+          <StatCard
+            title="المشاريع النشطة"
+            value={8}
+            type="info"
+            description="مشاريع قيد التنفيذ حالياً"
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} style={{ borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <Statistic
-              title={<span style={{ fontFamily: 'Cairo, sans-serif' }}>العقود النشطة</span>}
-              value={15}
-              valueStyle={{ color: '#854d0e', fontFamily: 'Cairo, sans-serif' }}
-              prefix={<FileTextOutlined style={{ marginLeft: '8px' }} />}
-            />
-          </Card>
+          <StatCard
+            title="العقود النشطة"
+            value={15}
+            type="warning"
+            description="عقود صيانة وخدمات سنوية"
+          />
         </Col>
       </Row>
 
-      <Row gutter={[16, 16] ?? []} style={{ marginTop: '24px' }}>
+      <Row gutter={[24, 24]}>
         <Col span={24}>
           <Card 
-            title={<span style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 'bold' }}>رصد التدفق المالي (الإيرادات والمصاريف)</span>} 
-            bordered={false} 
-            style={{ borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+            title={<span className="font-bold text-slate-800">رصد التدفق المالي (الإيرادات والمصاريف)</span>}
+            className="shadow-sm border-slate-100 rounded-2xl"
           >
-            <div style={{ width: '100%', height: 350 }}>
+            <div className="w-full h-[400px] mt-4">
               <ResponsiveContainer>
                 <LineChart
                   data={data}

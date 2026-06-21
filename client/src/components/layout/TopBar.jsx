@@ -34,32 +34,35 @@ const TopBar = () => {
 
   return (
     <Header
+      className="sticky top-0 z-50 flex items-center px-8 h-16 bg-white/80 backdrop-blur-md border-b border-slate-100"
       style={{
-        background: '#ffffff',
-        padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        boxShadow: '0 1px 4px rgba(0,21,41,.08)',
+        boxShadow: 'none',
         position: 'sticky',
         top: 0,
-        zIndex: 999,
-        height: '64px',
       }}
     >
-      <div style={{ marginLeft: 'auto' }}>
-        <Dropdown menu={{ items: menuItems, onClick: handleMenuClick }} trigger={['click']}>
-          <a onClick={(e) => e.preventDefault()} style={{ cursor: 'pointer' }}>
+      <div className="mr-auto">
+        {/* Placeholder for breadcrumbs or page title if needed in future */}
+      </div>
+
+      <div className="ml-0">
+        <Dropdown menu={{ items: menuItems, onClick: handleMenuClick }} trigger={['click']} placement="bottomLeft">
+          <a onClick={(e) => e.preventDefault()} className="hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors inline-block">
             <Space size="middle">
-              <Avatar style={{ backgroundColor: '#1e3a8a' }} icon={<UserOutlined />} />
-              <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'right', lineHeight: '1.2' }}>
-                <Text strong style={{ fontFamily: 'Cairo, sans-serif' }}>
+              <Avatar
+                className="bg-blue-600 shadow-sm"
+                icon={<UserOutlined />}
+                src={user?.avatar}
+              />
+              <div className="hidden md:flex flex-col text-right leading-tight">
+                <Text strong className="text-slate-800 text-[14px]">
                   {user?.fullName || 'المستخدم'}
                 </Text>
-                <Text type="secondary" style={{ fontSize: '11px', fontFamily: 'Cairo, sans-serif' }}>
+                <Text type="secondary" className="text-[11px] opacity-70">
                   {user?.role === 'admin' ? 'مدير النظام' : user?.role || 'مستخدم'}
                 </Text>
               </div>
-              <DownOutlined className="text-gray-400" />
+              <DownOutlined className="text-slate-400 text-[10px]" />
             </Space>
           </a>
         </Dropdown>

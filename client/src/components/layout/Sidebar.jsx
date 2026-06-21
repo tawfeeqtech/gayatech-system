@@ -23,13 +23,14 @@ import {
 
 const { Sider } = Layout;
 
-// ألوان الهوية
+// ألوان الهوية الجديدة (SaaS Dark Theme)
 const COLORS = {
-  BRAND_PRIMARY: "#2d6c5b",
-  BRAND_SECONDARY: "#3d8b74",
-  BRAND_LIGHT: "#e8f5e9",
-  BRAND_ACCENT: "#ffd54f",
-  BRAND_DARK: "#1b4332",
+  BRAND_PRIMARY: "#2563eb", // Blue 600
+  BRAND_SECONDARY: "#3b82f6", // Blue 500
+  BRAND_LIGHT: "#f1f5f9", // Slate 100
+  BRAND_ACCENT: "#60a5fa", // Blue 400
+  BRAND_DARK: "#0f172a", // Slate 900
+  BRAND_HOVER: "#1e293b", // Slate 800
 };
 
 const Sidebar = () => {
@@ -173,7 +174,8 @@ const Sidebar = () => {
     <Sider
       breakpoint="lg"
       collapsedWidth="0"
-      width={280}
+      width={260}
+      className="shadow-xl"
       style={{
         backgroundColor: COLORS.BRAND_DARK,
         height: '100vh',
@@ -181,26 +183,20 @@ const Sidebar = () => {
         right: 0,
         top: 0,
         zIndex: 1000,
-        boxShadow: '-2px 0 8px rgba(0,0,0,0.1)',
       }}
     >
       {/* الشعار */}
       <div 
+        className="flex items-center justify-center h-16 mb-2"
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '64px',
-          borderBottom: `1px solid ${COLORS.BRAND_PRIMARY}`,
-          color: '#ffffff',
-          fontWeight: 'bold',
-          fontSize: '18px',
-          fontFamily: 'Cairo, sans-serif',
-          background: `linear-gradient(135deg, ${COLORS.BRAND_PRIMARY}, ${COLORS.BRAND_SECONDARY})`,
-          margin: '0 0 8px 0',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          background: `linear-gradient(135deg, ${COLORS.BRAND_DARK}, #1e293b)`,
         }}
       >
-        🏢 نظام غايتك المالي
+        <span className="text-white font-bold text-lg flex items-center gap-2">
+          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-xl">🏢</div>
+          نظام غايتك
+        </span>
       </div>
 
       {/* القائمة */}
@@ -208,14 +204,11 @@ const Sidebar = () => {
         theme="dark"
         mode="inline"
         selectedKeys={[getActiveKey()]}
-        // تم استبدال defaultOpenKeys بـ openKeys لضمان فتح المجلد عند الانتقال المباشر للرابط
         defaultOpenKeys={getOpenKeys()} 
         onClick={({ key }) => navigate(key)}
+        className="modern-sidebar-menu border-0 px-2"
         style={{
-          backgroundColor: COLORS.BRAND_DARK,
-          fontFamily: 'Cairo, sans-serif',
-          paddingTop: '8px',
-          borderRight: 'none',
+          backgroundColor: 'transparent',
         }}
         items={menuItems}
       />
