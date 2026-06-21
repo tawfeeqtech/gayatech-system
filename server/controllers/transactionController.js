@@ -326,13 +326,37 @@ exports.getTransactionsSummary = asyncHandler(async (req, res, next) => {
   monthlyStats.forEach(stat => {
     const type = stat._id.type;
     const currency = stat._id.currency || 'USD';
-    if (!currencyStats[currency]) currencyStats[currency] = { income: 0, expense: 0, net: 0 };
+    if (!currencyStats[currency]) currencyStats[currency] = { income: 0, expense: 0, net: 0, exchangeOut: 0, exchangeIn: 0 };
     if (type === 'دخل') currencyStats[currency].income = stat.total;
     else if (type === 'مصروف') currencyStats[currency].expense = stat.total;
   });
 
+  // تضمين تحويلات العملات (CurrencyExchange) في حساب الصافي
+  const exchangeOutStats = await CurrencyExchange.aggregate([
+    { $match: { exchangeDate: { $gte: startOfMonth } } },
+    { $group: { _id: '$fromCurrency', total: { $sum: '$fromAmount' } } }
+  ]);
+  const exchangeInStats = await CurrencyExchange.aggregate([
+    { $match: { exchangeDate: { $gte: startOfMonth } } },
+    { $group: { _id: '$toCurrency', total: { $sum: '$toAmount' } } }
+  ]);
+
+  // دمج بيانات التحويلات في currencyStats
+  exchangeOutStats.forEach(stat => {
+    const currency = stat._id || 'USD';
+    if (!currencyStats[currency]) currencyStats[currency] = { income: 0, expense: 0, net: 0, exchangeOut: 0, exchangeIn: 0 };
+    currencyStats[currency].exchangeOut = stat.total;
+  });
+  exchangeInStats.forEach(stat => {
+    const currency = stat._id || 'USD';
+    if (!currencyStats[currency]) currencyStats[currency] = { income: 0, expense: 0, net: 0, exchangeOut: 0, exchangeIn: 0 };
+    currencyStats[currency].exchangeIn = stat.total;
+  });
+
   Object.keys(currencyStats).forEach(currency => {
-    currencyStats[currency].net = currencyStats[currency].income - currencyStats[currency].expense;
+    const s = currencyStats[currency];
+    // الصافي = الدخل - المصروف - التحويلات الصادرة + التحويلات الواردة
+    s.net = (s.income || 0) - (s.expense || 0) - (s.exchangeOut || 0) + (s.exchangeIn || 0);
   });
 
   const wallets = await Wallet.find({ isActive: true });

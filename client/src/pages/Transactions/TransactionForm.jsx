@@ -462,7 +462,7 @@ const TransactionForm = () => {
                   <Form.Item name="fromWallet" label="من محفظة" rules={[{ required: true, message: 'اختر المحفظة' }]}>
                     <Select placeholder={loadingFromWallets ? 'جاري...' : 'اختر المحفظة'}
                       loading={loadingFromWallets} disabled={fromWallets.length === 0}
-                      options={fromWallets.map(w => ({ value: w._id, label: `${w.name} (${w.currency})` }))} />
+                      options={fromWallets.map(w => ({ value: w._id, label: `${w.name} (${formatCurrency(w.balance, w.currency)})` }))} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={6}>
@@ -475,7 +475,7 @@ const TransactionForm = () => {
                   <Form.Item name="toWallet" label="إلى محفظة" rules={[{ required: true, message: 'اختر المحفظة' }]}>
                     <Select placeholder={loadingToWallets ? 'جاري...' : 'اختر المحفظة'}
                       loading={loadingToWallets} disabled={toWallets.length === 0}
-                      options={toWallets.map(w => ({ value: w._id, label: `${w.name} (${w.currency})` }))} />
+                      options={toWallets.map(w => ({ value: w._id, label: `${w.name} (${formatCurrency(w.balance, w.currency)})` }))} />
                   </Form.Item>
                 </Col>
               </>
@@ -491,7 +491,7 @@ const TransactionForm = () => {
                   <Form.Item name="toWallet" label="إلى محفظة" rules={[{ required: true, message: 'اختر المحفظة' }]}>
                     <Select placeholder={loadingToWallets ? 'جاري...' : 'اختر المحفظة'}
                       loading={loadingToWallets} disabled={toWallets.length === 0}
-                      options={toWallets.map(w => ({ value: w._id, label: `${w.name} (${w.currency})` }))} />
+                      options={toWallets.map(w => ({ value: w._id, label: `${w.name} (${formatCurrency(w.balance, w.currency)})` }))} />
                   </Form.Item>
                 </Col>
               </>
@@ -507,7 +507,7 @@ const TransactionForm = () => {
                   <Form.Item name="fromWallet" label="من محفظة" rules={[{ required: true, message: 'اختر المحفظة' }]}>
                     <Select placeholder={loadingFromWallets ? 'جاري...' : 'اختر المحفظة'}
                       loading={loadingFromWallets} disabled={fromWallets.length === 0}
-                      options={fromWallets.map(w => ({ value: w._id, label: `${w.name} (${w.currency})` }))} />
+                      options={fromWallets.map(w => ({ value: w._id, label: `${w.name} (${formatCurrency(w.balance, w.currency)})` }))} />
                   </Form.Item>
                 </Col>
               </>

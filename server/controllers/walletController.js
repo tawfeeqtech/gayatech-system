@@ -4,6 +4,18 @@ const Transaction = require('../models/Transaction');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 
+// @desc    الحصول على جميع المحافظ (للاستخدام العام)
+// @route   GET /api/wallets
+exports.getAllWallets = asyncHandler(async (req, res, next) => {
+  const wallets = await Wallet.find().populate('account', 'name accountType');
+
+  res.status(200).json({
+    status: 'success',
+    results: wallets.length,
+    data: { wallets }
+  });
+});
+
 // @desc    الحصول على محافظ حساب
 // @route   GET /api/accounts/:accountId/wallets
 exports.getWallets = asyncHandler(async (req, res, next) => {

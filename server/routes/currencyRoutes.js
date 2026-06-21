@@ -8,5 +8,6 @@ router.use(protect);
 router.get('/', roleCheck('admin', 'finance'), cc.getExchanges);
 router.post('/', roleCheck('admin', 'finance'), cc.createExchange);
 router.put('/:id', roleCheck('admin'), cc.updateExchange);
+router.delete('/:id', roleCheck('admin'), cc.deleteExchange);
 
 module.exports = router;

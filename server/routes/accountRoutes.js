@@ -1,6 +1,6 @@
 const express = require('express');
 const accountController = require('../controllers/accountController');
-const walletRoutes = require('./walletRoutes');
+const walletRoutes = require('./walletRoutes').nested;
 const { protect } = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
 

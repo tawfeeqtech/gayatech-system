@@ -1,6 +1,9 @@
 import api from './axios';
 
 const walletAPI = {
+  // الحصول على جميع المحافظ
+  getAll: () => api.get('/wallets'),
+
   // الحصول على محافظ حساب معين
   getByAccount: (accountId) => api.get(`/accounts/${accountId}/wallets`),
 
