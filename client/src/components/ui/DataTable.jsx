@@ -123,50 +123,34 @@ const DataTable = ({
 
   return (
     <Card
-      style={{
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      }}
+      className="shadow-sm border-slate-200"
+      bodyStyle={{ padding: '0' }}
     >
-      {/* الشريط العلوي */}
-      <Row
-        gutter={[16, 16]}
-        style={{ marginBottom: 16 }}
-        align="middle"
-        justify="space-between"
-      >
-        {/* العنوان والبحث */}
-        <Col xs={24} md={16}>
-          <Space size="middle" wrap>
-            {title && (
-              <span
-                style={{
-                  fontSize: 18,
-                  fontWeight: 'bold',
-                  fontFamily: 'Cairo, sans-serif',
-                }}
-              >
-                {title}
-              </span>
-            )}
-            {onSearch && (
-              <Input.Search
-                placeholder={searchPlaceholder}
-                allowClear
-                value={searchText}
-                onChange={(e) => handleSearch(e.target.value)}
-                onSearch={handleSearch}
-                prefix={<SearchOutlined />}
-                style={{ width: 250, fontFamily: 'Cairo, sans-serif' }}
-              />
-            )}
-          </Space>
-        </Col>
+      {/* Header Section */}
+      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Title and Search */}
+        <div className="flex items-center gap-4 flex-wrap">
+          {title && (
+            <h3 className="text-lg font-bold text-slate-800 m-0">
+              {title}
+            </h3>
+          )}
+          {onSearch && (
+            <Input
+              placeholder={searchPlaceholder}
+              allowClear
+              value={searchText}
+              onChange={(e) => handleSearch(e.target.value)}
+              onPressEnter={(e) => handleSearch(e.target.value)}
+              prefix={<SearchOutlined className="text-slate-400" />}
+              className="w-full md:w-64 rounded-lg border-slate-200"
+            />
+          )}
+        </div>
 
-        {/* أزرار الإجراءات */}
-        <Col xs={24} md={8} style={{ textAlign: 'left' }}>
-          <Space>
-            {filters}
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Space size="small">
             {onRefresh && (
               <Tooltip title="تحديث">
                 <Button icon={<ReloadOutlined />} onClick={handleRefresh} />
@@ -193,19 +177,24 @@ const DataTable = ({
               </Button>
             )}
           </Space>
-        </Col>
-      </Row>
+        </div>
+      </div>
 
-      {/* أزرار الفلترة */}
-      {filters && <div style={{ marginBottom: 16 }}>{filters}</div>}
+      {/* Filters Section (Optional) */}
+      {filters && (
+        <div className="p-4 border-b border-slate-100 bg-white">
+          {filters}
+        </div>
+      )}
 
-      {/* الجدول */}
+      {/* Table */}
       <Table
         columns={tableColumns}
         dataSource={dataSource}
         rowKey="_id"
         loading={loading}
         scroll={{ x: 800 }}
+        className="modern-table"
         pagination={{
           current: page,
           pageSize: pageSize,
@@ -213,15 +202,15 @@ const DataTable = ({
           onChange: onPageChange,
           showSizeChanger: true,
           showTotal: (total, range) =>
-            `عرض ${range[0]}-${range[1]} من إجمالي ${total}`,
-          style: { fontFamily: 'Cairo, sans-serif', direction: 'rtl' },
+            `عرض ${range[0]} إلى ${range[1]} من إجمالي ${total}`,
+          style: { padding: '16px', margin: 0, borderTop: '1px solid #f1f5f9' },
         }}
         locale={{
           emptyText: (
-            <div style={{ padding: '40px 0' }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
-              <div style={{ fontFamily: 'Cairo, sans-serif', color: '#94a3b8' }}>
-                لا توجد بيانات للعرض
+            <div className="py-12 flex flex-col items-center">
+              <div className="text-5xl mb-4 text-slate-200">📭</div>
+              <div className="text-slate-400 font-medium">
+                لا توجد بيانات متاحة حالياً
               </div>
             </div>
           ),

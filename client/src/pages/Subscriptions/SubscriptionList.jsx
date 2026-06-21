@@ -166,24 +166,41 @@ const SubscriptionList = () => {
   );
 
   return (
-    <div style={{ fontFamily: 'Cairo, sans-serif' }}>
-      <h2 style={{ marginBottom: 16 }}>الاشتراكات</h2>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-slate-800">إدارة الاشتراكات</h2>
+      </div>
 
       {/* بطاقات إحصائية */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+      <Row gutter={[16, 16]}>
         <Col xs={24} sm={8}>
-          <StatCard title="النشطة" value={activeCount} color="#10b981" icon="✅" />
+          <StatCard
+            title="الاشتراكات النشطة"
+            value={activeCount}
+            type="success"
+            description="تعمل بشكل صحيح"
+          />
         </Col>
         <Col xs={24} sm={8}>
-          <StatCard title="تنتهي قريباً" value={expiringCount} color="#f59e0b" icon="⚠️" />
+          <StatCard
+            title="تنتهي قريباً"
+            value={expiringCount}
+            type="warning"
+            description="خلال أقل من 30 يوماً"
+          />
         </Col>
         <Col xs={24} sm={8}>
-          <StatCard title="منتهية" value={expiredCount} color="#ef4444" icon="❌" />
+          <StatCard
+            title="اشتراكات منتهية"
+            value={expiredCount}
+            type="error"
+            description="تحتاج إلى تجديد فوراً"
+          />
         </Col>
       </Row>
 
       <DataTable
-        title=""
+        title="قائمة الاشتراكات"
         columns={columns}
         dataSource={subscriptions}
         loading={loading}

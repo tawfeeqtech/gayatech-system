@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, DatePicker, message, Tag, Button, Modal, Form, InputNumber, Row, Col, Alert } from 'antd';
-import { EditOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
+import { Space, Select, DatePicker, message, Tag, Button, Modal, Form, InputNumber, Typography } from 'antd';
+import { EditOutlined, DeleteOutlined, SyncOutlined, CreditCardOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -11,6 +11,7 @@ import { useCurrencies } from '../../hooks/useCurrencies';
 import dayjs from 'dayjs';
 
 const { MonthPicker } = DatePicker;
+const { Text, Title } = Typography;
 
 const SalaryList = () => {
   const navigate = useNavigate();
@@ -63,7 +64,7 @@ const SalaryList = () => {
         ...values,
         month: values.month ? values.month.format('YYYY-MM') : values.month,
       };
-      await salaryAPI.update(editingSalary._id, values);
+      await salaryAPI.update(editingSalary._id, data);
       message.success('تم تحديث الراتب');
       setEditingSalary(null);
       editForm.resetFields();
@@ -84,60 +85,109 @@ const SalaryList = () => {
   };
 
   const columns = [
-    { title: 'الموظف', key: 'employee', width: 150, render: (_, r) => r.employee?.name || '—' },
     {
-      title: 'الشهر', dataIndex: 'month', key: 'month', width: 110,
+      title: 'الموظف',
+      key: 'employee',
+      width: 180,
+      render: (_, r) => (
+        <Space>
+          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+            <CreditCardOutlined />
+          </div>
+          <Text strong className="text-slate-900">{r.employee?.name || '—'}</Text>
+        </Space>
+      )
+    },
+    {
+      title: 'فترة الراتب',
+      dataIndex: 'month',
+      key: 'month',
+      width: 130,
       render: (m) => {
         if (!m) return '—';
         const [y, mn] = m.split('-');
         const names = ['يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-        return `${names[parseInt(mn) - 1]} ${y}`;
+        return <span className="text-slate-600 font-medium">{names[parseInt(mn) - 1]} {y}</span>;
       },
     },
     {
-      title: 'الراتب الأساسي', dataIndex: 'baseAmount', key: 'base', width: 110,
-      render: (v, r) => formatCurrency(v, r.currency || 'USD'),
+      title: 'المستحقات',
+      key: 'financials',
+      width: 200,
+      render: (_, r) => (
+        <div className="space-y-0.5">
+          <div className="flex justify-between text-xs">
+            <span className="text-slate-400">الأساسي:</span>
+            <span className="font-medium">{formatCurrency(r.baseAmount, r.currency)}</span>
+          </div>
+          {r.deductions > 0 && (
+            <div className="flex justify-between text-xs text-rose-500">
+              <span>الخصومات:</span>
+              <span>-{formatCurrency(r.deductions, r.currency)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-sm font-bold text-slate-900 pt-1 border-t border-slate-100">
+            <span>الصافي:</span>
+            <span>{formatCurrency(r.totalAmount, r.currency)}</span>
+          </div>
+        </div>
+      )
     },
     {
-      title: 'الخصومات', dataIndex: 'deductions', key: 'ded', width: 100,
-      render: (v, r) => v > 0 ? <span style={{ color: '#ef4444' }}>-{formatCurrency(v, r.currency)}</span> : '0',
-    },
-    {
-      title: 'الصافي', dataIndex: 'totalAmount', key: 'amount', width: 120,
-      render: (v, r) => <span style={{ fontWeight: 'bold' }}>{formatCurrency(v, r.currency || 'USD')}</span>,
-    },
-    {
-      title: 'المدفوع', dataIndex: 'paidAmount', key: 'paid', width: 120,
-      render: (v, r) => formatCurrency(v, r.currency || 'USD'),
-    },
-    {
-      title: 'الحالة', dataIndex: 'status', key: 'status', width: 100,
+      title: 'حالة الدفع',
+      dataIndex: 'status',
+      key: 'status',
+      width: 140,
       render: (s, r) => (
-        <Space direction="vertical" size={0}>
-          <Tag color={s === 'مدفوع' ? 'green' : s === 'مدفوع جزئياً' ? 'blue' : 'orange'}>{s}</Tag>
-          {r.invoice && <small style={{ fontSize: 10 }}>{r.invoice.invoiceNumber}</small>}
-        </Space>
+        <div className="space-y-1">
+          <Tag className={`m-0 rounded-full border-0 px-3 py-0.5 ${
+            s === 'مدفوع' ? 'bg-emerald-50 text-emerald-600' :
+            s === 'مدفوع جزئياً' ? 'bg-blue-50 text-blue-600' :
+            'bg-amber-50 text-amber-600'
+          }`}>
+            {s}
+          </Tag>
+          {r.invoice && <div className="text-[10px] text-slate-400 font-mono">{r.invoice.invoiceNumber}</div>}
+        </div>
       ),
     },
     {
-      title: 'تاريخ الدفع', dataIndex: 'paymentDate', key: 'payDate', width: 120,
-      render: (d) => d ? new Date(d).toLocaleDateString('ar-SA') : '—',
+      title: 'آخر دفعة',
+      dataIndex: 'paymentDate',
+      key: 'payDate',
+      width: 120,
+      render: (d) => <span className="text-xs text-slate-500">{d ? new Date(d).toLocaleDateString('ar-SA') : '—'}</span>,
     },
     {
-      title: 'إجراءات', key: 'actions', width: 160,
+      title: 'إجراءات',
+      key: 'actions',
+      width: 140,
       render: (_, r) => (
-        <Space size="small">
+        <Space>
           {r.status !== 'مدفوع' && (
-            <Button size="small" type="primary" onClick={() => handlePay(r)}>دفع</Button>
+            <Button size="small" type="primary" className="rounded-md h-7 text-xs" onClick={() => handlePay(r)}>دفع</Button>
           )}
-          <Button size="small" icon={<EditOutlined />} onClick={() => {
-            setEditingSalary(r);
-            editForm.setFieldsValue({
-              ...r,
-              month: r.month ? dayjs(r.month) : undefined,
-            });
-          }} />
-          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => setDeleteTarget(r)} />
+          <Button
+            size="small"
+            type="text"
+            className="text-slate-400 hover:text-blue-600 flex items-center justify-center"
+            icon={<EditOutlined />}
+            onClick={() => {
+              setEditingSalary(r);
+              editForm.setFieldsValue({
+                ...r,
+                month: r.month ? dayjs(r.month) : undefined,
+              });
+            }}
+          />
+          <Button
+            size="small"
+            type="text"
+            danger
+            className="flex items-center justify-center"
+            icon={<DeleteOutlined />}
+            onClick={() => setDeleteTarget(r)}
+          />
         </Space>
       ),
     },
@@ -164,77 +214,115 @@ const SalaryList = () => {
 
   const filterBar = (
     <Space wrap>
-      <Button icon={<SyncOutlined />} loading={generating} onClick={handleGenerate}>توليد الرواتب</Button>
-      <Select placeholder="الموظف" allowClear style={{ width: 150 }}
+      <Button
+        type="default"
+        className="rounded-lg border-blue-200 text-blue-600 flex items-center gap-2"
+        icon={<SyncOutlined />}
+        loading={generating}
+        onClick={handleGenerate}
+      >
+        توليد الرواتب
+      </Button>
+      <Select
+        placeholder="الموظف"
+        allowClear
+        className="w-48"
         value={employeeFilter || undefined}
         onChange={(v) => { setEmployeeFilter(v || ''); setPage(1); }}
-        options={employees.map(e => ({ value: e._id, label: e.name }))} />
-      <Select placeholder="العملة" allowClear style={{ width: 120 }}
-        value={currencyFilter || undefined}
-        onChange={(v) => { setCurrencyFilter(v || ''); setPage(1); }}
-        options={currencies} />
-      <Select placeholder="الحالة" allowClear style={{ width: 130 }}
+        options={employees.map(e => ({ value: e._id, label: e.name }))}
+      />
+      <Select
+        placeholder="الحالة"
+        allowClear
+        className="w-32"
         value={statusFilter || undefined}
         onChange={(v) => { setStatusFilter(v || ''); setPage(1); }}
         options={[
-          { value: 'مستحق', label: 'مستحق' }, { value: 'مدفوع', label: 'مدفوع' },
+          { value: 'مستحق', label: 'مستحق' },
+          { value: 'مدفوع', label: 'مدفوع' },
           { value: 'مدفوع جزئياً', label: 'مدفوع جزئياً' },
-        ]} />
+        ]}
+      />
       <MonthPicker
         placeholder="اختر الشهر"
+        className="rounded-lg w-40"
         onChange={(date) => {
           if (date) setMonthFilter(date.format('YYYY-MM'));
           else setMonthFilter('');
           setPage(1);
         }}
-        style={{ fontFamily: 'Cairo, sans-serif' }}
       />
     </Space>
   );
 
   return (
-    <>
+    <div className="space-y-4">
       <DataTable
-        title="الرواتب" columns={columns} dataSource={salaries}
-        loading={loading} total={total} page={page} pageSize={pageSize}
+        title="كشوفات الرواتب"
+        columns={columns}
+        dataSource={salaries}
+        loading={loading}
+        total={total}
+        page={page}
+        pageSize={pageSize}
         onPageChange={(p, ps) => { setPage(p); if (ps !== pageSize) { setPageSize(ps); setPage(1); } }}
-        addPath="/salaries/new" onRefresh={fetchSalaries}
-        showActions={false} filters={filterBar}
+        addPath="/salaries/new"
+        onRefresh={fetchSalaries}
+        showActions={false}
+        filters={filterBar}
       />
 
-      {/* Modal تعديل */}
       <Modal
-        title="تعديل الراتب"
+        title={
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded bg-blue-50 flex items-center justify-center text-blue-600">
+              <EditOutlined />
+            </div>
+            <span>تعديل بيانات الراتب</span>
+          </div>
+        }
         open={!!editingSalary}
         onCancel={() => setEditingSalary(null)}
         onOk={() => editForm.submit()}
         confirmLoading={editSubmitting}
-        okText="حفظ" cancelText="إلغاء"
+        okText="تحديث البيانات"
+        cancelText="إلغاء"
+        className="modern-modal"
       >
-        <Form form={editForm} layout="vertical" onFinish={handleEdit}>
-          <Form.Item name="month" label="الشهر">
-            <MonthPicker style={{ width: '100%' }} format="YYYY-MM" />
-          </Form.Item>
-          <Form.Item name="baseAmount" label="الراتب الأساسي">
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="deductions" label="الخصومات">
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="bonuses" label="المكافآت">
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="currency" label="العملة">
-            <Select options={currencies} />
-          </Form.Item>
+        <Form form={editForm} layout="vertical" onFinish={handleEdit} className="mt-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item name="month" label="شهر الاستحقاق">
+              <MonthPicker className="w-full" format="YYYY-MM" />
+            </Form.Item>
+            <Form.Item name="currency" label="العملة">
+              <Select options={currencies} />
+            </Form.Item>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Form.Item name="baseAmount" label="الأساسي">
+              <InputNumber min={0} className="w-full" />
+            </Form.Item>
+            <Form.Item name="deductions" label="الخصومات">
+              <InputNumber min={0} className="w-full" />
+            </Form.Item>
+            <Form.Item name="bonuses" label="المكافآت">
+              <InputNumber min={0} className="w-full" />
+            </Form.Item>
+          </div>
         </Form>
       </Modal>
 
-      <ConfirmDialog open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete}
-        loading={deleteLoading} title="تأكيد حذف الراتب"
-        message={`هل أنت متأكد من حذف راتب "${deleteTarget?.employee?.name}" لشهر "${deleteTarget?.month}"؟`}
-        type="danger" />
-    </>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleteLoading}
+        title="تأكيد حذف قيد الراتب"
+        message={`هل أنت متأكد من حذف قيد راتب "${deleteTarget?.employee?.name}" لشهر "${deleteTarget?.month}"؟`}
+        description="هذا الإجراء سيؤدي إلى حذف القيد المالي المرتبط. يرجى التأكد قبل المتابعة."
+        type="danger"
+      />
+    </div>
   );
 };
 

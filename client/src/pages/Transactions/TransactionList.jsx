@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, DatePicker, message, Tag, Row, Col, Card } from 'antd';
-import { ArrowUpOutlined, ArrowDownOutlined, SwapOutlined } from '@ant-design/icons';
+import { Space, Select, DatePicker, message, Tag, Row, Col, Typography } from 'antd';
+import { ArrowUpOutlined, ArrowDownOutlined, SwapOutlined, TransactionOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
@@ -8,9 +8,10 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import StatCard from '../../components/ui/StatCard';
 import transactionAPI from '../../api/transactions';
 import accountAPI from '../../api/accounts';
-import { formatCurrency, formatDateTime } from '../../utils/formatters';
+import { formatCurrency } from '../../utils/formatters';
 
 const { RangePicker } = DatePicker;
+const { Title, Text } = Typography;
 
 const TransactionList = () => {
   const navigate = useNavigate();
@@ -76,124 +77,149 @@ const TransactionList = () => {
     }
   };
 
-  const typeIcons = { 'دخل': <ArrowUpOutlined style={{ color: '#10b981' }} />, 'مصروف': <ArrowDownOutlined style={{ color: '#ef4444' }} />, 'تحويل': <SwapOutlined style={{ color: '#3b82f6' }} /> };
-  const typeColors = { 'دخل': '#10b981', 'مصروف': '#ef4444', 'تحويل': '#3b82f6' };
+  const typeIcons = {
+    'دخل': <ArrowUpOutlined className="text-emerald-600" />,
+    'مصروف': <ArrowDownOutlined className="text-rose-600" />,
+    'تحويل': <SwapOutlined className="text-blue-600" />
+  };
+
+  const typeBgColors = {
+    'دخل': 'bg-emerald-50',
+    'مصروف': 'bg-rose-50',
+    'تحويل': 'bg-blue-50'
+  };
 
   const columns = [
     {
-      title: 'رقم المعاملة', dataIndex: 'transactionNumber', key: 'number', width: 140,
-      render: (text) => <Tag>{text || '—'}</Tag>,
+      title: 'المعاملة',
+      dataIndex: 'transactionNumber',
+      key: 'number',
+      width: 160,
+      render: (text, r) => (
+        <Space>
+          <div className={`w-8 h-8 rounded-lg ${typeBgColors[r.type] || 'bg-slate-50'} flex items-center justify-center`}>
+            {typeIcons[r.type] || <TransactionOutlined className="text-slate-600" />}
+          </div>
+          <div>
+            <Text strong className="text-slate-900 block leading-tight">{text || '—'}</Text>
+            <Text type="secondary" className="text-[11px]">{new Date(r.transactionDate).toLocaleDateString('ar-SA')}</Text>
+          </div>
+        </Space>
+      ),
     },
     {
-      title: 'التاريخ', dataIndex: 'transactionDate', key: 'date', width: 110,
-      render: (d) => d ? new Date(d).toLocaleDateString('ar-SA') : '—',
-    },
-    {
-      title: 'النوع', dataIndex: 'type', key: 'type', width: 90,
-      render: (t) => <Tag color={typeColors[t]} icon={typeIcons[t]}>{t}</Tag>,
-    },
-    {
-      title: 'المبلغ', dataIndex: 'amount', key: 'amount', width: 130,
+      title: 'المبلغ',
+      dataIndex: 'amount',
+      key: 'amount',
+      width: 150,
       render: (v, r) => (
-        <span style={{ color: r.type === 'دخل' ? '#10b981' : r.type === 'مصروف' ? '#ef4444' : '#3b82f6', fontWeight: 600, fontSize: 15 }}>
-          {r.type === 'دخل' ? '+' : r.type === 'مصروف' ? '-' : '↔'} {formatCurrency(v, r.currency)}
+        <span className={`font-bold text-base ${r.type === 'دخل' ? 'text-emerald-600' : r.type === 'مصروف' ? 'text-rose-600' : 'text-blue-600'}`}>
+          {r.type === 'دخل' ? '+' : r.type === 'مصروف' ? '-' : ''} {formatCurrency(v, r.currency)}
         </span>
       ),
     },
     {
-      title: 'العميل', key: 'client', width: 140,
-      render: (_, r) => r.client?.name || '—',
+      title: 'الطرف الثاني',
+      key: 'client',
+      width: 180,
+      render: (_, r) => (
+        <div>
+          <div className="font-medium text-slate-800">{r.client?.name || r.vendor?.name || '—'}</div>
+          <div className="text-xs text-slate-500">{r.category || r.paymentMethod}</div>
+        </div>
+      ),
     },
     {
-      title: 'من', dataIndex: 'fromAccount', key: 'from', width: 110,
-      render: (a) => a?.name || '—',
+      title: 'الحسابات',
+      key: 'accounts',
+      width: 200,
+      render: (_, r) => (
+        <div className="flex flex-col gap-1">
+          {r.fromAccount && (
+            <div className="flex items-center gap-1 text-xs">
+              <span className="text-slate-400 w-6 text-left">من:</span>
+              <Tag className="m-0 text-[10px] bg-slate-50 border-slate-200">{r.fromAccount.name}</Tag>
+            </div>
+          )}
+          {r.toAccount && (
+            <div className="flex items-center gap-1 text-xs">
+              <span className="text-slate-400 w-6 text-left">إلى:</span>
+              <Tag className="m-0 text-[10px] bg-blue-50 border-blue-100 text-blue-600">{r.toAccount.name}</Tag>
+            </div>
+          )}
+        </div>
+      ),
     },
     {
-      title: 'إلى', dataIndex: 'toAccount', key: 'to', width: 110,
-      render: (a) => a?.name || '—',
-    },
-    {
-      title: 'وسيلة الدفع', dataIndex: 'paymentMethod', key: 'method', width: 110,
-    },
-    {
-      title: 'الوصف', dataIndex: 'description', key: 'desc', width: 180,
+      title: 'الوصف',
+      dataIndex: 'description',
+      key: 'desc',
       ellipsis: true,
+      render: (text) => <Text type="secondary" className="text-xs italic">{text || 'بدون وصف'}</Text>
     },
   ];
 
   const filterBar = (
     <Space wrap>
-      <Select placeholder="نوع المعاملة" allowClear style={{ width: 130 }}
+      <Select
+        placeholder="النوع"
+        allowClear
+        className="w-32"
         value={typeFilter || undefined}
         onChange={(v) => { setTypeFilter(v || ''); setPage(1); }}
-        options={[{ value: 'دخل', label: 'دخل' }, { value: 'مصروف', label: 'مصروف' }, { value: 'تحويل', label: 'تحويل' }]} />
-      <Select placeholder="الحساب" allowClear style={{ width: 150 }}
+        options={[{ value: 'دخل', label: 'دخل' }, { value: 'مصروف', label: 'مصروف' }, { value: 'تحويل', label: 'تحويل' }]}
+      />
+      <Select
+        placeholder="الحساب"
+        allowClear
+        className="w-48"
         value={accountFilter || undefined}
         onChange={(v) => { setAccountFilter(v || ''); setPage(1); }}
-        options={accounts.map(a => ({ value: a._id, label: a.name }))} />
-      <RangePicker onChange={(dates) => { setDateRange(dates); setPage(1); }} style={{ fontFamily: 'Cairo, sans-serif' }} />
+        options={accounts.map(a => ({ value: a._id, label: a.name }))}
+      />
+      <RangePicker
+        onChange={(dates) => { setDateRange(dates); setPage(1); }}
+        className="rounded-lg"
+      />
     </Space>
   );
 
   return (
-    <div style={{ fontFamily: 'Cairo, sans-serif' }}>
-      {/* بطاقات الملخص حسب العملة */}
-      {Object.keys(summary).length === 0 ? (
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={24} sm={8}>
-            <StatCard title="إجمالي الدخل (الشهر)" value={0} prefix="$" color="#10b981" icon="💰" />
-          </Col>
-          <Col xs={24} sm={8}>
-            <StatCard title="إجمالي المصروف (الشهر)" value={0} prefix="$" color="#ef4444" icon="💸" />
-          </Col>
-          <Col xs={24} sm={8}>
-            <StatCard title="الصافي" value={0} prefix="$" color="#3b82f6" icon="📊" />
-          </Col>
-        </Row>
-      ) : (
-        Object.entries(summary).map(([currency, stats]) => (
-          <div key={currency} style={{ marginBottom: 24 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8, color: '#475569' }}>
-              الملخص المالي لشهر يونيو ({currency})
-            </div>
-            <Row gutter={[16, 16]}>
-              <Col xs={24} sm={8}>
-                <StatCard 
-                  title={`إجمالي الدخل (${currency})`} 
-                  value={stats.income || 0} 
-                  prefix={{ USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' }[currency] || currency} 
-                  color="#10b981" 
-                  icon="💰" 
-                />
-              </Col>
-              <Col xs={24} sm={8}>
-                <StatCard 
-                  title={`إجمالي المصروف (${currency})`} 
-                  value={stats.expense || 0} 
-                  prefix={{ USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' }[currency] || currency} 
-                  color="#ef4444" 
-                  icon="💸" 
-                />
-              </Col>
-              <Col xs={24} sm={8}>
-                <StatCard 
-                  title={`الصافي (${currency})`} 
-                  value={stats.net || 0} 
-                  prefix={{ USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' }[currency] || currency} 
-                  color={(stats.net || 0) >= 0 ? '#3b82f6' : '#ef4444'} 
-                  icon="📊" 
-                />
-              </Col>
-            </Row>
-          </div>
-        ))
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <Title level={3} className="!mb-1">المعاملات المالية</Title>
+          <Text type="secondary">تتبع كافة التدفقات النقدية الصادرة والواردة والتحويلات الداخلية</Text>
+        </div>
+      </div>
+
+      {/* ملخص العملات */}
+      {Object.keys(summary).length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Object.entries(summary).slice(0, 3).map(([currency, stats]) => (
+            <StatCard
+              key={currency}
+              title={`صافي حركة ${currency}`}
+              value={stats.net || 0}
+              prefix={currency}
+              variant={(stats.net || 0) >= 0 ? 'primary' : 'danger'}
+              trend={{ value: 0, isUp: (stats.net || 0) >= 0 }}
+              icon={<TransactionOutlined />}
+            />
+          ))}
+        </div>
       )}
 
       <DataTable
-        title="المعاملات المالية" columns={columns} dataSource={transactions}
-        loading={loading} total={total} page={page} pageSize={pageSize}
+        title="سجل المعاملات"
+        columns={columns}
+        dataSource={transactions}
+        loading={loading}
+        total={total}
+        page={page}
+        pageSize={pageSize}
         onPageChange={(p, ps) => { setPage(p); if (ps !== pageSize) { setPageSize(ps); setPage(1); } }}
-        searchPlaceholder="بحث عن معاملة..."
+        searchPlaceholder="البحث برقم المعاملة أو الوصف..."
         onSearch={(v) => { setSearch(v); setPage(1); }}
         addPath="/transactions/new"
         detailPath="/transactions"
@@ -204,10 +230,16 @@ const TransactionList = () => {
         editPath="/transactions/edit"
       />
 
-      <ConfirmDialog open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete}
-        loading={deleteLoading} title="تأكيد حذف المعاملة"
-        message={`هل أنت متأكد من حذف المعاملة "${deleteTarget?.transactionNumber}"؟`}
-        description="لا يمكن التراجع عن هذا الإجراء. قد يؤثر على الأرصدة والفواتير المرتبطة." type="danger" />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleteLoading}
+        title="تأكيد حذف المعاملة"
+        message={`هل أنت متأكد من حذف المعاملة رقم "${deleteTarget?.transactionNumber}"؟`}
+        description="هذا الإجراء سيؤدي إلى تحديث أرصدة الحسابات المرتبطة وقد يؤثر على التقارير المالية. لا يمكن التراجع عن الحذف."
+        type="danger"
+      />
     </div>
   );
 };
