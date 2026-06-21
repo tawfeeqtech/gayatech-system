@@ -5,6 +5,8 @@ const roleCheck = require('../middleware/roleCheck');
 const router = express.Router();
 router.use(protect);
 
+router.get('/me', roleCheck('admin', 'finance', 'employee'), sc.getMySalary);
+
 router.get('/pending', roleCheck('admin', 'finance'), sc.getPendingSalaries);
 router.get('/', roleCheck('admin', 'finance'), sc.getSalaries);
 router.post('/generate', roleCheck('admin'), sc.generateMonthlySalaries);

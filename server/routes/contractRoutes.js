@@ -7,9 +7,9 @@ const router = express.Router();
 
 router.use(protect);
 
-router.get('/', roleCheck('admin', 'finance', 'pm'), contractController.getContracts);
-router.get('/:id', roleCheck('admin', 'finance', 'pm'), contractController.getContract);
-router.get('/:id/months', roleCheck('admin', 'finance', 'pm'), contractController.getContractMonths);
+router.get('/', roleCheck('admin', 'pm'), contractController.getContracts);
+router.get('/:id', roleCheck('admin', 'pm'), contractController.getContract);
+router.get('/:id/months', roleCheck('admin', 'pm'), contractController.getContractMonths);
 router.post('/', roleCheck('admin', 'pm'), contractController.createContract);
 router.put('/:id', roleCheck('admin', 'pm'), contractController.updateContract);
 router.patch('/:id/status', roleCheck('admin', 'pm'), contractController.updateContractStatus);

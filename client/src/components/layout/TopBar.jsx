@@ -9,6 +9,14 @@ const { Text } = Typography;
 const TopBar = () => {
   const { user, logout } = useAuth();
 
+  const ROLE_NAMES = {
+    admin: 'مدير النظام',
+    finance: 'مدير مالي',
+    pm: 'مدير مشاريع',
+    accountant: 'محاسب',
+    employee: 'موظف'
+  };
+
   const handleMenuClick = (e) => {
     if (e.key === 'logout') {
       logout();
@@ -56,7 +64,7 @@ const TopBar = () => {
                   {user?.fullName || 'المستخدم'}
                 </Text>
                 <Text type="secondary" style={{ fontSize: '11px', fontFamily: 'Cairo, sans-serif' }}>
-                  {user?.role === 'admin' ? 'مدير النظام' : user?.role || 'مستخدم'}
+                  {ROLE_NAMES[user?.role] || 'مستخدم'}
                 </Text>
               </div>
               <DownOutlined className="text-gray-400" />

@@ -13,7 +13,7 @@ router.get('/recurring', roleCheck('admin', 'finance'), expenseController.getRec
 
 router.get('/', roleCheck('admin', 'finance', 'accountant'), expenseController.getExpenses);
 router.get('/:id', roleCheck('admin', 'finance', 'accountant'), expenseController.getExpense);
-router.post('/', roleCheck('admin', 'finance'), expenseController.createExpense);
+router.post('/', roleCheck('admin', 'finance', 'accountant'), expenseController.createExpense);
 router.put('/:id', roleCheck('admin'), expenseController.updateExpense);
 router.delete('/:id', roleCheck('admin'), expenseController.deleteExpense);
 

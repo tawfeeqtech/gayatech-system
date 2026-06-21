@@ -7,6 +7,8 @@ const router = express.Router();
 
 router.use(protect);
 
+router.get('/me', roleCheck('admin', 'finance', 'pm', 'employee'), employeeController.getMe);
+
 router.get('/', roleCheck('admin', 'finance', 'pm'), employeeController.getEmployees);
 router.get('/:id', roleCheck('admin', 'finance', 'pm'), employeeController.getEmployee);
 router.post('/', roleCheck('admin'), employeeController.createEmployee);

@@ -53,8 +53,52 @@ import { ReemMovements, CompanyAccount } from './pages/Reports/AccountMovements'
 import IncomeSources from './pages/Reports/IncomeSources';
 import MonthlyExpenses from './pages/Reports/MonthlyExpenses';
 import InvoiceDetail from './pages/Invoices/InvoiceDetail';
+import MySalary from './pages/Employee/MySalary';
 
 import { useAuth } from './hooks/useAuth';
+
+// صلاحيات المسارات حسب الدور
+const ROUTE_ROLES = {
+  '/': ['admin','finance','pm','accountant','employee'],
+  '/clients': ['admin','pm'],
+  '/contracts': ['admin','pm'],
+  '/projects': ['admin','pm'],
+  '/transactions': ['admin','finance'],
+  '/invoices': ['admin','finance','accountant'],
+  '/expenses': ['admin','finance','accountant'],
+  '/vendors': ['admin','finance','accountant'],
+  '/accounts': ['admin','finance','accountant'],
+  '/employees': ['admin','finance','pm'],
+  '/salaries': ['admin','finance','employee'],
+  '/my-salary': ['admin','finance','employee'],
+  '/advances': ['admin','finance'],
+  '/partners': ['admin','finance'],
+  '/subscriptions': ['admin','finance'],
+  '/currency-exchange': ['admin','finance'],
+  '/reports': ['admin','finance','pm'],
+  '/import': ['admin','finance'],
+  '/settings': ['admin'],
+  '/settings/users': ['admin'],
+  '/settings/currencies': ['admin'],
+};
+
+// التحقق من صلاحية المسار للدور
+const hasRouteAccess = (pathname, role) => {
+  // البحث عن تطابق تام أولاً
+  if (ROUTE_ROLES[pathname]) {
+    return ROUTE_ROLES[pathname].includes(role);
+  }
+  // البحث عن تطابق جزئي (للمسارات الديناميكية)
+  for (const [pattern, roles] of Object.entries(ROUTE_ROLES)) {
+    if (pattern.endsWith('*')) {
+      const basePattern = pattern.slice(0, -1);
+      if (pathname.startsWith(basePattern)) {
+        return roles.includes(role);
+      }
+    }
+  }
+  return ROUTE_ROLES['/']?.includes(role) || false;
+};
 
 // مكون حماية المسارات
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -65,7 +109,27 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    return <Navigate to="/" replace />;
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '80vh',
+        fontFamily: 'Cairo, sans-serif',
+        textAlign: 'center',
+        padding: '20px',
+      }}>
+        <div style={{ fontSize: '80px', marginBottom: '20px' }}>⛔</div>
+        <h1 style={{ color: '#dc2626', marginBottom: '10px', fontWeight: 700 }}>غير مصرح</h1>
+        <p style={{ color: '#64748b', fontSize: '16px', maxWidth: '400px' }}>
+          ليس لديك صلاحية الوصول إلى هذه الصفحة. دورك الحالي لا يسمح بعرض هذه البيانات.
+        </p>
+        <p style={{ color: '#94a3b8', fontSize: '14px' }}>
+          يرجى التواصل مع مدير النظام إذا كنت تعتقد أن هذا خطأ.
+        </p>
+      </div>
+    );
   }
 
   return children;
@@ -94,79 +158,79 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<Dashboard />} />
-          <Route path="clients" element={<ClientList />} />
-          <Route path="clients/new" element={<ClientForm />} />
-          <Route path="clients/edit/:id" element={<ClientForm />} />
-          <Route path="clients/:id" element={<ClientDetail />} />
+          
+          <Route path="clients" element={<ProtectedRoute allowedRoles={['admin','pm']}><ClientList /></ProtectedRoute>} />
+          <Route path="clients/new" element={<ProtectedRoute allowedRoles={['admin','pm']}><ClientForm /></ProtectedRoute>} />
+          <Route path="clients/edit/:id" element={<ProtectedRoute allowedRoles={['admin','pm']}><ClientForm /></ProtectedRoute>} />
+          <Route path="clients/:id" element={<ProtectedRoute allowedRoles={['admin','pm']}><ClientDetail /></ProtectedRoute>} />
 
-          <Route path="contracts" element={<ContractList />} />
-          <Route path="contracts/new" element={<ContractForm />} />
-          <Route path="contracts/edit/:id" element={<ContractForm />} />
-          <Route path="contracts/:id" element={<ContractDetail />} />
+          <Route path="contracts" element={<ProtectedRoute allowedRoles={['admin','pm']}><ContractList /></ProtectedRoute>} />
+          <Route path="contracts/new" element={<ProtectedRoute allowedRoles={['admin','pm']}><ContractForm /></ProtectedRoute>} />
+          <Route path="contracts/edit/:id" element={<ProtectedRoute allowedRoles={['admin','pm']}><ContractForm /></ProtectedRoute>} />
+          <Route path="contracts/:id" element={<ProtectedRoute allowedRoles={['admin','pm']}><ContractDetail /></ProtectedRoute>} />
 
-          <Route path="projects" element={<ProjectList />} />
-          <Route path="projects/new" element={<ProjectForm />} />
-          <Route path="projects/edit/:id" element={<ProjectForm />} />
-          <Route path="projects/:id" element={<ProjectDetail />} />
+          <Route path="projects" element={<ProtectedRoute allowedRoles={['admin','pm']}><ProjectList /></ProtectedRoute>} />
+          <Route path="projects/new" element={<ProtectedRoute allowedRoles={['admin','pm']}><ProjectForm /></ProtectedRoute>} />
+          <Route path="projects/edit/:id" element={<ProtectedRoute allowedRoles={['admin','pm']}><ProjectForm /></ProtectedRoute>} />
+          <Route path="projects/:id" element={<ProtectedRoute allowedRoles={['admin','pm']}><ProjectDetail /></ProtectedRoute>} />
 
-          <Route path="transactions/new" element={<TransactionForm />} />
-          <Route path="transactions/edit/:id" element={<TransactionForm />} />
-          <Route path="transactions/:id" element={<TransactionDetail />} />
-          <Route path="transactions" element={<TransactionList />} />
+          <Route path="transactions/new" element={<ProtectedRoute allowedRoles={['admin','finance']}><TransactionForm /></ProtectedRoute>} />
+          <Route path="transactions/edit/:id" element={<ProtectedRoute allowedRoles={['admin','finance']}><TransactionForm /></ProtectedRoute>} />
+          <Route path="transactions/:id" element={<ProtectedRoute allowedRoles={['admin','finance']}><TransactionDetail /></ProtectedRoute>} />
+          <Route path="transactions" element={<ProtectedRoute allowedRoles={['admin','finance']}><TransactionList /></ProtectedRoute>} />
 
-          <Route path="invoices" element={<InvoiceList />} />
-          <Route path="invoices/new" element={<InvoiceForm />} />
-          <Route path="invoices/edit/:id" element={<InvoiceForm />} />
-          <Route path="invoices/:id" element={<InvoiceDetail />} />
+          <Route path="invoices" element={<ProtectedRoute allowedRoles={['admin','finance','accountant']}><InvoiceList /></ProtectedRoute>} />
+          <Route path="invoices/new" element={<ProtectedRoute allowedRoles={['admin','finance','accountant']}><InvoiceForm /></ProtectedRoute>} />
+          <Route path="invoices/edit/:id" element={<ProtectedRoute allowedRoles={['admin','finance','accountant']}><InvoiceForm /></ProtectedRoute>} />
+          <Route path="invoices/:id" element={<ProtectedRoute allowedRoles={['admin','finance','accountant']}><InvoiceDetail /></ProtectedRoute>} />
 
-          <Route path="expenses" element={<ExpenseList />} />
-          <Route path="expenses/new" element={<ExpenseForm />} />
-          <Route path="vendors" element={<VendorList />} />
+          <Route path="expenses" element={<ProtectedRoute allowedRoles={['admin','finance','accountant']}><ExpenseList /></ProtectedRoute>} />
+          <Route path="expenses/new" element={<ProtectedRoute allowedRoles={['admin','finance','accountant']}><ExpenseForm /></ProtectedRoute>} />
+          <Route path="vendors" element={<ProtectedRoute allowedRoles={['admin','finance','accountant']}><VendorList /></ProtectedRoute>} />
 
-          <Route path="accounts" element={<AccountsOverview />} />
+          <Route path="accounts" element={<ProtectedRoute allowedRoles={['admin','finance','accountant']}><AccountsOverview /></ProtectedRoute>} />
 
-          <Route path="employees" element={<EmployeeList />} />
-          <Route path="employees/new" element={<EmployeeForm />} />
-          <Route path="employees/edit/:id" element={<EmployeeForm />} />
-          <Route path="employees/:id" element={<EmployeeDetail />} />
+          <Route path="employees" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><EmployeeList /></ProtectedRoute>} />
+          <Route path="employees/new" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><EmployeeForm /></ProtectedRoute>} />
+          <Route path="employees/edit/:id" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><EmployeeForm /></ProtectedRoute>} />
+          <Route path="employees/:id" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><EmployeeDetail /></ProtectedRoute>} />
 
-          <Route path="salaries" element={<SalaryList />} />
-          <Route path="salaries/new" element={<SalaryForm />} />
+          <Route path="salaries" element={<ProtectedRoute allowedRoles={['admin','finance','employee']}><SalaryList /></ProtectedRoute>} />
+          <Route path="salaries/new" element={<ProtectedRoute allowedRoles={['admin','finance']}><SalaryForm /></ProtectedRoute>} />
+          <Route path="my-salary" element={<ProtectedRoute allowedRoles={['admin','finance','employee']}><MySalary /></ProtectedRoute>} />
 
-          <Route path="advances" element={<AdvanceList />} />
-          <Route path="advances/new" element={<AdvanceForm />} />
+          <Route path="advances" element={<ProtectedRoute allowedRoles={['admin','finance']}><AdvanceList /></ProtectedRoute>} />
+          <Route path="advances/new" element={<ProtectedRoute allowedRoles={['admin','finance']}><AdvanceForm /></ProtectedRoute>} />
 
-          <Route path="partners" element={<PartnerList />} />
-          <Route path="partners/new" element={<PartnerForm />} />
-          <Route path="partners/:id" element={<PartnerDetail />} />
+          <Route path="partners" element={<ProtectedRoute allowedRoles={['admin','finance']}><PartnerList /></ProtectedRoute>} />
+          <Route path="partners/new" element={<ProtectedRoute allowedRoles={['admin','finance']}><PartnerForm /></ProtectedRoute>} />
+          <Route path="partners/:id" element={<ProtectedRoute allowedRoles={['admin','finance']}><PartnerDetail /></ProtectedRoute>} />
 
-          <Route path="subscriptions" element={<SubscriptionList />} />
-          <Route path="subscriptions/new" element={<SubscriptionForm />} />
-          <Route path="subscriptions/edit/:id" element={<SubscriptionForm />} />
+          <Route path="subscriptions" element={<ProtectedRoute allowedRoles={['admin','finance']}><SubscriptionList /></ProtectedRoute>} />
+          <Route path="subscriptions/new" element={<ProtectedRoute allowedRoles={['admin','finance']}><SubscriptionForm /></ProtectedRoute>} />
+          <Route path="subscriptions/edit/:id" element={<ProtectedRoute allowedRoles={['admin','finance']}><SubscriptionForm /></ProtectedRoute>} />
 
-          <Route path="currency-exchange" element={<CurrencyExchangeList />} />
-          <Route path="import" element={<ImportData />} />
+          <Route path="currency-exchange" element={<ProtectedRoute allowedRoles={['admin','finance']}><CurrencyExchangeList /></ProtectedRoute>} />
+          <Route path="import" element={<ProtectedRoute allowedRoles={['admin','finance']}><ImportData /></ProtectedRoute>} />
 
-          <Route path="reports" element={<ReportList />} />
-          <Route path="reports/monthly-revenue" element={<MonthlyRevenue />} />
-          <Route path="reports/profit-loss" element={<ProfitLoss />} />
-          <Route path="reports/outstanding-debts" element={<OutstandingDebts />} />
-          <Route path="reports/client-balances" element={<ClientBalances />} />
-          <Route path="reports/active-contracts" element={<ActiveContracts />} />
-          <Route path="reports/subscriptions" element={<SubscriptionsReport />} />
+          <Route path="reports" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><ReportList /></ProtectedRoute>} />
+          <Route path="reports/monthly-revenue" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><MonthlyRevenue /></ProtectedRoute>} />
+          <Route path="reports/profit-loss" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><ProfitLoss /></ProtectedRoute>} />
+          <Route path="reports/outstanding-debts" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><OutstandingDebts /></ProtectedRoute>} />
+          <Route path="reports/client-balances" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><ClientBalances /></ProtectedRoute>} />
+          <Route path="reports/active-contracts" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><ActiveContracts /></ProtectedRoute>} />
+          <Route path="reports/subscriptions" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><SubscriptionsReport /></ProtectedRoute>} />
+          <Route path="reports/monthly-expenses" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><MonthlyExpenses /></ProtectedRoute>} />
+          <Route path="reports/completed-projects" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><CompletedProjects /></ProtectedRoute>} />
+          <Route path="reports/partner-balances" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><PartnerBalances /></ProtectedRoute>} />
+          <Route path="reports/employee-performance" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><EmployeePerformance /></ProtectedRoute>} />
+          <Route path="reports/reem-movements" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><ReemMovements /></ProtectedRoute>} />
+          <Route path="reports/company-account" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><CompanyAccount /></ProtectedRoute>} />
+          <Route path="reports/income-sources" element={<ProtectedRoute allowedRoles={['admin','finance','pm']}><IncomeSources /></ProtectedRoute>} />
 
-          <Route path="reports/monthly-expenses" element={<MonthlyExpenses />} />
-          <Route path="reports/completed-projects" element={<CompletedProjects />} />
-          <Route path="reports/partner-balances" element={<PartnerBalances />} />
-          <Route path="reports/employee-performance" element={<EmployeePerformance />} />
-          <Route path="reports/reem-movements" element={<ReemMovements />} />
-          <Route path="reports/company-account" element={<CompanyAccount />} />
-          <Route path="reports/income-sources" element={<IncomeSources />} />
-
-
-          <Route path="settings" element={<SystemSettings />} />
-          <Route path="settings/users" element={<UserManagement />} />
-          <Route path="settings/currencies" element={<CurrenciesManagement />} />
+          <Route path="settings" element={<ProtectedRoute allowedRoles={['admin']}><SystemSettings /></ProtectedRoute>} />
+          <Route path="settings/users" element={<ProtectedRoute allowedRoles={['admin']}><UserManagement /></ProtectedRoute>} />
+          <Route path="settings/currencies" element={<ProtectedRoute allowedRoles={['admin']}><CurrenciesManagement /></ProtectedRoute>} />
 
         </Route>
 

@@ -8,11 +8,11 @@ const router = express.Router();
 router.use(protect);
 
 router.route('/')
-  .get(vendorController.getVendors)
+  .get(roleCheck('admin', 'finance', 'accountant'), vendorController.getVendors)
   .post(roleCheck('admin', 'finance'), vendorController.createVendor);
 
 router.route('/:id')
-  .get(vendorController.getVendor)
+  .get(roleCheck('admin', 'finance', 'accountant'), vendorController.getVendor)
   .put(roleCheck('admin', 'finance'), vendorController.updateVendor)
   .delete(roleCheck('admin'), vendorController.deleteVendor);
 

@@ -67,3 +67,6 @@ temp/
 *.pid
 *.seed
 *.pid.lock
+
+# Spec Kit - Agent folder (may contain auth tokens)
+.claude/

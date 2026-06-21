@@ -23,11 +23,22 @@ exports.getContracts = asyncHandler(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 20;
   const skip = (page - 1) * limit;
 
-  const contracts = await Contract.find(filter)
+  let contracts = await Contract.find(filter)
     .populate('client', 'name company')
     .sort(req.query.sortBy || '-createdAt')
     .skip(skip)
     .limit(limit);
+
+  // إخفاء البيانات المالية عن مدير المشاريع
+  if (req.user.role === 'pm') {
+    contracts = contracts.map(c => {
+      const obj = c.toObject();
+      delete obj.defaultMonthlyValue;
+      delete obj.computedStats;
+      delete obj.currency;
+      return obj;
+    });
+  }
 
   const total = await Contract.countDocuments(filter);
 
@@ -50,6 +61,18 @@ exports.getContract = asyncHandler(async (req, res, next) => {
 
   if (!contract) {
     return next(new ApiError('العقد غير موجود', 404));
+  }
+
+  // إخفاء البيانات المالية عن مدير المشاريع
+  if (req.user.role === 'pm') {
+    const obj = contract.toObject();
+    delete obj.defaultMonthlyValue;
+    delete obj.computedStats;
+    delete obj.currency;
+    return res.status(200).json({
+      status: 'success',
+      data: { contract: obj }
+    });
   }
 
   res.status(200).json({

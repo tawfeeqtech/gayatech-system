@@ -5,6 +5,25 @@ const salaryService = require('../services/salaryService');
 const invoiceFactoryService = require('../services/invoiceFactoryService');
 const deductionService = require('../services/deductionService');
 
+exports.getMySalary = asyncHandler(async (req, res, next) => {
+  if (!req.user.employee) {
+    return next(new ApiError('لا يوجد موظف مرتبط بهذا الحساب', 404));
+  }
+
+  const filter = { employee: req.user.employee };
+  if (req.query.month) filter.month = req.query.month;
+
+  const salaries = await Salary.find(filter)
+    .populate('employee', 'name jobTitle')
+    .sort('-month');
+
+  res.status(200).json({
+    status: 'success',
+    results: salaries.length,
+    data: { salaries }
+  });
+});
+
 exports.getSalaries = asyncHandler(async (req, res, next) => {
   const filter = {};
   if (req.query.status) filter.status = req.query.status;

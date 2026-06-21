@@ -20,6 +20,7 @@ import {
   MoneyCollectOutlined,
   FundOutlined
 } from '@ant-design/icons';
+import { useAuth } from '../../hooks/useAuth';
 
 const { Sider } = Layout;
 
@@ -35,10 +36,23 @@ const COLORS = {
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+
+  // صلاحيات الأدوار لكل قسم
+  const ROLE_SECTIONS = {
+    admin: ['dashboard', 'clients-contracts', 'finance', 'hr', 'partners', 'reports-data', 'settings'],
+    finance: ['dashboard', 'finance', 'partners', 'reports-data'],
+    pm: ['dashboard', 'clients-contracts'],
+    accountant: ['dashboard', 'finance-accountant'],
+    employee: ['dashboard'],
+  };
+
+  const role = user?.role || 'employee';
 
   // الأقسام الرئيسية (قابلة للطي)
-  const menuItems = [
+  const allMenuItems = [
     { key: '/', icon: <DashboardOutlined />, label: 'لوحة التحكم' },
+    { key: '/my-salary', icon: <DollarOutlined />, label: 'راتبي' },
 
     // 📋 العملاء والعقود
     {
@@ -59,6 +73,19 @@ const Sidebar = () => {
       label: 'المالية',
       children: [
         { key: '/transactions', icon: <DollarOutlined />, label: 'المعاملات المالية' },
+        { key: '/invoices', icon: <SolutionOutlined />, label: 'الفواتير' },
+        { key: '/accounts', icon: <BankOutlined />, label: 'الحسابات والمحافظ' },
+        { key: '/expenses', icon: <WalletOutlined />, label: 'المصاريف' },
+        { key: '/vendors', icon: <UsergroupAddOutlined />, label: 'المزودون' },
+      ]
+    },
+
+    // 💰 المالية (للمحاسب - بدون معاملات مالية)
+    {
+      key: 'finance-accountant',
+      icon: <MoneyCollectOutlined />,
+      label: 'المالية',
+      children: [
         { key: '/invoices', icon: <SolutionOutlined />, label: 'الفواتير' },
         { key: '/accounts', icon: <BankOutlined />, label: 'الحسابات والمحافظ' },
         { key: '/expenses', icon: <WalletOutlined />, label: 'المصاريف' },
@@ -114,6 +141,15 @@ const Sidebar = () => {
     },
   ];
 
+  // تصفية العناصر حسب صلاحية الدور
+  const allowedSections = ROLE_SECTIONS[role] || ['dashboard'];
+  const salaryRoles = ['admin', 'finance', 'employee'];
+  const menuItems = allMenuItems.filter(item => {
+    if (item.key === '/') return true; // لوحة التحكم متاحة للجميع
+    if (item.key === '/my-salary') return salaryRoles.includes(role); // راتبي
+    return allowedSections.includes(item.key);
+  });
+
   // تحديد العنصر الفرعي النشط الذكي
   const getActiveKey = () => {
     const path = location.pathname;
@@ -144,6 +180,7 @@ const Sidebar = () => {
     // المالية
     if (path.startsWith('/transactions') || path.startsWith('/invoices') || path.startsWith('/accounts') || path.startsWith('/expenses') || path.startsWith('/vendors')) {
       openSections.push('finance');
+      openSections.push('finance-accountant');
     }
     
     // الموارد البشرية

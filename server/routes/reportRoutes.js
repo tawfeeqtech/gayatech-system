@@ -11,7 +11,7 @@ router.get('/profit-loss', roleCheck('admin', 'finance'), rc.getProfitLoss);
 router.get('/outstanding-debts', roleCheck('admin', 'finance'), rc.getOutstandingDebts);
 router.get('/client-balances', roleCheck('admin', 'finance'), rc.getClientBalances);
 router.get('/partner-balances', roleCheck('admin', 'finance'), rc.getPartnerBalances);
-router.get('/employee-performance', roleCheck('admin', 'pm'), rc.getEmployeePerformance);
+router.get('/employee-performance', roleCheck('admin', 'finance', 'pm'), rc.getEmployeePerformance);
 router.get('/completed-projects', roleCheck('admin', 'pm'), rc.getCompletedProjects);
 router.get('/active-contracts', roleCheck('admin', 'pm'), rc.getActiveContracts);
 router.get('/reem-movements', roleCheck('admin', 'finance'), rc.getReemMovements);

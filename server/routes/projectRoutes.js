@@ -14,11 +14,11 @@ router.patch('/tasks/:id/status', roleCheck('admin', 'pm'), projectTaskControlle
 router.delete('/tasks/:id', roleCheck('admin'), projectTaskController.deleteTask);
 
 // مسارات المشاريع العامة
-router.get('/', roleCheck('admin', 'finance', 'pm'), projectController.getProjects);
+router.get('/', roleCheck('admin', 'pm'), projectController.getProjects);
 router.post('/', roleCheck('admin', 'pm'), projectController.createProject);
 
 // مسارات مشروع محدد
-router.get('/:id', roleCheck('admin', 'finance', 'pm'), projectController.getProject);
+router.get('/:id', roleCheck('admin', 'pm'), projectController.getProject);
 router.put('/:id', roleCheck('admin', 'pm'), projectController.updateProject);
 router.patch('/:id/status', roleCheck('admin', 'pm'), projectController.updateProjectStatus);
 router.delete('/:id', roleCheck('admin'), projectController.deleteProject);

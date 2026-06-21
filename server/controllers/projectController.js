@@ -22,12 +22,23 @@ exports.getProjects = asyncHandler(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 20;
   const skip = (page - 1) * limit;
 
-  const projects = await Project.find(filter)
+  let projects = await Project.find(filter)
     .populate('client', 'name company')
     .populate('team.employee', 'name jobTitle')
     .sort(req.query.sortBy || '-createdAt')
     .skip(skip)
     .limit(limit);
+
+  // إخفاء البيانات المالية عن مدير المشاريع
+  if (req.user.role === 'pm') {
+    projects = projects.map(p => {
+      const obj = p.toObject();
+      delete obj.totalValue;
+      delete obj.currency;
+      delete obj.computedStats;
+      return obj;
+    });
+  }
 
   const total = await Project.countDocuments(filter);
 
@@ -51,6 +62,18 @@ exports.getProject = asyncHandler(async (req, res, next) => {
 
   if (!project) {
     return next(new ApiError('المشروع غير موجود', 404));
+  }
+
+  // إخفاء البيانات المالية عن مدير المشاريع
+  if (req.user.role === 'pm') {
+    const obj = project.toObject();
+    delete obj.totalValue;
+    delete obj.currency;
+    delete obj.computedStats;
+    return res.status(200).json({
+      status: 'success',
+      data: { project: obj }
+    });
   }
 
   res.status(200).json({

@@ -11,9 +11,9 @@ router.use(protect);
 router.get('/summary', roleCheck('admin', 'finance'), transactionController.getTransactionsSummary);
 
 // مسارات أساسية
-router.get('/', roleCheck('admin', 'finance', 'accountant'), transactionController.getTransactions);
-router.get('/:id', roleCheck('admin', 'finance', 'accountant'), transactionController.getTransaction);
-router.post('/', roleCheck('admin', 'finance', 'accountant'), transactionController.createTransaction);
+router.get('/', roleCheck('admin', 'finance'), transactionController.getTransactions);
+router.get('/:id', roleCheck('admin', 'finance'), transactionController.getTransaction);
+router.post('/', roleCheck('admin', 'finance'), transactionController.createTransaction);
 router.put('/:id', roleCheck('admin'), transactionController.updateTransaction);
 router.delete('/:id', roleCheck('admin'), transactionController.deleteTransaction);
 

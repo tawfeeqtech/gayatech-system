@@ -2,6 +2,24 @@ const Employee = require('../models/Employee');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 
+exports.getMe = asyncHandler(async (req, res, next) => {
+  if (!req.user.employee) {
+    return next(new ApiError('لا يوجد موظف مرتبط بهذا الحساب', 404));
+  }
+
+  const employee = await Employee.findById(req.user.employee)
+    .populate('user', 'username role');
+
+  if (!employee) {
+    return next(new ApiError('الموظف غير موجود', 404));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: { employee }
+  });
+});
+
 // @desc    الحصول على جميع الموظفين
 // @route   GET /api/employees
 // @access  Private (admin, finance, pm)
