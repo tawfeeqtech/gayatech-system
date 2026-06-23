@@ -5,7 +5,6 @@ import { ExclamationCircleOutlined } from '@ant-design/icons';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import subscriptionAPI from '../../api/subscriptions';
-import { formatCurrency } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { useCurrencies } from '../../hooks/useCurrencies';

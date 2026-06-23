@@ -199,6 +199,7 @@ const DataTable = ({
   };
 
   return (
+    <>
     <Card
       style={{
         borderRadius: '8px',
@@ -386,6 +387,7 @@ const DataTable = ({
         loading={bulkEditLoading}
       />
     )}
+  </>
   );
 };
 
