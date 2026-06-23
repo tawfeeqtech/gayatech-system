@@ -1,12 +1,17 @@
 const express = require('express');
+const bulkController = require('../controllers/bulkController');
 const projectController = require('../controllers/projectController');
 const projectTaskController = require('../controllers/projectTaskController');
 const { protect } = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
+const Project = require('../models/Project');
 
 const router = express.Router();
 
 router.use(protect);
+
+router.post('/bulk-delete', roleCheck('admin'), bulkController.bulkDelete(Project));
+router.post('/bulk-update', roleCheck('admin'), bulkController.bulkUpdate(Project));
 
 // ⚠️ المسارات المستقلة أولاً (قبل `/:id`)
 router.put('/tasks/:id', roleCheck('admin', 'pm'), projectTaskController.updateTask);

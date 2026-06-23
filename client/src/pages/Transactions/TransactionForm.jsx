@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, message, Typography, InputNumber } from 'antd';
+import { Card, Form, Button, Space, Row, Col, Select, Typography, InputNumber } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import transactionAPI from '../../api/transactions';
+import toast from 'react-hot-toast';
 import clientAPI from '../../api/clients';
 import accountAPI from '../../api/accounts';
 import invoiceAPI from '../../api/invoices';
@@ -116,7 +117,7 @@ const TransactionForm = () => {
         }
       }, 800);
     } catch {
-      message.error('فشل في جلب بيانات المعاملة');
+      toast.error('فشل في جلب بيانات المعاملة');
     }
   };
 
@@ -311,7 +312,7 @@ const TransactionForm = () => {
         
         // التحقق من تطابق المجموع
         if (Math.abs(totalAllocated - values.amount) > 0.01) {
-          message.error(`مجموع التوزيعات (${totalAllocated}) لا يساوي مبلغ المعاملة (${values.amount})`);
+          toast.error(`مجموع التوزيعات (${totalAllocated}) لا يساوي مبلغ المعاملة (${values.amount})`);
           setSubmitting(false);
           return;
         }
@@ -352,7 +353,7 @@ const TransactionForm = () => {
       }
       navigate('/transactions');
     } catch (e) {
-      message.error(e.response?.data?.message || 'فشل في حفظ المعاملة');
+      toast.error(e.response?.data?.message || 'فشل في حفظ المعاملة');
     } finally {
       setSubmitting(false);
     }

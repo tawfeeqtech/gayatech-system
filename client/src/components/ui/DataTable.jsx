@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Input, Button, Space, Tag, Tooltip, Card, Row, Col } from 'antd';
+import { Table, Input, Button, Space, Tag, Tooltip, Card, Row, Col, Popconfirm } from 'antd';
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -8,8 +8,11 @@ import {
   DeleteOutlined,
   EyeOutlined,
   PlusOutlined,
+  DeleteFilled,
+  EditFilled,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import BulkEditModal from './BulkEditModal';
 
 /**
  * مكون جدول بيانات موحد
@@ -33,6 +36,10 @@ import { useNavigate } from 'react-router-dom';
  * @param {Array} filters - أزرار فلترة إضافية
  * @param {Boolean} showActions - إظهار عمود الإجراءات
  * @param {Array} customActions - إجراءات مخصصة
+ * @param {Boolean} rowSelection - تفعيل تحديد الصفوف (checkbox)
+ * @param {Function} onBulkDelete - دالة الحذف الجماعي (تستقبل مصفوفة الـ ids)
+ * @param {Function} onBulkAction - إجراء جماعي مخصص (تستقبل مصفوفة الـ ids)
+ * @param {String} bulkActionLabel - نص زر الإجراء الجماعي المخصص
  */
 const DataTable = ({
   columns = [],
@@ -54,9 +61,20 @@ const DataTable = ({
   filters,
   showActions = true,
   customActions,
+  rowSelection = false,
+  onBulkDelete,
+  onBulkAction,
+  bulkActionLabel = 'تعديل الكل',
+  onBulkEdit,
+  bulkEditLabel = 'تعديل المحدد',
 }) => {
   const navigate = useNavigate();
   const [searchText, setSearchText] = useState('');
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [bulkEditVisible, setBulkEditVisible] = useState(false);
+  const [bulkEditLoading, setBulkEditLoading] = useState(false);
 
   const handleSearch = (value) => {
     setSearchText(value);
@@ -67,6 +85,7 @@ const DataTable = ({
 
   const handleRefresh = () => {
     setSearchText('');
+    setSelectedRowKeys([]);
     if (onRefresh) onRefresh();
   };
 
@@ -120,6 +139,64 @@ const DataTable = ({
   const tableColumns = showActions
     ? [actionsColumn, ...columns]
     : columns;
+
+  // إعدادات تحديد الصفوف
+  const rowSelectionConfig = rowSelection
+    ? {
+        type: 'checkbox',
+        selectedRowKeys,
+        onChange: (keys) => setSelectedRowKeys(keys),
+        preserveSelectedRowKeys: true,
+        selections: [
+          Table.SELECTION_ALL,
+          Table.SELECTION_INVERT,
+          Table.SELECTION_NONE,
+        ],
+      }
+    : undefined;
+
+  // حذف جماعي
+  const handleBulkDelete = async () => {
+    if (!onBulkDelete || selectedRowKeys.length === 0) return;
+    setBulkDeleteLoading(true);
+    try {
+      await onBulkDelete(selectedRowKeys);
+      setSelectedRowKeys([]);
+    } catch {
+      // الخطأ يتم معالجته في الدالة المسندة
+    } finally {
+      setBulkDeleteLoading(false);
+    }
+  };
+
+  // إجراء جماعي مخصص
+  const handleBulkAction = async () => {
+    if (!onBulkAction || selectedRowKeys.length === 0) return;
+    setBulkActionLoading(true);
+    try {
+      await onBulkAction(selectedRowKeys);
+      setSelectedRowKeys([]);
+    } catch {
+      // الخطأ يتم معالجته في الدالة المسندة
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  // تعديل جماعي
+  const handleBulkEdit = async ({ field, value }) => {
+    if (!onBulkEdit || selectedRowKeys.length === 0) return;
+    setBulkEditLoading(true);
+    try {
+      await onBulkEdit(selectedRowKeys, field, value);
+      setBulkEditVisible(false);
+      setSelectedRowKeys([]);
+    } catch {
+      // الخطأ يتم معالجته في الدالة المسندة
+    } finally {
+      setBulkEditLoading(false);
+    }
+  };
 
   return (
     <Card
@@ -199,6 +276,73 @@ const DataTable = ({
       {/* أزرار الفلترة */}
       {filters && <div style={{ marginBottom: 16 }}>{filters}</div>}
 
+      {/* شريط الإجراءات للصفوف المحددة */}
+      {rowSelection && selectedRowKeys.length > 0 && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: '8px 16px',
+            background: '#f0f5ff',
+            border: '1px solid #d6e4ff',
+            borderRadius: 6,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span style={{ fontFamily: 'Cairo, sans-serif', color: '#1d39c4' }}>
+            تم تحديد <strong>{selectedRowKeys.length}</strong> صف
+          </span>
+          <Space>
+            {onBulkDelete && (
+              <Popconfirm
+                title="تأكيد الحذف الجماعي"
+                description={`هل أنت متأكد من حذف ${selectedRowKeys.length} عنصر؟`}
+                onConfirm={handleBulkDelete}
+                okText="نعم"
+                cancelText="إلغاء"
+                okButtonProps={{ danger: true }}
+              >
+                <Button
+                  danger
+                  icon={<DeleteFilled />}
+                  loading={bulkDeleteLoading}
+                  style={{ fontFamily: 'Cairo, sans-serif' }}
+                >
+                  حذف المحدد
+                </Button>
+              </Popconfirm>
+            )}
+            {onBulkEdit && (
+              <Button
+                icon={<EditFilled />}
+                onClick={() => setBulkEditVisible(true)}
+                style={{ fontFamily: 'Cairo, sans-serif' }}
+              >
+                {bulkEditLabel}
+              </Button>
+            )}
+            {onBulkAction && (
+              <Button
+                type="primary"
+                onClick={handleBulkAction}
+                loading={bulkActionLoading}
+                style={{ fontFamily: 'Cairo, sans-serif' }}
+              >
+                {bulkActionLabel}
+              </Button>
+            )}
+            <Button
+              size="small"
+              onClick={() => setSelectedRowKeys([])}
+              style={{ fontFamily: 'Cairo, sans-serif' }}
+            >
+              إلغاء التحديد
+            </Button>
+          </Space>
+        </div>
+      )}
+
       {/* الجدول */}
       <Table
         columns={tableColumns}
@@ -206,11 +350,15 @@ const DataTable = ({
         rowKey="_id"
         loading={loading}
         scroll={{ x: 800 }}
+        rowSelection={rowSelectionConfig}
         pagination={{
           current: page,
           pageSize: pageSize,
           total: total,
-          onChange: onPageChange,
+          onChange: (p, ps) => {
+            setSelectedRowKeys([]);
+            if (onPageChange) onPageChange(p, ps);
+          },
           showSizeChanger: true,
           showTotal: (total, range) =>
             `عرض ${range[0]}-${range[1]} من إجمالي ${total}`,
@@ -228,6 +376,16 @@ const DataTable = ({
         }}
       />
     </Card>
+    {onBulkEdit && (
+      <BulkEditModal
+        visible={bulkEditVisible}
+        onCancel={() => setBulkEditVisible(false)}
+        onConfirm={handleBulkEdit}
+        selectedCount={selectedRowKeys.length}
+        columns={tableColumns}
+        loading={bulkEditLoading}
+      />
+    )}
   );
 };
 

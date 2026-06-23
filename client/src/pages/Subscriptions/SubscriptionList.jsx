@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, message, Tag, Select, Row, Col, Card } from 'antd';
+import { Space, Tag, Select, Row, Col, Card } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import StatCard from '../../components/ui/StatCard';
 import subscriptionAPI from '../../api/subscriptions';
+import { formatCurrency } from '../../utils/formatters';
+import toast from 'react-hot-toast';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { useCurrencies } from '../../hooks/useCurrencies';
 
@@ -42,7 +43,7 @@ const SubscriptionList = () => {
       setSubscriptions(updatedSubs);
       setTotal(res.data.total);
     } catch (error) {
-      message.error('فشل في جلب الاشتراكات');
+      toast.error('فشل في جلب الاشتراكات');
     } finally {
       setLoading(false);
     }
@@ -67,11 +68,11 @@ const SubscriptionList = () => {
     if (!deleteTarget) return;
     try {
       await subscriptionAPI.delete(deleteTarget._id);
-      message.success('تم حذف الاشتراك');
+      toast.success('تم حذف الاشتراك');
       setDeleteTarget(null);
       fetchData();
     } catch {
-      message.error('فشل في الحذف');
+      toast.error('فشل في الحذف');
     }
   };
 
@@ -198,6 +199,9 @@ const SubscriptionList = () => {
         filters={filterBar}
         showActions={true}
         detailPath={undefined}
+        rowSelection={true}
+        onBulkDelete={(ids) => subscriptionAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => subscriptionAPI.bulkUpdate(ids, field, value)}
       />
 
       <ConfirmDialog

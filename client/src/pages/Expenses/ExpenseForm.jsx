@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, message, Typography } from 'antd';
+import { Card, Form, Button, Space, Row, Col, Select, Typography } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import FormField from '../../components/ui/FormField';
@@ -8,6 +8,7 @@ import categoryAPI from '../../api/expenseCategories';
 import accountAPI from '../../api/accounts';
 import vendorAPI from '../../api/vendors';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import toast from 'react-hot-toast';
 
 const { Title } = Typography;
 
@@ -33,7 +34,7 @@ const ExpenseForm = () => {
       message.success('تمت إضافة المصروف');
       navigate('/expenses');
     } catch (e) {
-      message.error(e.response?.data?.message || 'فشل في الحفظ');
+      toast.error(e.response?.data?.message || 'فشل في الحفظ');
     } finally {
       setSubmitting(false);
     }

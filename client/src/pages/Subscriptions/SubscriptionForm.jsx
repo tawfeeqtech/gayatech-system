@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, message, Typography, AutoComplete } from 'antd';
+import { Card, Form, Button, Space, Row, Col, Select, Typography, AutoComplete } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import subscriptionAPI from '../../api/subscriptions';
+import toast from 'react-hot-toast';
 import vendorAPI from '../../api/vendors';
 import { useCurrencies } from '../../hooks/useCurrencies';
 
@@ -63,7 +64,7 @@ const SubscriptionForm = () => {
         setStatus(sub.status);
       }
     } catch {
-      message.error('فشل في جلب بيانات الاشتراك');
+      toast.error('فشل في جلب بيانات الاشتراك');
       navigate('/subscriptions');
     } finally {
       setLoading(false);
@@ -118,7 +119,7 @@ const SubscriptionForm = () => {
       }
       navigate('/subscriptions');
     } catch (e) {
-      message.error(e.response?.data?.message || 'فشل في الحفظ');
+      toast.error(e.response?.data?.message || 'فشل في الحفظ');
     } finally {
       setSubmitting(false);
     }

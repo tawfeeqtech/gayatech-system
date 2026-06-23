@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, Form, Input, InputNumber, message, Card } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, InputNumber, Card } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import vendorAPI from '../../api/vendors';
+import toast from 'react-hot-toast';
 
 const VendorList = () => {
   const [vendors, setVendors] = useState([]);
@@ -16,7 +17,7 @@ const VendorList = () => {
       const res = await vendorAPI.getAll();
       setVendors(res.data.data.vendors);
     } catch (e) {
-      message.error('فشل في جلب المزودين');
+      toast.error('فشل في جلب المزودين');
     } finally {
       setLoading(false);
     }
@@ -39,10 +40,10 @@ const VendorList = () => {
   const handleDelete = async (id) => {
     try {
       await vendorAPI.delete(id);
-      message.success('تم الحذف بنجاح');
+      toast.success('تم الحذف بنجاح');
       fetchVendors();
     } catch (e) {
-      message.error('فشل الحذف');
+      toast.error('فشل الحذف');
     }
   };
 
@@ -50,15 +51,15 @@ const VendorList = () => {
     try {
       if (editingVendor) {
         await vendorAPI.update(editingVendor._id, values);
-        message.success('تم التحديث بنجاح');
+        toast.success('تم التحديث بنجاح');
       } else {
         await vendorAPI.create(values);
-        message.success('تمت الإضافة بنجاح');
+        toast.success('تمت الإضافة بنجاح');
       }
       setModalVisible(false);
       fetchVendors();
     } catch (e) {
-      message.error('فشل الحفظ');
+      toast.error('فشل الحفظ');
     }
   };
 

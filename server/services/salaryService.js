@@ -12,15 +12,18 @@ const salaryService = {
     if (!employee || employee.status !== 'نشط') return;
 
     const joiningDate = new Date(employee.joiningDate);
+    // Add 12 hours to compensate for timezone offset (e.g., +03:00 stored as UTC)
+    // This prevents the joining date from shifting back a month when using getUTCMonth()
+    joiningDate.setHours(joiningDate.getHours() + 12);
     const now = new Date();
 
-    let currentMonth = new Date(joiningDate.getFullYear(), joiningDate.getMonth(), 1);
-    const endMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    let currentMonth = new Date(Date.UTC(joiningDate.getUTCFullYear(), joiningDate.getUTCMonth(), 1));
+    const endMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
     const generated = [];
 
     while (currentMonth <= endMonth) {
-      const monthStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+      const monthStr = `${currentMonth.getUTCFullYear()}-${String(currentMonth.getUTCMonth() + 1).padStart(2, '0')}`;
 
       // التحقق من عدم وجود راتب مسبق
       const existing = await Salary.findOne({ employee: employeeId, month: monthStr });
@@ -41,7 +44,7 @@ const salaryService = {
         await salary.save();
 
         // إنشاء فاتورة للراتب
-        const payDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, employee.salaryDayOfMonth || 1);
+        const payDate = new Date(Date.UTC(currentMonth.getUTCFullYear(), currentMonth.getUTCMonth() + 1, employee.salaryDayOfMonth || 1));
         const invoice = await invoiceFactoryService.createInvoice({
           type: 'راتب',
           amount: salary.totalAmount,

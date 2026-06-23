@@ -9,6 +9,8 @@ const advanceAPI = {
   reject: (id) => api.patch(`/advances/${id}/reject`),
   repay: (id, amount) => api.patch(`/advances/${id}/repay`, { amount }),
   getPending: () => api.get('/advances/pending'),
+  bulkDelete: (ids) => api.post('/advances/bulk-delete', { ids }),
+  bulkUpdate: (ids, field, value) => api.post('/advances/bulk-update', { ids, field, value }),
 };
 
 export default advanceAPI;

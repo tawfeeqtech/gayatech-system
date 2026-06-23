@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, InputNumber, List, Typography, message, Tag, Divider } from 'antd';
+import { Modal, Form, InputNumber, List, Typography, Tag, Divider } from 'antd';
 import contractAPI from '../../api/contracts';
 import invoiceAPI from '../../api/invoices';
 import { formatCurrency } from '../../utils/formatters';
+import toast from 'react-hot-toast';
 
 const { Text, Title } = Typography;
 
@@ -41,7 +42,7 @@ const PaymentAllocation = ({ open, onCancel, onConfirm, transaction }) => {
 
   const handleConfirm = () => {
     if (totalAllocated > transaction?.amount) {
-      message.error('مجموع التوزيعات أكبر من مبلغ المعاملة');
+      toast.error('مجموع التوزيعات أكبر من مبلغ المعاملة');
       return;
     }
     onConfirm(allocations.filter(a => a.amount > 0));

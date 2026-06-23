@@ -1,6 +1,7 @@
 const Employee = require('../models/Employee');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
+const salaryService = require('../services/salaryService');
 
 exports.getMe = asyncHandler(async (req, res, next) => {
   if (!req.user.employee) {
@@ -81,6 +82,16 @@ exports.getEmployee = asyncHandler(async (req, res, next) => {
 exports.createEmployee = asyncHandler(async (req, res, next) => {
   req.body.createdBy = req.user._id;
   const employee = await Employee.create(req.body);
+
+  // توليد الراتب تلقائياً إذا كان الموظف نشطاً ومفعلة خاصية التوليد التلقائي
+  if (employee.status === 'نشط' && employee.autoGenerateSalary === true) {
+    try {
+      await salaryService.generateSalariesForEmployee(employee._id, req.user._id);
+    } catch (err) {
+      // لا نريد فشل العملية بسبب خطأ في توليد الراتب
+      console.error(`فشل توليد الراتب للموظف ${employee._id}:`, err.message);
+    }
+  }
 
   res.status(201).json({
     status: 'success',

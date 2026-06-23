@@ -1,11 +1,16 @@
 const express = require('express');
+const bulkController = require('../controllers/bulkController');
 const expenseController = require('../controllers/expenseController');
 const { protect } = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
+const Expense = require('../models/Expense');
 
 const router = express.Router();
 
 router.use(protect);
+
+router.post('/bulk-delete', roleCheck('admin'), bulkController.bulkDelete(Expense));
+router.post('/bulk-update', roleCheck('admin'), bulkController.bulkUpdate(Expense));
 
 // مسارات خاصة (قبل /:id)
 router.get('/by-category', roleCheck('admin', 'finance'), expenseController.getExpensesByCategory);

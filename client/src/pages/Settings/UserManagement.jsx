@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, message, Tag, Button, Modal, Form, Select, Switch, Typography } from 'antd';
+import { Space, Tag, Button, Modal, Form, Select, Switch, Typography } from 'antd';
 import { PlusOutlined, EditOutlined } from '@ant-design/icons';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import toast from 'react-hot-toast';
 import userAPI from '../../api/users';
 import employeeAPI from '../../api/employees';
 
@@ -28,7 +29,7 @@ const UserManagement = () => {
       ]);
       setUsers(uRes.data.data.users);
       setEmployees(eRes.data.data.employees || []);
-    } catch (error) { message.error('فشل في جلب المستخدمين'); }
+    } catch (error) { toast.error('فشل في جلب المستخدمين'); }
     finally { setLoading(false); }
   }, []);
 
@@ -39,33 +40,33 @@ const UserManagement = () => {
     try {
       if (editingUser) {
         await userAPI.update(editingUser._id, values);
-        message.success('تم تحديث المستخدم');
+        toast.success('تم تحديث المستخدم');
       } else {
         await userAPI.create(values);
-        message.success('تم إضافة المستخدم');
+        toast.success('تم إضافة المستخدم');
       }
       setShowModal(false);
       setEditingUser(null);
       form.resetFields();
       fetchUsers();
-    } catch (e) { message.error(e.response?.data?.message || 'فشل'); }
+    } catch (e) { toast.error(e.response?.data?.message || 'فشل'); }
     finally { setSubmitting(false); }
   };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    try { await userAPI.delete(deleteTarget._id); message.success('تم حذف المستخدم'); setDeleteTarget(null); fetchUsers(); }
-    catch (e) { message.error(e.response?.data?.message || 'فشل'); }
+    try { await userAPI.delete(deleteTarget._id); toast.success('تم حذف المستخدم'); setDeleteTarget(null); fetchUsers(); }
+    catch (e) { toast.error(e.response?.data?.message || 'فشل'); }
   };
 
   const handleToggle = async () => {
     if (!toggleTarget) return;
     try {
       await userAPI.toggleStatus(toggleTarget._id);
-      message.success(`تم ${toggleTarget.isActive ? 'تعطيل' : 'تفعيل'} المستخدم`);
+      toast.success(`تم ${toggleTarget.isActive ? 'تعطيل' : 'تفعيل'} المستخدم`);
       setToggleTarget(null);
       fetchUsers();
-    } catch (e) { message.error('فشل'); }
+    } catch (e) { toast.error('فشل'); }
   };
 
   const roleColors = { admin: 'red', finance: 'blue', pm: 'green', accountant: 'orange', employee: 'default' };
@@ -115,7 +116,10 @@ const UserManagement = () => {
       </div>
 
       <DataTable columns={columns} dataSource={users} loading={loading} onRefresh={fetchUsers}
-        showActions={false} pagination={false} />
+        showActions={false} pagination={false}
+        rowSelection={true}
+        onBulkDelete={(ids) => userAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => userAPI.bulkUpdate(ids, field, value)} />
 
       <Modal
         title={editingUser ? 'تعديل مستخدم' : 'إضافة مستخدم جديد'}

@@ -1,11 +1,16 @@
 const express = require('express');
+const bulkController = require('../controllers/bulkController');
 const transactionController = require('../controllers/transactionController');
 const { protect } = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
+const Transaction = require('../models/Transaction');
 
 const router = express.Router();
 
 router.use(protect);
+
+router.post('/bulk-delete', roleCheck('admin'), bulkController.bulkDelete(Transaction));
+router.post('/bulk-update', roleCheck('admin'), bulkController.bulkUpdate(Transaction));
 
 // ملخص (يجب أن يكون قبل /:id)
 router.get('/summary', roleCheck('admin', 'finance'), transactionController.getTransactionsSummary);

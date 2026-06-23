@@ -8,6 +8,8 @@ const expenseAPI = {
   delete: (id) => api.delete(`/expenses/${id}`),
   getByCategory: (params) => api.get('/expenses/by-category', { params }),
   getRecurring: () => api.get('/expenses/recurring'),
+  bulkDelete: (ids) => api.post('/expenses/bulk-delete', { ids }),
+  bulkUpdate: (ids, field, value) => api.post('/expenses/bulk-update', { ids, field, value }),
 };
 
 export default expenseAPI;

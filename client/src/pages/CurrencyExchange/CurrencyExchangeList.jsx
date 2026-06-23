@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Space, message, Tag, Button, Modal, Form, Select, InputNumber, DatePicker, Input, Card, Row, Col, Alert } from 'antd';
+import { Space, Tag, Button, Modal, Form, Select, InputNumber, DatePicker, Input, Card, Row, Col, Alert } from 'antd';
 import { PlusOutlined, EditOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import DataTable from '../../components/ui/DataTable';
@@ -9,6 +9,7 @@ import walletAPI from '../../api/wallets';
 import accountAPI from '../../api/accounts';
 import { formatCurrency } from '../../utils/formatters';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import toast from 'react-hot-toast';
 
 const CURRENCY_SYMBOLS = { USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' };
 const CURRENCY_NAMES = { USD: 'دولار', ILS: 'شيكل', SAR: 'ريال', JOD: 'دينار', EUR: 'يورو' };
@@ -69,7 +70,7 @@ const CurrencyExchangeList = () => {
       setAllWallets(walletRes.data.data.wallets || []);
       setAccounts(accountRes.data.data.accounts || []);
     } catch (e) {
-      message.error('فشل في تحميل المحافظ');
+      toast.error('فشل في تحميل المحافظ');
     } finally {
       setLoadingWallets(false);
     }
@@ -158,7 +159,7 @@ const CurrencyExchangeList = () => {
       setExchanges(response.data.data.exchanges);
       setTotal(response.data.total);
     } catch (error) {
-      message.error('فشل في جلب التحويلات');
+      toast.error('فشل في جلب التحويلات');
     } finally {
       setLoading(false);
     }
@@ -222,10 +223,10 @@ const CurrencyExchangeList = () => {
       };
       if (editingExchange) {
         await currencyAPI.update(editingExchange._id, payload);
-        message.success('تم تحديث التحويل');
+        toast.success('تم تحديث التحويل');
       } else {
         await currencyAPI.create(payload);
-        message.success('تمت إضافة التحويل');
+        toast.success('تمت إضافة التحويل');
       }
       setShowModal(false);
       form.resetFields();
@@ -233,7 +234,7 @@ const CurrencyExchangeList = () => {
       setEditingExchange(null);
       fetchExchanges();
     } catch (e) {
-      message.error(e.response?.data?.message || 'فشل في الحفظ');
+      toast.error(e.response?.data?.message || 'فشل في الحفظ');
     } finally {
       setSubmitting(false);
     }
@@ -244,11 +245,11 @@ const CurrencyExchangeList = () => {
     setDeleteLoading(true);
     try {
       await currencyAPI.delete(deleteTarget._id);
-      message.success('تم حذف التحويل');
+      toast.success('تم حذف التحويل');
       setDeleteTarget(null);
       fetchExchanges();
     } catch (e) {
-      message.error(e.response?.data?.message || 'فشل في الحذف');
+      toast.error(e.response?.data?.message || 'فشل في الحذف');
     } finally {
       setDeleteLoading(false);
     }
@@ -355,6 +356,9 @@ const CurrencyExchangeList = () => {
         onDelete={(r) => setDeleteTarget(r)}
         customActions={customActions}
         filters={filterBar}
+        rowSelection={true}
+        onBulkDelete={(ids) => currencyAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => currencyAPI.bulkUpdate(ids, field, value)}
       />
 
       {/* ====== Create/Edit Modal ====== */}

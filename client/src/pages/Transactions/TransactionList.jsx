@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, DatePicker, message, Tag, Row, Col, Card } from 'antd';
+import { Space, Select, DatePicker, Tag, Row, Col, Card } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined, SwapOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/ui/DataTable';
+import toast from 'react-hot-toast';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import StatCard from '../../components/ui/StatCard';
@@ -53,7 +54,7 @@ const TransactionList = () => {
       setTotal(txRes.data.total);
       setSummary(sumRes.data?.data?.month || {});
     } catch (error) {
-      message.error('فشل في جلب المعاملات');
+      toast.error('فشل في جلب المعاملات');
     } finally {
       setLoading(false);
     }
@@ -66,11 +67,11 @@ const TransactionList = () => {
     setDeleteLoading(true);
     try {
       await transactionAPI.delete(deleteTarget._id);
-      message.success('تم حذف المعاملة');
+      toast.success('تم حذف المعاملة');
       setDeleteTarget(null);
       fetchTransactions();
     } catch (e) {
-      message.error(e.response?.data?.message || 'فشل في الحذف');
+      toast.error(e.response?.data?.message || 'فشل في الحذف');
     } finally {
       setDeleteLoading(false);
     }
@@ -202,6 +203,9 @@ const TransactionList = () => {
         filters={filterBar}
         showActions={true}
         editPath="/transactions/edit"
+        rowSelection={true}
+        onBulkDelete={(ids) => transactionAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => transactionAPI.bulkUpdate(ids, field, value)}
       />
 
       <ConfirmDialog open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete}

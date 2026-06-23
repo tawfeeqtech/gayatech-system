@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, message, Tag } from 'antd';
+import { Space, Select, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -7,6 +7,7 @@ import expenseAPI from '../../api/expenses';
 import categoryAPI from '../../api/expenseCategories';
 import { formatCurrency } from '../../utils/formatters';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import toast from 'react-hot-toast';
 
 const ExpenseList = () => {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ const ExpenseList = () => {
       setExpenses(response.data.data.expenses);
       setTotal(response.data.total);
     } catch (error) {
-      message.error('فشل في جلب المصاريف');
+      toast.error('فشل في جلب المصاريف');
     } finally {
       setLoading(false);
     }
@@ -52,11 +53,11 @@ const ExpenseList = () => {
     setDeleteLoading(true);
     try {
       await expenseAPI.delete(deleteTarget._id);
-      message.success('تم حذف المصروف');
+      toast.success('تم حذف المصروف');
       setDeleteTarget(null);
       fetchExpenses();
     } catch (e) {
-      message.error(e.response?.data?.message || 'فشل في الحذف');
+      toast.error(e.response?.data?.message || 'فشل في الحذف');
     } finally {
       setDeleteLoading(false);
     }
@@ -104,6 +105,9 @@ const ExpenseList = () => {
         addPath="/expenses/new" onDelete={(r) => setDeleteTarget(r)}
         onRefresh={fetchExpenses} filters={filterBar}
         editPath={undefined} detailPath={undefined} showActions={true}
+        rowSelection={true}
+        onBulkDelete={(ids) => expenseAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => expenseAPI.bulkUpdate(ids, field, value)}
       />
       <ConfirmDialog open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete}
         loading={deleteLoading} title="تأكيد حذف المصروف"

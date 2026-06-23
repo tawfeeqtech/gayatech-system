@@ -1,9 +1,14 @@
 const express = require('express');
+const bulkController = require('../controllers/bulkController');
 const ac = require('../controllers/advanceController');
 const { protect } = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
+const Advance = require('../models/Advance');
 const router = express.Router();
 router.use(protect);
+
+router.post('/bulk-delete', roleCheck('admin'), bulkController.bulkDelete(Advance));
+router.post('/bulk-update', roleCheck('admin'), bulkController.bulkUpdate(Advance));
 
 router.get('/pending', roleCheck('admin', 'finance'), ac.getPendingAdvances);
 router.get('/', roleCheck('admin', 'finance'), ac.getAdvances);

@@ -1,11 +1,16 @@
 const express = require('express');
+const bulkController = require('../controllers/bulkController');
 const invoiceController = require('../controllers/invoiceController');
 const { protect } = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
+const Invoice = require('../models/Invoice');
 
 const router = express.Router();
 
 router.use(protect);
+
+router.post('/bulk-delete', roleCheck('admin'), bulkController.bulkDelete(Invoice));
+router.post('/bulk-update', roleCheck('admin'), bulkController.bulkUpdate(Invoice));
 
 // الفواتير المتأخرة (قبل /:id)
 router.get('/overdue', roleCheck('admin', 'finance'), invoiceController.getOverdueInvoices);

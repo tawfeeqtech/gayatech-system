@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, message, Tag } from 'antd';
+import { Space, Select, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import contractAPI from '../../api/contracts';
 import { formatCurrency } from '../../utils/formatters';
+import toast from 'react-hot-toast';
 const ContractList = () => {
   const navigate = useNavigate();
   const [contracts, setContracts] = useState([]);
@@ -29,7 +30,7 @@ const ContractList = () => {
       setContracts(response.data.data.contracts);
       setTotal(response.data.total);
     } catch (error) {
-      message.error('فشل في جلب بيانات العقود');
+      toast.error('فشل في جلب بيانات العقود');
     } finally {
       setLoading(false);
     }
@@ -44,11 +45,11 @@ const ContractList = () => {
     setDeleteLoading(true);
     try {
       await contractAPI.delete(deleteTarget._id);
-      message.success('تم حذف العقد بنجاح');
+      toast.success('تم حذف العقد بنجاح');
       setDeleteTarget(null);
       fetchContracts();
     } catch (error) {
-      message.error(error.response?.data?.message || 'فشل في حذف العقد');
+      toast.error(error.response?.data?.message || 'فشل في حذف العقد');
     } finally {
       setDeleteLoading(false);
     }
@@ -172,6 +173,9 @@ const ContractList = () => {
         onDelete={(record) => setDeleteTarget(record)}
         onRefresh={fetchContracts}
         filters={filterBar}
+        rowSelection={true}
+        onBulkDelete={(ids) => contractAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => contractAPI.bulkUpdate(ids, field, value)}
       />
 
       <ConfirmDialog

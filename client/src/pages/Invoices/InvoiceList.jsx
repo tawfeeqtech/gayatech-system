@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, message, Tag } from 'antd';
+import { Space, Select, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import invoiceAPI from '../../api/invoices';
 import { formatCurrency } from '../../utils/formatters';
+import toast from 'react-hot-toast';
 
 const InvoiceList = () => {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const InvoiceList = () => {
       setInvoices(response.data.data.invoices);
       setTotal(response.data.total);
     } catch (error) {
-      message.error('فشل في جلب الفواتير');
+      toast.error('فشل في جلب الفواتير');
     } finally {
       setLoading(false);
     }
@@ -43,11 +44,11 @@ const InvoiceList = () => {
     setDeleteLoading(true);
     try {
       await invoiceAPI.delete(deleteTarget._id);
-      message.success('تم حذف الفاتورة');
+      toast.success('تم حذف الفاتورة');
       setDeleteTarget(null);
       fetchInvoices();
     } catch (e) {
-      message.error(e.response?.data?.message || 'فشل في الحذف');
+      toast.error(e.response?.data?.message || 'فشل في الحذف');
     } finally {
       setDeleteLoading(false);
     }
@@ -116,6 +117,9 @@ const InvoiceList = () => {
         addPath="/invoices/new"  detailPath="/invoices"
         onDelete={(r) => setDeleteTarget(r)} onRefresh={fetchInvoices}
         filters={filterBar} editPath="/invoices/edit"
+        rowSelection={true}
+        onBulkDelete={(ids) => invoiceAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => invoiceAPI.bulkUpdate(ids, field, value)}
       />
       <ConfirmDialog open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete}
         loading={deleteLoading} title="تأكيد حذف الفاتورة"

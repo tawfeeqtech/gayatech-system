@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, message, Spin, Typography, Switch } from 'antd';
+import { Card, Form, Button, Space, Row, Col, Select, Typography, Spin, Switch } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import FormField from '../../components/ui/FormField';
+import SmartSelect from '../../components/ui/SmartSelect';
 import employeeAPI from '../../api/employees';
+import jobTitleAPI from '../../api/jobTitles';
 import dayjs from 'dayjs';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import toast from 'react-hot-toast';
 
 const { Title } = Typography;
 
@@ -17,6 +20,23 @@ const EmployeeForm = () => {
   const { currencies } = useCurrencies();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [jobTitles, setJobTitles] = useState([]);
+  const [jobTitlesLoading, setJobTitlesLoading] = useState(false);
+
+  useEffect(() => {
+    // جلب المسميات الوظيفية
+    setJobTitlesLoading(true);
+    jobTitleAPI.getAll()
+      .then((res) => {
+        const titles = res.data.data?.jobTitles || res.data.data || [];
+        setJobTitles(titles.map((t) => ({ value: t.name || t.title || t, label: t.name || t.title || t })));
+      })
+      .catch(() => {
+        // لا نعرض خطأ إذا فشل - المكون سيعمل بشكل عادي
+        setJobTitles([]);
+      })
+      .finally(() => setJobTitlesLoading(false));
+  }, []);
 
   useEffect(() => {
     if (isEdit) {
@@ -26,18 +46,40 @@ const EmployeeForm = () => {
           const e = r.data.data.employee;
           form.setFieldsValue({ ...e, joiningDate: e.joiningDate ? dayjs(e.joiningDate) : undefined });
         })
-        .catch(() => { message.error('فشل في جلب البيانات'); navigate('/employees'); })
+        .catch(() => { toast.error('فشل في جلب البيانات'); navigate('/employees'); })
         .finally(() => setLoading(false));
     }
   }, [id]);
 
+  const ensureJobTitleCreated = async (titleValue) => {
+    // إذا كانت القيمة موجودة بالفعل في الخيارات، لا داعي لإنشائها
+    const exists = jobTitles.some(
+      (t) => t.value?.toString().toLowerCase() === titleValue?.toString().toLowerCase()
+    );
+    if (exists || !titleValue) return titleValue;
+    try {
+      const res = await jobTitleAPI.create({ name: titleValue });
+      const created = res.data.data?.jobTitle || res.data.data;
+      const name = created?.name || created?.title || titleValue;
+      // تحديث القائمة المحلية
+      setJobTitles((prev) => [...prev, { value: name, label: name }]);
+      return name;
+    } catch {
+      // إذا فشل الإنشاء، نستمر بالقيمة كما هي
+      return titleValue;
+    }
+  };
+
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
-      if (isEdit) { await employeeAPI.update(id, values); message.success('تم التحديث'); }
-      else { await employeeAPI.create(values); message.success('تمت الإضافة'); }
+      // تأكد من أن المسمى الوظيفي الجديد قد أضيف في الـ backend
+      const finalJobTitle = await ensureJobTitleCreated(values.jobTitle);
+      const payload = { ...values, jobTitle: finalJobTitle };
+      if (isEdit) { await employeeAPI.update(id, payload); toast.success('تم التحديث'); }
+      else { await employeeAPI.create(payload); toast.success('تمت الإضافة'); }
       navigate('/employees');
-    } catch (e) { message.error(e.response?.data?.message || 'فشل في الحفظ'); }
+    } catch (e) { toast.error(e.response?.data?.message || 'فشل في الحفظ'); }
     finally { setSubmitting(false); }
   };
 
@@ -55,7 +97,20 @@ const EmployeeForm = () => {
           initialValues={{ status: 'نشط', salaryCurrency: 'USD' }}>
           <Row gutter={24}>
             <Col xs={24} md={12}><FormField name="name" label="الاسم" rules={[{ required: true }]} /></Col>
-            <Col xs={24} md={12}><FormField name="jobTitle" label="المسمى الوظيفي" rules={[{ required: true }]} /></Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="jobTitle"
+                label={<span style={{ fontFamily: 'Cairo, sans-serif' }}>المسمى الوظيفي</span>}
+                rules={[{ required: true, message: 'المسمى الوظيفي مطلوب' }]}
+              >
+                <SmartSelect
+                  options={jobTitles}
+                  placeholder="ابحث أو اكتب مسمى وظيفي..."
+                  allowCreate
+                  loading={jobTitlesLoading}
+                />
+              </Form.Item>
+            </Col>
           </Row>
           <Row gutter={24}>
             <Col xs={24} md={8}><FormField name="email" label="البريد الإلكتروني" /></Col>

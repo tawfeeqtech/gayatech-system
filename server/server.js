@@ -29,6 +29,7 @@ require('./models/Invoice');
 require('./models/Notification');
 require('./models/Vendor');
 require('./models/SystemSettings');
+require('./models/JobTitle');
 // ============================================
 
 
@@ -76,6 +77,7 @@ app.use('/api/import', require('./routes/importRoutes'));
 app.use('/api/settings', require('./routes/systemSettingsRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/job-titles', require('./routes/jobTitleRoutes'));
 
 // الصفحة الرئيسية
 app.get('/', (req, res) => {

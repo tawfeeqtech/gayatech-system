@@ -8,6 +8,8 @@ const partnerAPI = {
   delete: (id) => api.delete(`/partners/${id}`),
   getFundings: (id) => api.get(`/partners/${id}/fundings`),
   createFunding: (id, data) => api.post(`/partners/${id}/fundings`, data),
+  bulkDelete: (ids) => api.post('/partners/bulk-delete', { ids }),
+  bulkUpdate: (ids, field, value) => api.post('/partners/bulk-update', { ids, field, value }),
 };
 
 export default partnerAPI;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Tabs, Row, Col, Descriptions, Button, Spin, Table, Tag, message } from 'antd';
+import { Card, Tabs, Row, Col, Descriptions, Button, Spin, Table, Tag } from 'antd';
 import { ArrowRightOutlined, EditOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
@@ -8,6 +8,7 @@ import employeeAPI from '../../api/employees';
 import salaryAPI from '../../api/salaries';
 import advanceAPI from '../../api/advances';
 import { formatCurrency } from '../../utils/formatters';
+import toast from 'react-hot-toast';
 
 const EmployeeDetail = () => {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ const EmployeeDetail = () => {
       setEmployee(eRes.data.data.employee);
       setSalaries(sRes.data?.data?.salaries || []);
       setAdvances(aRes.data?.data?.advances || []);
-    }).catch(() => message.error('فشل في جلب البيانات'))
+    }).catch(() => toast.error('فشل في جلب البيانات'))
     .finally(() => setLoading(false));
   }, [id]);
 

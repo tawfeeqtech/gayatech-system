@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Descriptions, Button, Spin, message, Row, Col, Table, Tag, Space } from 'antd';
+import { Card, Descriptions, Button, Spin, Row, Col, Table, Tag, Space } from 'antd';
 import { ArrowRightOutlined, EditOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import transactionAPI from '../../api/transactions';
+import toast from 'react-hot-toast';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -19,7 +20,7 @@ const TransactionDetail = () => {
         const res = await transactionAPI.getById(id);
         setTransaction(res.data.data.transaction);
       } catch (error) {
-        message.error('فشل في جلب بيانات المعاملة');
+        toast.error('فشل في جلب بيانات المعاملة');
         navigate('/transactions');
       } finally {
         setLoading(false);

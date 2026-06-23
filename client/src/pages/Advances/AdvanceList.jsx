@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, DatePicker, message, Tag, Button, Modal, Form, InputNumber } from 'antd';
+import { Space, Select, DatePicker, Tag, Button, Modal, Form, InputNumber } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -7,6 +7,7 @@ import advanceAPI from '../../api/advances';
 import employeeAPI from '../../api/employees';
 import { formatCurrency } from '../../utils/formatters';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import toast from 'react-hot-toast';
 
 const { RangePicker } = DatePicker;
 
@@ -41,7 +42,7 @@ const AdvanceList = () => {
       const response = await advanceAPI.getAll(params);
       setAdvances(response.data.data.advances);
       setTotal(response.data.total);
-    } catch (error) { message.error('فشل في جلب السلف'); }
+    } catch (error) { toast.error('فشل في جلب السلف'); }
     finally { setLoading(false); }
   }, [page, pageSize, statusFilter, employeeFilter]);
 
@@ -54,19 +55,19 @@ const AdvanceList = () => {
         await advanceAPI.approve(id, { installmentAmount: installment ? parseFloat(installment) : undefined });
       }
       else if (action === 'reject') await advanceAPI.reject(id);
-      message.success('تم بنجاح');
+      toast.success('تم بنجاح');
       fetchAdvances();
-    } catch (e) { message.error('فشل'); }
+    } catch (e) { toast.error('فشل'); }
   };
 
   const handleEdit = async (values) => {
     setEditSubmitting(true);
     try {
       await advanceAPI.update(editingAdvance._id, values);
-      message.success('تم التحديث');
+      toast.success('تم التحديث');
       setEditingAdvance(null);
       fetchAdvances();
-    } catch (e) { message.error('فشل في التحديث'); }
+    } catch (e) { toast.error('فشل في التحديث'); }
     finally { setEditSubmitting(false); }
   };
 
@@ -74,10 +75,10 @@ const AdvanceList = () => {
     setDeleteLoading(true);
     try {
       await advanceAPI.delete(deleteTarget._id);
-      message.success('تم الحذف');
+      toast.success('تم الحذف');
       setDeleteTarget(null);
       fetchAdvances();
-    } catch (e) { message.error('فشل'); }
+    } catch (e) { toast.error('فشل'); }
     finally { setDeleteLoading(false); }
   };
 
@@ -158,6 +159,9 @@ const AdvanceList = () => {
         onPageChange={(p, ps) => { setPage(p); if (ps !== pageSize) { setPageSize(ps); setPage(1); } }}
         addPath="/advances/new" onRefresh={fetchAdvances}
         showActions={false} filters={filterBar}
+        rowSelection={true}
+        onBulkDelete={(ids) => advanceAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => advanceAPI.bulkUpdate(ids, field, value)}
       />
 
       {/* Modal تعديل */}

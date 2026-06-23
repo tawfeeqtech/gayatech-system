@@ -7,5 +7,7 @@ const userAPI = {
   delete: (id) => api.delete(`/users/${id}`),
   updateRole: (id, role) => api.patch(`/users/${id}/role`, { role }),
   toggleStatus: (id) => api.patch(`/users/${id}/activate`),
+  bulkDelete: (ids) => api.post('/users/bulk-delete', { ids }),
+  bulkUpdate: (ids, field, value) => api.post('/users/bulk-update', { ids, field, value }),
 };
 export default userAPI;

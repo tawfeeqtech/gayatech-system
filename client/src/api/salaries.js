@@ -7,6 +7,8 @@ const salaryAPI = {
   delete: (id) => api.delete(`/salaries/${id}`),
   generate: () => api.post('/salaries/generate'),
   getPending: () => api.get('/salaries/pending'),
+  bulkDelete: (ids) => api.post('/salaries/bulk-delete', { ids }),
+  bulkUpdate: (ids, field, value) => api.post('/salaries/bulk-update', { ids, field, value }),
 };
 
 export default salaryAPI;

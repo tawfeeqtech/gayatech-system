@@ -10,6 +10,8 @@ const clientAPI = {
   getContracts: (id) => api.get(`/clients/${id}/contracts`),
   getProjects: (id) => api.get(`/clients/${id}/projects`),
   getTransactions: (id, params) => api.get(`/clients/${id}/transactions`, { params }),
+  bulkDelete: (ids) => api.post('/clients/bulk-delete', { ids }),
+  bulkUpdate: (ids, field, value) => api.post('/clients/bulk-update', { ids, field, value }),
 };
 
 export default clientAPI;

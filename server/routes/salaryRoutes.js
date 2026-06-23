@@ -1,9 +1,14 @@
 const express = require('express');
+const bulkController = require('../controllers/bulkController');
 const sc = require('../controllers/salaryController');
 const { protect } = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
+const Salary = require('../models/Salary');
 const router = express.Router();
 router.use(protect);
+
+router.post('/bulk-delete', roleCheck('admin'), bulkController.bulkDelete(Salary));
+router.post('/bulk-update', roleCheck('admin'), bulkController.bulkUpdate(Salary));
 
 router.get('/me', roleCheck('admin', 'finance', 'employee'), sc.getMySalary);
 

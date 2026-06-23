@@ -9,6 +9,8 @@ const contractAPI = {
   updateStatus: (id, status) => api.patch(`/contracts/${id}/status`, { status }),
   getMonths: (id) => api.get(`/contracts/${id}/months`),
   getChanges: (id) => api.get(`/contracts/${id}/changes`),
+  bulkDelete: (ids) => api.post('/contracts/bulk-delete', { ids }),
+  bulkUpdate: (ids, field, value) => api.post('/contracts/bulk-update', { ids, field, value }),
 };
 
 export default contractAPI;

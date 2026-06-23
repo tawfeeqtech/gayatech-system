@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, message, Tag } from 'antd';
+import { Space, Select, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import partnerAPI from '../../api/partners';
 import { formatCurrency } from '../../utils/formatters';
+import toast from 'react-hot-toast';
 
 const PartnerList = () => {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ const PartnerList = () => {
       const response = await partnerAPI.getAll(params);
       setPartners(response.data.data.partners);
       setTotal(response.data.total);
-    } catch (error) { message.error('فشل في جلب الشركاء'); }
+    } catch (error) { toast.error('فشل في جلب الشركاء'); }
     finally { setLoading(false); }
   }, [page, pageSize, search]);
 
@@ -36,10 +37,10 @@ const PartnerList = () => {
     setDeleteLoading(true);
     try {
       await partnerAPI.delete(deleteTarget._id);
-      message.success('تم حذف الشريك');
+      toast.success('تم حذف الشريك');
       setDeleteTarget(null);
       fetchPartners();
-    } catch (e) { message.error(e.response?.data?.message || 'فشل'); }
+    } catch (e) { toast.error(e.response?.data?.message || 'فشل'); }
     finally { setDeleteLoading(false); }
   };
 
@@ -64,6 +65,9 @@ const PartnerList = () => {
         onPageChange={(p, ps) => { setPage(p); if (ps !== pageSize) { setPageSize(ps); setPage(1); } }}
         searchPlaceholder="بحث عن شريك..." onSearch={(v) => { setSearch(v); setPage(1); }}
         addPath="/partners/new" detailPath="/partners" onDelete={(r) => setDeleteTarget(r)} onRefresh={fetchPartners} editPath={undefined}
+        rowSelection={true}
+        onBulkDelete={(ids) => partnerAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => partnerAPI.bulkUpdate(ids, field, value)}
       />
       <ConfirmDialog open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete}
         loading={deleteLoading} title="تأكيد حذف الشريك" message={`هل أنت متأكد من حذف "${deleteTarget?.name}"؟`} type="danger" />

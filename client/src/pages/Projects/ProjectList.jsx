@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, message, Tag, Progress } from 'antd';
+import { Space, Select, Tag, Progress } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import projectAPI from '../../api/projects';
 import { formatCurrency } from '../../utils/formatters';
+import toast from 'react-hot-toast';
 
 const ProjectList = () => {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const ProjectList = () => {
       setProjects(response.data.data.projects);
       setTotal(response.data.total);
     } catch (error) {
-      message.error('فشل في جلب بيانات المشاريع');
+      toast.error('فشل في جلب بيانات المشاريع');
     } finally {
       setLoading(false);
     }
@@ -43,11 +44,11 @@ const ProjectList = () => {
     setDeleteLoading(true);
     try {
       await projectAPI.delete(deleteTarget._id);
-      message.success('تم حذف المشروع بنجاح');
+      toast.success('تم حذف المشروع بنجاح');
       setDeleteTarget(null);
       fetchProjects();
     } catch (error) {
-      message.error(error.response?.data?.message || 'فشل في حذف المشروع');
+      toast.error(error.response?.data?.message || 'فشل في حذف المشروع');
     } finally {
       setDeleteLoading(false);
     }
@@ -119,6 +120,9 @@ const ProjectList = () => {
         addPath="/projects/new" editPath="/projects/edit" detailPath="/projects"
         onDelete={(r) => setDeleteTarget(r)} onRefresh={fetchProjects}
         filters={filterBar}
+        rowSelection={true}
+        onBulkDelete={(ids) => projectAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => projectAPI.bulkUpdate(ids, field, value)}
       />
       <ConfirmDialog
         open={!!deleteTarget} onCancel={() => setDeleteTarget(null)}

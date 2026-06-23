@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, DatePicker, message, Tag, Button, Modal, Form, InputNumber, Row, Col, Alert } from 'antd';
+import { Space, Select, DatePicker, Tag, Button, Modal, Form, InputNumber, Row, Col, Alert } from 'antd';
 import { EditOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/ui/DataTable';
@@ -9,6 +9,7 @@ import employeeAPI from '../../api/employees';
 import { formatCurrency } from '../../utils/formatters';
 import { useCurrencies } from '../../hooks/useCurrencies';
 import dayjs from 'dayjs';
+import toast from 'react-hot-toast';
 
 const { MonthPicker } = DatePicker;
 
@@ -39,10 +40,10 @@ const SalaryList = () => {
     setGenerating(true);
     try {
       await salaryAPI.generate();
-      message.success('تم توليد الرواتب بنجاح');
+      toast.success('تم توليد الرواتب بنجاح');
       fetchSalaries();
     } catch (e) {
-      message.error('فشل توليد الرواتب');
+      toast.error('فشل توليد الرواتب');
     } finally {
       setGenerating(false);
     }
@@ -50,7 +51,7 @@ const SalaryList = () => {
 
   const handlePay = (record) => {
     if (!record.invoice) {
-      message.error('لا توجد فاتورة مرتبطة بهذا الراتب');
+      toast.error('لا توجد فاتورة مرتبطة بهذا الراتب');
       return;
     }
     navigate(`/transactions/new?type=مصروف&invoice=${record.invoice._id}&amount=${record.remainingAmount}&employee=${record.employee?._id}`);
@@ -64,11 +65,11 @@ const SalaryList = () => {
         month: values.month ? values.month.format('YYYY-MM') : values.month,
       };
       await salaryAPI.update(editingSalary._id, values);
-      message.success('تم تحديث الراتب');
+      toast.success('تم تحديث الراتب');
       setEditingSalary(null);
       editForm.resetFields();
       fetchSalaries();
-    } catch (e) { message.error('فشل في التحديث'); }
+    } catch (e) { toast.error('فشل في التحديث'); }
     finally { setEditSubmitting(false); }
   };
 
@@ -76,10 +77,10 @@ const SalaryList = () => {
     setDeleteLoading(true);
     try {
       await salaryAPI.delete(deleteTarget._id);
-      message.success('تم حذف الراتب');
+      toast.success('تم حذف الراتب');
       setDeleteTarget(null);
       fetchSalaries();
-    } catch (e) { message.error('فشل في الحذف'); }
+    } catch (e) { toast.error('فشل في الحذف'); }
     finally { setDeleteLoading(false); }
   };
 
@@ -156,7 +157,7 @@ const SalaryList = () => {
       const response = await salaryAPI.getAll(params);
       setSalaries(response.data.data.salaries);
       setTotal(response.data.total);
-    } catch (error) { message.error('فشل في جلب الرواتب'); }
+    } catch (error) { toast.error('فشل في جلب الرواتب'); }
     finally { setLoading(false); }
   }, [page, pageSize, statusFilter, employeeFilter, monthFilter, currencyFilter]);
 
@@ -200,6 +201,9 @@ const SalaryList = () => {
         onPageChange={(p, ps) => { setPage(p); if (ps !== pageSize) { setPageSize(ps); setPage(1); } }}
         addPath="/salaries/new" onRefresh={fetchSalaries}
         showActions={false} filters={filterBar}
+        rowSelection={true}
+        onBulkDelete={(ids) => salaryAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => salaryAPI.bulkUpdate(ids, field, value)}
       />
 
       {/* Modal تعديل */}

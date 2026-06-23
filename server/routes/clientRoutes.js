@@ -1,12 +1,17 @@
 const express = require('express');
+const bulkController = require('../controllers/bulkController');
 const clientController = require('../controllers/clientController');
 const { protect } = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
+const Client = require('../models/Client');
 
 const router = express.Router();
 
 // جميع المسارات تتطلب مصادقة
 router.use(protect);
+
+router.post('/bulk-delete', roleCheck('admin'), bulkController.bulkDelete(Client));
+router.post('/bulk-update', roleCheck('admin'), bulkController.bulkUpdate(Client));
 
 // مسارات القراءة (متاحة لعدة أدوار)
 router.get('/', roleCheck('admin', 'pm'), clientController.getClients);

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, Select, message, Tag } from 'antd';
+import { Space, Select, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import employeeAPI from '../../api/employees';
 import { formatCurrency } from '../../utils/formatters';
+import toast from 'react-hot-toast';
 
 const EmployeeList = () => {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const EmployeeList = () => {
       setEmployees(response.data.data.employees);
       setTotal(response.data.total);
     } catch (error) {
-      message.error('فشل في جلب بيانات الموظفين');
+      toast.error('فشل في جلب بيانات الموظفين');
     } finally {
       setLoading(false);
     }
@@ -43,11 +44,11 @@ const EmployeeList = () => {
     setDeleteLoading(true);
     try {
       await employeeAPI.delete(deleteTarget._id);
-      message.success('تم حذف الموظف');
+      toast.success('تم حذف الموظف');
       setDeleteTarget(null);
       fetchEmployees();
     } catch (e) {
-      message.error(e.response?.data?.message || 'فشل في الحذف');
+      toast.error(e.response?.data?.message || 'فشل في الحذف');
     } finally {
       setDeleteLoading(false);
     }
@@ -99,6 +100,9 @@ const EmployeeList = () => {
         onSearch={(v) => { setSearch(v); setPage(1); }}
         addPath="/employees/new" editPath="/employees/edit" detailPath="/employees"
         onDelete={(r) => setDeleteTarget(r)} onRefresh={fetchEmployees} filters={filterBar}
+        rowSelection={true}
+        onBulkDelete={(ids) => employeeAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => employeeAPI.bulkUpdate(ids, field, value)}
       />
       <ConfirmDialog open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete}
         loading={deleteLoading} title="تأكيد حذف الموظف"

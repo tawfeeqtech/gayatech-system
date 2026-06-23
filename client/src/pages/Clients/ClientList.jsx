@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Tag, Space, Select, message } from 'antd';
+import { Tag, Space, Select } from 'antd';
 import {
   UserOutlined,
   PhoneOutlined,
@@ -10,6 +10,7 @@ import DataTable from '../../components/ui/DataTable';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import clientAPI from '../../api/clients';
+import toast from 'react-hot-toast';
 
 const ClientList = () => {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ const ClientList = () => {
       setClients(response.data.data.clients);
       setTotal(response.data.total);
     } catch (error) {
-      message.error('فشل في جلب بيانات العملاء');
+      toast.error('فشل في جلب بيانات العملاء');
     } finally {
       setLoading(false);
     }
@@ -51,11 +52,11 @@ const ClientList = () => {
     setDeleteLoading(true);
     try {
       await clientAPI.delete(deleteTarget._id);
-      message.success('تم حذف العميل بنجاح');
+      toast.success('تم حذف العميل بنجاح');
       setDeleteTarget(null);
       fetchClients();
     } catch (error) {
-      message.error(error.response?.data?.message || 'فشل في حذف العميل');
+      toast.error(error.response?.data?.message || 'فشل في حذف العميل');
     } finally {
       setDeleteLoading(false);
     }
@@ -63,7 +64,7 @@ const ClientList = () => {
 
   // تصدير
   const handleExport = () => {
-    message.info('سيتم تصدير البيانات قريباً');
+    toast.info('سيتم تصدير البيانات قريباً');
   };
 
   // تعريف الأعمدة
@@ -226,6 +227,9 @@ const ClientList = () => {
         onExport={handleExport}
         onRefresh={fetchClients}
         filters={filterBar}
+        rowSelection={true}
+        onBulkDelete={(ids) => clientAPI.bulkDelete(ids)}
+        onBulkEdit={(ids, field, value) => clientAPI.bulkUpdate(ids, field, value)}
       />
 
       {/* تأكيد الحذف */}
