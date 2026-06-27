@@ -78,6 +78,7 @@ app.use('/api/settings', require('./routes/systemSettingsRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/job-titles', require('./routes/jobTitleRoutes'));
+app.use('/api/departments', require('./routes/departmentRoutes'));
 
 // الصفحة الرئيسية
 app.get('/', (req, res) => {

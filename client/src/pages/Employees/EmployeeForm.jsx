@@ -6,6 +6,7 @@ import FormField from '../../components/ui/FormField';
 import SmartSelect from '../../components/ui/SmartSelect';
 import employeeAPI from '../../api/employees';
 import jobTitleAPI from '../../api/jobTitles';
+import departmentAPI from '../../api/departments';
 import dayjs from 'dayjs';
 import { useCurrencies } from '../../hooks/useCurrencies';
 import toast from 'react-hot-toast';
@@ -54,6 +55,34 @@ const EmployeeForm = () => {
       .finally(() => setJobTitlesLoading(false));
   }, []);
 
+  const DEFAULT_DEPARTMENTS = [
+    'ادارة', 'تقنية', 'تسويق', 'مبيعات', 'تصميم',
+    'محاسبة', 'موارد بشرية', 'خدمة عملاء', 'مشتريات',
+  ];
+  const [departments, setDepartments] = useState(
+    DEFAULT_DEPARTMENTS.map((d) => ({ value: d, label: d }))
+  );
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+
+  useEffect(() => {
+    setDepartmentsLoading(true);
+    departmentAPI.getAll()
+      .then((res) => {
+        const deps = res.data.data?.departments || res.data.data || [];
+        const apiDeps = deps.map((d) => ({ value: d.name || d, label: d.name || d }));
+        const allDeps = [...DEFAULT_DEPARTMENTS.map((d) => ({ value: d, label: d })), ...apiDeps];
+        const seen = new Set();
+        setDepartments(allDeps.filter((d) => {
+          const key = d.value?.toString().trim().toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }));
+      })
+      .catch(() => setDepartments(DEFAULT_DEPARTMENTS.map((d) => ({ value: d, label: d }))))
+      .finally(() => setDepartmentsLoading(false));
+  }, []);
+
   useEffect(() => {
     if (isEdit) {
       setLoading(true);
@@ -86,12 +115,30 @@ const EmployeeForm = () => {
     }
   };
 
+  const ensureDepartmentCreated = async (deptValue) => {
+    if (!deptValue) return deptValue;
+    const exists = departments.some(
+      (d) => d.value?.toString().toLowerCase() === deptValue?.toString().toLowerCase()
+    );
+    if (exists) return deptValue;
+    try {
+      const res = await departmentAPI.create({ name: deptValue });
+      const created = res.data.data?.department || res.data.data;
+      const name = created?.name || deptValue;
+      setDepartments((prev) => [...prev, { value: name, label: name }]);
+      return name;
+    } catch {
+      return deptValue;
+    }
+  };
+
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
-      // تأكد من أن المسمى الوظيفي الجديد قد أضيف في الـ backend
+      // تأكد من أن المسمى الوظيفي والقسم الجديد أضيفا في الـ backend
       const finalJobTitle = await ensureJobTitleCreated(values.jobTitle);
-      const payload = { ...values, jobTitle: finalJobTitle };
+      const finalDepartment = await ensureDepartmentCreated(values.department);
+      const payload = { ...values, jobTitle: finalJobTitle, department: finalDepartment };
       if (isEdit) { await employeeAPI.update(id, payload); toast.success('تم التحديث'); }
       else { await employeeAPI.create(payload); toast.success('تمت الإضافة'); }
       navigate('/employees');
@@ -131,7 +178,7 @@ const EmployeeForm = () => {
           <Row gutter={24}>
             <Col xs={24} md={8}><FormField name="email" label="البريد الإلكتروني" /></Col>
             <Col xs={24} md={8}><FormField name="phone" label="الهاتف" /></Col>
-            <Col xs={24} md={8}><FormField name="department" label="القسم" type="smartselect" options={[]} allowCreate placeholder="أدخل القسم" /></Col>
+            <Col xs={24} md={8}><FormField name="department" label="القسم" type="smartselect" options={departments} allowCreate placeholder="أدخل القسم" loading={departmentsLoading} /></Col>
           </Row>
           <Row gutter={24}>
             <Col xs={24} md={6}><FormField name="baseSalary" label="الراتب الأساسي" type="number" rules={[{ required: true }]} min={0} /></Col>
