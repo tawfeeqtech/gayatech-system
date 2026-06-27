@@ -20,20 +20,36 @@ const EmployeeForm = () => {
   const { currencies } = useCurrencies();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [jobTitles, setJobTitles] = useState([]);
+  const DEFAULT_JOB_TITLES = [
+    'مستقطب مشاريع', 'تصميم ومونتاج', 'تصميم متاجر',
+    'ادارة متاجر', 'ادارة حملات اعلانية', 'مصمم جرافيك',
+    'مسوقين', 'مبرمجين', 'مونتاج', 'ادارة صفحات', 'مصورين',
+  ];
+  const [jobTitles, setJobTitles] = useState(
+    DEFAULT_JOB_TITLES.map((t) => ({ value: t, label: t }))
+  );
   const [jobTitlesLoading, setJobTitlesLoading] = useState(false);
 
   useEffect(() => {
-    // جلب المسميات الوظيفية
+    // جلب المسميات الوظيفية من قاعدة البيانات + دمجها مع الافتراضية
     setJobTitlesLoading(true);
     jobTitleAPI.getAll()
       .then((res) => {
         const titles = res.data.data?.jobTitles || res.data.data || [];
-        setJobTitles(titles.map((t) => ({ value: t.name || t.title || t, label: t.name || t.title || t })));
+        const apiTitles = titles.map((t) => ({ value: t.name || t.title || t, label: t.name || t.title || t }));
+        // دمج مع الافتراضية وتفادي التكرار
+        const allTitles = [...DEFAULT_JOB_TITLES.map((t) => ({ value: t, label: t })), ...apiTitles];
+        const seen = new Set();
+        setJobTitles(allTitles.filter((t) => {
+          const key = t.value?.toString().trim().toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }));
       })
       .catch(() => {
-        // لا نعرض خطأ إذا فشل - المكون سيعمل بشكل عادي
-        setJobTitles([]);
+        // في حال فشل الـ API، نستعمل الافتراضية (موجودة في initial state)
+        setJobTitles(DEFAULT_JOB_TITLES.map((t) => ({ value: t, label: t })));
       })
       .finally(() => setJobTitlesLoading(false));
   }, []);
