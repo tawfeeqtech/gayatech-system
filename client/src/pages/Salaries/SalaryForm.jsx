@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, message, Typography, InputNumber, DatePicker, List, Divider } from 'antd';
+import { Card, Form, Button, Space, Row, Col, Typography, InputNumber, DatePicker, List, Divider } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import salaryAPI from '../../api/salaries';
 import employeeAPI from '../../api/employees';
 import { useCurrencies } from '../../hooks/useCurrencies';
 import { formatCurrency } from '../../utils/formatters';
+import FormField from '../../components/ui/FormField';
 
 const { Title, Text } = Typography;
 const { MonthPicker } = DatePicker;
@@ -70,9 +71,7 @@ const SalaryForm = () => {
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="currency" label="العملة">
-                <Select options={currencies} />
-              </Form.Item>
+              <FormField type="smartselect" name="currency" label="العملة" options={currencies} allowCreate />
             </Col>
           </Row>
           <Row gutter={24}>

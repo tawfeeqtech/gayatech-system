@@ -13,6 +13,7 @@ import api from '../../api/axios';
 import { useParams } from 'react-router-dom';
 import contractAPI from '../../api/contracts';
 import projectAPI from '../../api/projects';
+import FormField from '../../components/ui/FormField';
 import { useCurrencies } from '../../hooks/useCurrencies';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -737,14 +738,12 @@ const TransactionForm = () => {
           {/* وسيلة الدفع + الوصف */}
           <Row gutter={24}>
             <Col xs={24} md={8}>
-              <Form.Item name="paymentMethod" label="وسيلة الدفع">
-                <Select options={[
+              <FormField type="smartselect" name="paymentMethod" label="وسيلة الدفع" options={[
                   { value: 'تحويل بنكي', label: 'تحويل بنكي' },
                   { value: 'نقد', label: 'نقد' },
                   { value: 'ريم', label: 'ريم' },
                   { value: 'أخرى', label: 'أخرى' },
-                ]} />
-              </Form.Item>
+                ]} allowCreate />
             </Col>
           </Row>
 

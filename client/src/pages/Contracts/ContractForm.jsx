@@ -127,15 +127,13 @@ const ContractForm = () => {
 
           <Row gutter={24}>
             <Col xs={24} md={12}>
-              <FormField name="serviceType" label="نوع الخدمة" rules={[{ required: true, message: 'نوع الخدمة مطلوب' }]} placeholder="مثال: تسويق رقمي" />
+              <FormField type="smartselect" name="serviceType" label="نوع الخدمة" rules={[{ required: true, message: 'نوع الخدمة مطلوب' }]} placeholder="مثال: تسويق رقمي" options={[]} allowCreate />
             </Col>
             <Col xs={24} md={6}>
               <FormField name="defaultMonthlyValue" label="القيمة الشهرية" type="number" rules={[{ required: true, message: 'القيمة مطلوبة' }]} min={0} />
             </Col>
             <Col xs={24} md={6}>
-              <Form.Item name="currency" label="العملة">
-                <Select options={currencies} />
-              </Form.Item>
+              <FormField type="smartselect" name="currency" label="العملة" options={currencies} allowCreate />
             </Col>
           </Row>
 
@@ -153,16 +151,12 @@ const ContractForm = () => {
 
           <Row gutter={24}>
             <Col xs={24} md={8}>
-              <Form.Item name="status" label="الحالة">
-                <Select
-                  options={[
-                    { value: 'نشط', label: 'نشط' },
-                    { value: 'متوقف', label: 'متوقف' },
-                    { value: 'منتهي', label: 'منتهي' },
-                    { value: 'ملغي', label: 'ملغي' },
-                  ]}
-                />
-              </Form.Item>
+              <FormField type="smartselect" name="status" label="الحالة" options={[
+                  { value: 'نشط', label: 'نشط' },
+                  { value: 'متوقف', label: 'متوقف' },
+                  { value: 'منتهي', label: 'منتهي' },
+                  { value: 'ملغي', label: 'ملغي' },
+                ]} allowCreate />
             </Col>
             <Col xs={24} md={16}>
               <FormField name="description" label="الوصف" type="textarea" placeholder="وصف الخدمة المقدمة..." />

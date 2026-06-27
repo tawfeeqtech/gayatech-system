@@ -1,11 +1,14 @@
 import React from 'react';
 import { Form, Input, Select, DatePicker, InputNumber } from 'antd';
+import SmartSelect from './SmartSelect';
 
 const FormField = ({ type = 'text', ...props }) => {
   const renderField = () => {
     switch (type) {
       case 'select':
         return <Select {...props} style={{ width: '100%', ...props.style }} />;
+      case 'smartselect':
+        return <SmartSelect {...props} style={{ width: '100%', ...props.style }} />;
       case 'date':
         return <DatePicker {...props} style={{ width: '100%', ...props.style }} />;
       case 'number':

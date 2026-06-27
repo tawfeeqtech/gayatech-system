@@ -14,5 +14,6 @@ allWalletsRouter.get('/', roleCheck('admin', 'finance', 'accountant'), walletCon
 router.post('/', roleCheck('admin'), walletController.createWallet);
 router.put('/:id', roleCheck('admin', 'finance', 'accountant'), walletController.updateWallet);
 router.delete('/:id', roleCheck('admin'), walletController.deleteWallet);
+allWalletsRouter.post('/recalculate', roleCheck('admin'), walletController.recalculateBalances);
 
 module.exports = { nested: router, all: allWalletsRouter };

@@ -126,3 +126,33 @@ exports.deleteWallet = asyncHandler(async (req, res, next) => {
     message: 'تم حذف المحفظة'
   });
 });
+
+// @desc    إعادة حساب أرصدة المحافظ من المعاملات
+// @route   POST /api/wallets/recalculate
+exports.recalculateBalances = asyncHandler(async (req, res, next) => {
+  // 1. نصفر كل الأرصدة
+  await Wallet.updateMany({}, { $set: { balance: 0 } });
+
+  // 2. نجيب كل المعاملات المكتملة
+  const transactions = await Transaction.find({ status: 'مكتمل' }).sort({ createdAt: 1 });
+
+  // 3. نطبق كل معاملة على المحفظة
+  for (const t of transactions) {
+    if (t.toWallet && (t.type === 'دخل' || t.type === 'تحويل')) {
+      const credit = t.toAmount || t.amount;
+      await Wallet.findByIdAndUpdate(t.toWallet, { $inc: { balance: credit } });
+    }
+    if (t.fromWallet && (t.type === 'مصروف' || t.type === 'تحويل')) {
+      await Wallet.findByIdAndUpdate(t.fromWallet, { $inc: { balance: -t.amount } });
+    }
+  }
+
+  // 4. نجيب الأرصدة الجديدة
+  const wallets = await Wallet.find();
+
+  res.status(200).json({
+    status: 'success',
+    message: `تم إعادة حساب أرصدة ${wallets.length} محفظة من ${transactions.length} معاملة`,
+    data: { wallets }
+  });
+});

@@ -19,8 +19,8 @@ const BulkEditModal = ({
 
   // تصفية الأعمدة القابلة للتعديل (نستبعد أعمدة الإجراءات والمرئية فقط)
   const editableColumns = columns.filter((col) => {
-    const key = col.key || col.dataIndex;
-    if (!key || key === 'actions') return false;
+    const dataField = col.dataIndex || col.key;
+    if (!dataField || dataField === 'actions') return false;
     // نستبعد الأعمدة المحسوبة
     if (col.render && !col.dataIndex) return false;
     return true;
@@ -43,7 +43,7 @@ const BulkEditModal = ({
     if (!selectedField) return null;
 
     const fieldName = typeof selectedField === 'string' ? selectedField : selectedField.value || selectedField;
-    const colConfig = columns.find((c) => (c.key || c.dataIndex) === fieldName);
+    const colConfig = columns.find((c) => (c.dataIndex || c.key) === fieldName);
 
     const commonProps = {
       style: { width: '100%', fontFamily: 'Cairo, sans-serif' },
@@ -124,8 +124,8 @@ const BulkEditModal = ({
               (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
             }
             options={editableColumns.map((col) => ({
-              value: col.key || col.dataIndex,
-              label: col.title || col.key || col.dataIndex,
+              value: col.dataIndex || col.key,
+              label: col.title || col.dataIndex || col.key,
             }))}
           />
         </Form.Item>

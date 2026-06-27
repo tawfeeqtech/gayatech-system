@@ -41,14 +41,8 @@ api.interceptors.response.use(
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
-      } else {
-        // منع toast مكررة لنفس الطلب في خلال 3 ثوانٍ
-        if (requestUrl !== lastErrorUrl || (now - lastErrorTime) > 3000) {
-          toast.error(error.response.data?.message || 'حدث خطأ غير متوقع');
-          lastErrorUrl = requestUrl;
-          lastErrorTime = now;
-        }
       }
+      // ملاحظة: لا نظهر toast هنا لأن الصفحات تدير أخطاءها بنفسها برسائل مخصصة
     } else {
       // خطأ في الشبكة أو بدون استجابة
       if (requestUrl !== lastErrorUrl || (now - lastErrorTime) > 3000) {

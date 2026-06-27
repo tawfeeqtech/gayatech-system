@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import StatCard from '../../components/ui/StatCard';
 import subscriptionAPI from '../../api/subscriptions';
 import toast from 'react-hot-toast';
 import { formatCurrency, formatDate } from '../../utils/formatters';
@@ -46,7 +47,7 @@ const SubscriptionList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, categoryFilter, statusFilter]);
+  }, [page, pageSize, categoryFilter, statusFilter, currencyFilter]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

@@ -1,18 +1,11 @@
-import React, { useState, useRef } from 'react';
-import { Select, Typography } from 'antd';
+import React, { useState, useRef, useEffect } from 'react';
+import { Select, Typography, Divider, Button } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
 /**
  * مكون Select ذكي يسمح بالكتابة والاختيار مع إمكانية إنشاء خيارات جديدة
- * 
- * @param {Array} options - قائمة الخيارات [{value, label}]
- * @param {any} value - القيمة الحالية
- * @param {Function} onChange - دالة عند تغيير القيمة
- * @param {string} placeholder - النص التوجيهي
- * @param {boolean} allowCreate - السماح بإنشاء خيارات جديدة
- * @param {boolean} mode - وضع Ant Select (tags, multiple, etc)
- * @param {object} rest - خصائص إضافية تمر لمكون Select
  */
 const SmartSelect = ({
   options = [],
@@ -24,12 +17,11 @@ const SmartSelect = ({
   ...rest
 }) => {
   const [localOptions, setLocalOptions] = useState(options);
-  const inputRef = useRef(null);
+  const searchTextRef = useRef('');
 
   // مزامنة الـ options الخارجية مع الداخلية
-  React.useEffect(() => {
+  useEffect(() => {
     setLocalOptions((prev) => {
-      // دمج الخيارات الجديدة مع القديمة مع الحفاظ على أي إضافات محلية
       const existingValues = new Set(prev.map((o) => o.value));
       const newItems = options.filter((o) => !existingValues.has(o.value));
       if (newItems.length === 0) return prev;
@@ -37,82 +29,63 @@ const SmartSelect = ({
     });
   }, [options]);
 
-  const handleChange = (newValue, option) => {
-    if (onChange) {
-      onChange(newValue, option);
-    }
-  };
-
   const handleSearch = (searchValue) => {
-    // في وضع tags، يتولى Ant Design الأمر تلقائياً
-    if (mode === 'tags' || !allowCreate) return;
+    searchTextRef.current = searchValue;
   };
 
-  const handleBlur = (e) => {
-    if (!allowCreate || mode === 'tags') return;
-    const searchText = e?.target?.value || '';
-    if (!searchText.trim()) return;
+  const handleCreateNew = () => {
+    const searchValue = searchTextRef.current.trim();
+    if (!searchValue) return;
 
     const exists = localOptions.some(
-      (opt) => opt.value?.toString().toLowerCase() === searchText.trim().toLowerCase()
+      (opt) => opt.value?.toString().toLowerCase() === searchValue.toLowerCase()
     );
-    if (!exists) {
-      const newOption = { value: searchText.trim(), label: searchText.trim() };
-      const updatedOptions = [...localOptions, newOption];
-      setLocalOptions(updatedOptions);
-      if (onChange) {
-        onChange(searchText.trim(), newOption);
-      }
+    if (exists) return;
+
+    const newOption = { value: searchValue, label: searchValue };
+    setLocalOptions((prev) => [...prev, newOption]);
+    if (onChange) {
+      onChange(searchValue, newOption);
     }
+    searchTextRef.current = '';
   };
 
-  // إنشاء custom option tag عند التخصيص
-  const tagRender = (props) => {
-    if (!allowCreate) return null;
-    const { label, value: val, closable, onClose } = props;
-    const onPreventMouseDown = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-    };
+  // زر الإضافة في قاع القائمة المنسدلة
+  const dropdownRender = (menu) => {
+    const searchValue = searchTextRef.current.trim();
+    if (!allowCreate || !searchValue) return menu;
+
+    const exists = localOptions.some(
+      (opt) => opt.value?.toString().toLowerCase() === searchValue.toLowerCase()
+    );
+    if (exists) return menu;
+
     return (
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          margin: '2px 4px 2px 0',
-          padding: '2px 8px',
-          background: '#e6f4ff',
-          border: '1px solid #91caff',
-          borderRadius: 4,
-          fontSize: 13,
-          fontFamily: 'Cairo, sans-serif',
-        }}
-        onMouseDown={onPreventMouseDown}
-      >
-        {label}
-        {closable && (
-          <span
-            onClick={onClose}
-            style={{
-              marginRight: 6,
-              cursor: 'pointer',
-              color: '#1677ff',
-              fontWeight: 'bold',
-              fontSize: 14,
-            }}
-          >
-            ×
-          </span>
-        )}
-      </span>
+      <div>
+        {menu}
+        <Divider style={{ margin: '4px 0' }} />
+        <Button
+          type="text"
+          block
+          icon={<PlusOutlined />}
+          onClick={handleCreateNew}
+          style={{
+            textAlign: 'right',
+            fontFamily: 'Cairo, sans-serif',
+            height: 36,
+            padding: '4px 12px',
+          }}
+        >
+          إضافة "{searchValue}"
+        </Button>
+      </div>
     );
   };
 
   return (
     <Select
-      ref={inputRef}
       value={value}
-      onChange={handleChange}
+      onChange={(v, opt) => { if (onChange) onChange(v, opt); }}
       placeholder={placeholder}
       showSearch
       allowClear
@@ -135,9 +108,8 @@ const SmartSelect = ({
       }
       options={localOptions}
       mode={mode}
-      tagRender={mode === 'tags' || mode === 'multiple' ? tagRender : undefined}
+      dropdownRender={allowCreate ? dropdownRender : undefined}
       onSearch={handleSearch}
-      onBlur={handleBlur}
       style={{ width: '100%', fontFamily: 'Cairo, sans-serif' }}
       {...rest}
     />

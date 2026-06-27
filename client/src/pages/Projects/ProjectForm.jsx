@@ -152,15 +152,13 @@ const ProjectForm = () => {
 
           <Row gutter={24}>
             <Col xs={24} md={12}>
-              <FormField name="serviceType" label="نوع الخدمة" rules={[{ required: true }]} placeholder="مثال: تصميم جرافيك" />
+              <FormField type="smartselect" name="serviceType" label="نوع الخدمة" rules={[{ required: true }]} placeholder="مثال: تصميم جرافيك" options={[]} allowCreate />
             </Col>
             <Col xs={24} md={6}>
               <FormField name="totalValue" label="قيمة المشروع" type="number" rules={[{ required: true }]} min={0} />
             </Col>
             <Col xs={24} md={6}>
-              <Form.Item name="currency" label="العملة">
-                <Select options={currencies} />
-              </Form.Item>
+              <FormField type="smartselect" name="currency" label="العملة" options={currencies} allowCreate />
             </Col>
           </Row>
 
@@ -184,12 +182,10 @@ const ProjectForm = () => {
 
           <Row gutter={24}>
             <Col xs={24} md={12}>
-              <Form.Item name="paymentType" label="نوع الدفعات">
-                <Select options={[
+              <FormField type="smartselect" name="paymentType" label="نوع الدفعات" options={[
                   { value: 'دفعة واحدة', label: 'دفعة واحدة' }, { value: 'مرحلي', label: 'مرحلي' },
                   { value: 'حسب الإنجاز', label: 'حسب الإنجاز' }, { value: 'شهري', label: 'شهري' },
-                ]} />
-              </Form.Item>
+                ]} allowCreate />
             </Col>
             <Col xs={24} md={12}>
               <Form.Item name="deliveryStatus" label="حالة التسليم">

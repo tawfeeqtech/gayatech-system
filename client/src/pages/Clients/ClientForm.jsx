@@ -125,79 +125,74 @@ const ClientForm = () => {
               />
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item
+              <FormField
+                type="smartselect"
                 name="clientType"
-                label={<span>نوع العميل</span>}
-              >
-                <Select
-                  placeholder="اختر نوع العميل"
-                  options={[
-                    { value: 'شركة', label: 'شركة' },
-                    { value: 'مؤسسة', label: 'مؤسسة' },
-                    { value: 'فرد', label: 'فرد' },
-                    { value: 'جهة حكومية', label: 'جهة حكومية' },
-                    { value: 'أخرى', label: 'أخرى' },
-                  ]}
-                />
-              </Form.Item>
+                label="نوع العميل"
+                options={[
+                  { value: 'شركة', label: 'شركة' },
+                  { value: 'مؤسسة', label: 'مؤسسة' },
+                  { value: 'فرد', label: 'فرد' },
+                  { value: 'جهة حكومية', label: 'جهة حكومية' },
+                  { value: 'أخرى', label: 'أخرى' },
+                ]}
+                allowCreate
+              />
             </Col>
           </Row>
 
           <Row gutter={24}>
             <Col xs={24} md={12}>
-              <Form.Item
+              <FormField
+                type="smartselect"
                 name="status"
-                label={<span>الحالة</span>}
-              >
-                <Select
-                  placeholder="اختر الحالة"
-                  options={[
-                    { value: 'نشط', label: 'نشط' },
-                    { value: 'غير نشط', label: 'غير نشط' },
-                    { value: 'متوقف مؤقتاً', label: 'متوقف مؤقتاً' },
-                    { value: 'محظور', label: 'محظور' },
-                  ]}
-                />
-              </Form.Item>
+                label="الحالة"
+                options={[
+                  { value: 'نشط', label: 'نشط' },
+                  { value: 'غير نشط', label: 'غير نشط' },
+                  { value: 'متوقف مؤقتاً', label: 'متوقف مؤقتاً' },
+                  { value: 'محظور', label: 'محظور' },
+                ]}
+                allowCreate
+              />
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item
+              <FormField
+                type="smartselect"
                 name="preferredCurrency"
-                label={<span>العملة المفضلة</span>}
-              >
-                <Select
-                  placeholder="اختر العملة"
-                  options={currencies}
-                />
-              </Form.Item>
+                label="العملة المفضلة"
+                options={currencies}
+                allowCreate
+              />
             </Col>
           </Row>
 
           <Row gutter={24}>
             <Col xs={24} md={12}>
-              <Form.Item name={['address', 'city']} label={<span>المدينة</span>}>
-                <Select
-                  placeholder="اختر المدينة"
-                  allowClear
-                  options={[
-                    { value: 'غزة', label: 'غزة' },
-                    { value: 'رام الله', label: 'رام الله' },
-                    { value: 'نابلس', label: 'نابلس' },
-                    { value: 'الخليل', label: 'الخليل' },
-                    { value: 'أخرى', label: 'أخرى' },
-                  ]}
-                />
-              </Form.Item>
+              <FormField
+                type="smartselect"
+                name={['address', 'city']}
+                label="المدينة"
+                options={[
+                  { value: 'غزة', label: 'غزة' },
+                  { value: 'رام الله', label: 'رام الله' },
+                  { value: 'نابلس', label: 'نابلس' },
+                  { value: 'الخليل', label: 'الخليل' },
+                  { value: 'أخرى', label: 'أخرى' },
+                ]}
+                allowCreate
+                placeholder="اختر المدينة"
+              />
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name={['address', 'street']} label={<span>العنوان</span>}>
-                <Select
-                  placeholder="أدخل العنوان"
-                  allowClear
-                  options={[]}
-                  mode={undefined}
-                />
-              </Form.Item>
+              <FormField
+                type="smartselect"
+                name={['address', 'street']}
+                label="العنوان"
+                options={[]}
+                allowCreate
+                placeholder="أدخل العنوان"
+              />
             </Col>
           </Row>
 

@@ -51,9 +51,7 @@ const AdvanceForm = () => {
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="currency" label="العملة">
-                <Select options={currencies} />
-              </Form.Item>
+              <FormField type="smartselect" name="currency" label="العملة" options={currencies} allowCreate />
             </Col>
           </Row>
           <Row gutter={24}>
@@ -68,26 +66,22 @@ const AdvanceForm = () => {
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="repaymentMethod" label="طريقة السداد">
-                <Select options={[
+              <FormField type="smartselect" name="repaymentMethod" label="طريقة السداد" options={[
                   { value: 'خصم من الراتب', label: 'خصم من الراتب' },
                   { value: 'دفعة واحدة', label: 'دفعة واحدة' },
                   { value: 'أقساط', label: 'أقساط' },
-                ]} />
-              </Form.Item>
+                ]} allowCreate />
             </Col>
           </Row>
           <Row gutter={24}>
             <Col span={24}>
-              <Form.Item name="reason" label="سبب السلفة">
-                <Select placeholder="اختر السبب" options={[
+              <FormField type="smartselect" name="reason" label="سبب السلفة" placeholder="اختر السبب" options={[
                   { value: 'ظروف طارئة', label: 'ظروف طارئة' },
                   { value: 'مصاريف طبية', label: 'مصاريف طبية' },
                   { value: 'تعليم', label: 'تعليم' },
                   { value: 'سكن', label: 'سكن' },
                   { value: 'أخرى', label: 'أخرى' },
-                ]} />
-              </Form.Item>
+                ]} allowCreate />
             </Col>
           </Row>
           <div style={{ textAlign: 'left', marginTop: 24, borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>

@@ -115,14 +115,12 @@ const EmployeeForm = () => {
           <Row gutter={24}>
             <Col xs={24} md={8}><FormField name="email" label="البريد الإلكتروني" /></Col>
             <Col xs={24} md={8}><FormField name="phone" label="الهاتف" /></Col>
-            <Col xs={24} md={8}><FormField name="department" label="القسم" /></Col>
+            <Col xs={24} md={8}><FormField name="department" label="القسم" type="smartselect" options={[]} allowCreate placeholder="أدخل القسم" /></Col>
           </Row>
           <Row gutter={24}>
             <Col xs={24} md={6}><FormField name="baseSalary" label="الراتب الأساسي" type="number" rules={[{ required: true }]} min={0} /></Col>
             <Col xs={24} md={6}>
-              <Form.Item name="salaryCurrency" label="العملة">
-                <Select options={currencies} />
-              </Form.Item>
+              <FormField type="smartselect" name="salaryCurrency" label="العملة" options={currencies} allowCreate />
             </Col>
             <Col xs={24} md={6}>
               <Form.Item name="autoGenerateSalary" label="توليد الرواتب تلقائياً" valuePropName="checked">
@@ -133,12 +131,10 @@ const EmployeeForm = () => {
           </Row>
           <Row gutter={24}>
             <Col xs={24} md={12}>
-              <Form.Item name="status" label="الحالة">
-                <Select options={[
-                  { value: 'نشط', label: 'نشط' }, { value: 'إجازة', label: 'إجازة' },
-                  { value: 'متوقف', label: 'متوقف' }, { value: 'مستقيل', label: 'مستقيل' },
-                ]} />
-              </Form.Item>
+              <FormField type="smartselect" name="status" label="الحالة" options={[
+                { value: 'نشط', label: 'نشط' }, { value: 'إجازة', label: 'إجازة' },
+                { value: 'متوقف', label: 'متوقف' }, { value: 'مستقيل', label: 'مستقيل' },
+              ]} allowCreate />
             </Col>
             <Col xs={24} md={12}><FormField name="notes" label="ملاحظات" type="textarea" /></Col>
           </Row>

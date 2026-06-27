@@ -33,10 +33,10 @@ const PartnerForm = () => {
           <Row gutter={24}>
             <Col xs={24} md={12}><FormField name="name" label="الاسم" rules={[{ required: true }]} /></Col>
             <Col xs={24} md={12}>
-              <Form.Item name="partnerType" label="النوع"><Select options={[
+              <FormField type="smartselect" name="partnerType" label="النوع" options={[
                 { value: 'مؤسس', label: 'مؤسس' }, { value: 'مستثمر', label: 'مستثمر' },
                 { value: 'شريك استراتيجي', label: 'شريك استراتيجي' }, { value: 'ممول', label: 'ممول' },
-              ]} /></Form.Item>
+              ]} allowCreate />
             </Col>
           </Row>
           <Row gutter={24}>

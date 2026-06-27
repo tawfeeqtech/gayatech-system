@@ -162,6 +162,7 @@ const DataTable = ({
     try {
       await onBulkDelete(selectedRowKeys);
       setSelectedRowKeys([]);
+      if (onRefresh) onRefresh();
     } catch {
       // الخطأ يتم معالجته في الدالة المسندة
     } finally {
@@ -176,6 +177,7 @@ const DataTable = ({
     try {
       await onBulkAction(selectedRowKeys);
       setSelectedRowKeys([]);
+      if (onRefresh) onRefresh();
     } catch {
       // الخطأ يتم معالجته في الدالة المسندة
     } finally {
@@ -191,6 +193,7 @@ const DataTable = ({
       await onBulkEdit(selectedRowKeys, field, value);
       setBulkEditVisible(false);
       setSelectedRowKeys([]);
+      if (onRefresh) onRefresh();
     } catch {
       // الخطأ يتم معالجته في الدالة المسندة
     } finally {

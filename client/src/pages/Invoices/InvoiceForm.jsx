@@ -93,13 +93,11 @@ const InvoiceForm = () => {
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name="invoiceType" label="نوع الفاتورة" rules={[{ required: true }]}>
-                <Select options={[
+              <FormField type="smartselect" name="invoiceType" label="نوع الفاتورة" rules={[{ required: true }]} options={[
                   { value: 'مشروع', label: 'مشروع' }, { value: 'خدمة', label: 'خدمة' },
                   { value: 'عقد شهري', label: 'عقد شهري' }, { value: 'استقطاب', label: 'استقطاب' },
                   { value: 'متجر', label: 'متجر' }, { value: 'أخرى', label: 'أخرى' },
-                ]} />
-              </Form.Item>
+                ]} allowCreate />
             </Col>
           </Row>
           <Row gutter={24}>

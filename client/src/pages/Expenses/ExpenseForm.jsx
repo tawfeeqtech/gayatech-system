@@ -55,9 +55,7 @@ const ExpenseForm = () => {
               <FormField name="amount" label="المبلغ" type="number" rules={[{ required: true }]} min={0} />
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="currency" label="العملة">
-                <Select options={currencies} />
-              </Form.Item>
+              <FormField type="smartselect" name="currency" label="العملة" options={currencies} allowCreate />
             </Col>
             <Col xs={24} md={8}>
               <FormField name="expenseDate" label="التاريخ" type="date" rules={[{ required: true }]} />
@@ -75,12 +73,10 @@ const ExpenseForm = () => {
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="paymentMethod" label="وسيلة الدفع">
-                <Select options={[
+              <FormField type="smartselect" name="paymentMethod" label="وسيلة الدفع" options={[
                   { value: 'تحويل بنكي', label: 'تحويل بنكي' }, { value: 'نقد', label: 'نقد' },
                   { value: 'بطاقة ائتمان', label: 'بطاقة ائتمان' }, { value: 'أخرى', label: 'أخرى' },
-                ]} />
-              </Form.Item>
+                ]} allowCreate />
             </Col>
           </Row>
           <Row gutter={24}>

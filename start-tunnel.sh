@@ -13,11 +13,25 @@ OLD_URL_FILE="/data/gayatech-system/.tunnel_old_url.txt"
 
 log() { echo "[$(date '+%H:%M:%S')] $1" >> "$LOG_FILE"; echo "[$(date '+%H:%M:%S')] $1"; }
 
+# === إيقاف نفق port $PORT فقط (ما يمس أنفاق المشاريع الثانية) ===
+kill_my_tunnel() {
+    local MY_TUNNEL_PIDS
+    MY_TUNNEL_PIDS=$(pgrep -f "cloudflared.*:$PORT" 2>/dev/null || true)
+    if [ -n "$MY_TUNNEL_PIDS" ]; then
+        echo "$MY_TUNNEL_PIDS" | xargs kill -9 2>/dev/null || true
+        sleep 1
+        log "✅ تم إيقاف نفق port $PORT"
+    else
+        log "✅ لا يوجد نفق على port $PORT"
+    fi
+}
+
 # === بدء النفق ===
 start_tunnel() {
     log "🔄 تشغيل نفق TryCloudflare..."
+    kill_my_tunnel
     (
-        ~/cloudflared tunnel --url http://localhost:$PORT 2>&1 | while IFS= read -r line; do
+        nohup /data/cloudflared tunnel --url http://localhost:$PORT 2>&1 | while IFS= read -r line; do
             echo "$line" >> "$LOG_FILE"
             URL=$(echo "$line" | grep -oP 'https://[a-z0-9-]+\.trycloudflare\.com' | head -1)
             if [ -n "$URL" ]; then
@@ -26,6 +40,7 @@ start_tunnel() {
             fi
         done
     ) &
+    disown
     echo $! > "$PID_FILE"
 
     for i in $(seq 1 30); do
@@ -41,9 +56,9 @@ start_tunnel() {
 
 # === إيقاف النفق ===
 stop_tunnel() {
-    log "🛑 إيقاف..."
+    log "🛑 إيقاف جميع الأنفاق..."
     [ -f "$PID_FILE" ] && { kill "$(cat "$PID_FILE")" 2>/dev/null || true; rm -f "$PID_FILE"; }
-    pkill -f "cloudflared.*localhost:$PORT" 2>/dev/null || true
+    kill_my_tunnel
     log "✅ تم"
 }
 

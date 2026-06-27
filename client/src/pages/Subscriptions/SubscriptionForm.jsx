@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, Typography, AutoComplete } from 'antd';
+import { Card, Form, Button, Space, Row, Col, Typography } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import subscriptionAPI from '../../api/subscriptions';
 import toast from 'react-hot-toast';
 import vendorAPI from '../../api/vendors';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import FormField from '../../components/ui/FormField';
 
 const { Title } = Typography;
 
@@ -163,16 +164,7 @@ const SubscriptionForm = () => {
 
           <Row gutter={24}>
             <Col xs={24} md={8}>
-              <Form.Item name="category" label="التصنيف" rules={[{ required: true, message: 'التصنيف مطلوب' }]}>
-                <AutoComplete
-                  placeholder="اختر أو اكتب تصنيفاً جديداً"
-                  options={categories.map(c => ({ value: c, label: c }))}
-                  filterOption={(inputValue, option) =>
-                    option.value.toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
-                  }
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
+              <FormField type="smartselect" name="category" label="التصنيف" options={categories.map(c => ({ value: c, label: c }))} allowCreate placeholder="اختر أو اكتب تصنيفاً جديداً" rules={[{ required: true, message: 'التصنيف مطلوب' }]} />
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="amount" label="القيمة" rules={[{ required: true, message: 'القيمة مطلوبة' }]}>
@@ -181,23 +173,19 @@ const SubscriptionForm = () => {
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="currency" label="العملة">
-                <Select options={currencies} />
-              </Form.Item>
+              <FormField type="smartselect" name="currency" label="العملة" options={currencies} allowCreate />
             </Col>
           </Row>
 
           <Row gutter={24}>
             <Col xs={24} md={8}>
-              <Form.Item name="renewalType" label="نوع التجديد">
-                <Select options={[
-                  { value: 'شهري', label: 'شهري' },
-                  { value: 'ربع سنوي', label: 'ربع سنوي' },
-                  { value: 'نصف سنوي', label: 'نصف سنوي' },
-                  { value: 'سنوي', label: 'سنوي' },
-                  { value: 'مرة واحدة', label: 'مرة واحدة' },
-                ]} />
-              </Form.Item>
+              <FormField type="smartselect" name="renewalType" label="نوع التجديد" options={[
+                { value: 'شهري', label: 'شهري' },
+                { value: 'ربع سنوي', label: 'ربع سنوي' },
+                { value: 'نصف سنوي', label: 'نصف سنوي' },
+                { value: 'سنوي', label: 'سنوي' },
+                { value: 'مرة واحدة', label: 'مرة واحدة' },
+              ]} allowCreate />
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="startDate" label="تاريخ البداية" rules={[{ required: true, message: 'تاريخ البداية مطلوب' }]}>
@@ -215,15 +203,13 @@ const SubscriptionForm = () => {
 
           <Row gutter={24}>
             <Col xs={24} md={8}>
-              <Form.Item name="status" label="الحالة">
-                <Select options={[
-                  { value: 'نشط', label: '🟢 نشط' },
-                  { value: 'قريب', label: '🟡 قريب من الانتهاء' },
-                  { value: 'منتهي', label: '🔴 منتهي' },
-                  { value: 'ملغي', label: '⚫ ملغي' },
-                  { value: 'بانتظار التجديد', label: '🔵 بانتظار التجديد' },
-                ]} />
-              </Form.Item>
+              <FormField type="smartselect" name="status" label="الحالة" options={[
+                { value: 'نشط', label: '🟢 نشط' },
+                { value: 'قريب', label: '🟡 قريب من الانتهاء' },
+                { value: 'منتهي', label: '🔴 منتهي' },
+                { value: 'ملغي', label: '⚫ ملغي' },
+                { value: 'بانتظار التجديد', label: '🔵 بانتظار التجديد' },
+              ]} allowCreate />
             </Col>
           </Row>
 

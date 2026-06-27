@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.use(protect);
 
-router.post('/bulk-delete', roleCheck('admin'), bulkController.bulkDelete(Transaction));
+router.post('/bulk-delete', roleCheck('admin'), transactionController.bulkDeleteTransactions);
 router.post('/bulk-update', roleCheck('admin'), bulkController.bulkUpdate(Transaction));
 
 // ملخص (يجب أن يكون قبل /:id)

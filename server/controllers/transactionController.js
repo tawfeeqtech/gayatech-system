@@ -312,6 +312,41 @@ exports.deleteTransaction = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', message: 'تم حذف المعاملة بنجاح' });
 });
 
+// @desc    حذف جماعي للمعاملات مع تحديث أرصدة المحافظ
+exports.bulkDeleteTransactions = asyncHandler(async (req, res, next) => {
+  const { ids } = req.body;
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return next(new ApiError('يرجى توفير مصفوفة من المعرفات للحذف', 400));
+  }
+
+  // 1. نجيب المعاملات قبل الحذف عشان نعكس الرصيد
+  const transactions = await Transaction.find({ _id: { $in: ids } });
+
+  // 2. نعكس الرصيد لكل معاملة
+  for (const transaction of transactions) {
+    if (transaction.toWallet) {
+      const credit = transaction.toAmount || transaction.amount;
+      await Wallet.findByIdAndUpdate(transaction.toWallet, { $inc: { balance: -credit } });
+    }
+    if (transaction.fromWallet) {
+      await Wallet.findByIdAndUpdate(transaction.fromWallet, { $inc: { balance: transaction.amount } });
+    }
+    if (transaction.invoice) {
+      await updateInvoiceAndLinkedStatus(transaction.invoice, -transaction.amount, transaction._id, true);
+    }
+    if (transaction.client) await updateClientStats(transaction.client);
+  }
+
+  // 3. نحذف
+  const result = await Transaction.deleteMany({ _id: { $in: ids } });
+
+  res.status(200).json({
+    status: 'success',
+    message: `تم حذف ${result.deletedCount} معاملة وتحديث الأرصدة`,
+    data: { deletedCount: result.deletedCount }
+  });
+});
+
 // ملخص المعاملات (كما هو)
 exports.getTransactionsSummary = asyncHandler(async (req, res, next) => {
   const now = new Date();
