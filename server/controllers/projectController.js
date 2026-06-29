@@ -89,6 +89,35 @@ exports.createProject = asyncHandler(async (req, res, next) => {
   req.body.createdBy = req.user._id;
   const project = await Project.create(req.body);
 
+  // 👈 توليد فاتورة تلقائية للمشروع
+  const Invoice = require('../models/Invoice');
+  const dueDate = project.deliveryDate
+    ? new Date(project.deliveryDate)
+    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // +30 يوم افتراضي
+
+  const invoice = await Invoice.create({
+    client: project.client,
+    project: project._id,
+    invoiceType: 'مشروع',
+    totalAmount: project.totalValue,
+    currency: project.currency || 'USD',
+    issueDate: new Date(),
+    dueDate: dueDate,
+    status: 'مصدرة',
+    items: [{
+      description: `مشروع: ${project.title}`,
+      quantity: 1,
+      unitPrice: project.totalValue,
+      totalPrice: project.totalValue,
+    }],
+    notes: `فاتورة مشروع ${project.title}${project.projectNumber ? ` (${project.projectNumber})` : ''}`,
+    createdBy: req.user._id,
+  });
+
+  // ربط الفاتورة بالمشروع
+  project.invoices = [invoice._id];
+  await project.save();
+
   if (project.team && project.team.length > 0) {
     for (const member of project.team) {
       if (member.employee) {
