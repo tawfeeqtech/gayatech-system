@@ -89,10 +89,10 @@ const ProjectForm = () => {
       let projectId = id; // استخدم id الموجود إذا كان تعديل
       
       if (isEdit) {
-        await projectAPI.update(id, projectData);
+        await projectAPI.update(id, dataToSend);
         message.success('تم تحديث المشروع');
       } else {
-        const result = await projectAPI.create(projectData);
+        const result = await projectAPI.create(dataToSend);
         projectId = result?.data?.data?.project?._id;
         console.log('✅ Project created, ID:', projectId);
         message.success('تم إضافة المشروع');
