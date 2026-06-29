@@ -156,7 +156,6 @@ const ClientForm = () => {
     finally { setSubmitting(false); }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
 
   return (
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
@@ -165,6 +164,7 @@ const ClientForm = () => {
         <Title level={4} style={{ margin: 0 }}>{isEdit ? 'تعديل عميل' : 'إضافة عميل جديد'}</Title>
       </div>
 
+      <Spin spinning={loading}>
       <Card style={{ borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <Form
           form={form}
@@ -281,6 +281,7 @@ const ClientForm = () => {
           </div>
         </Form>
       </Card>
+      </Spin>
     </div>
   );
 };

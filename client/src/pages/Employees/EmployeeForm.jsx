@@ -146,7 +146,6 @@ const EmployeeForm = () => {
     finally { setSubmitting(false); }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
 
   return (
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
@@ -155,6 +154,7 @@ const EmployeeForm = () => {
         <Title level={4} style={{ margin: 0 }}>{isEdit ? 'تعديل موظف' : 'إضافة موظف'}</Title>
       </div>
 
+      <Spin spinning={loading}>
       <Card style={{ borderRadius: 8 }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}
           initialValues={{ status: 'نشط', salaryCurrency: 'USD' }}>
@@ -211,6 +211,7 @@ const EmployeeForm = () => {
           </div>
         </Form>
       </Card>
+      </Spin>
     </div>
   );
 };

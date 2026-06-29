@@ -67,7 +67,6 @@ const InvoiceForm = () => {
     }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
 
   return (
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
@@ -76,6 +75,7 @@ const InvoiceForm = () => {
         <Title level={4} style={{ margin: 0 }}>{isEdit ? 'تعديل فاتورة' : 'إضافة فاتورة جديدة'}</Title>
       </div>
 
+      <Spin spinning={loading}>
       <Card style={{ borderRadius: 8 }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}
           initialValues={{ invoiceType: 'مشروع', currency: 'USD', status: 'مسودة' }}>
@@ -145,6 +145,7 @@ const InvoiceForm = () => {
           </div>
         </Form>
       </Card>
+      </Spin>
     </div>
   );
 };

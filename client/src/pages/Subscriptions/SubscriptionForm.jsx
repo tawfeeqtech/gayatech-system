@@ -126,12 +126,10 @@ const SubscriptionForm = () => {
     }
   };
 
-  if (loading) {
-    return <div style={{ textAlign: 'center', padding: 80 }}>جاري التحميل...</div>;
-  }
 
   return (
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
+      <Spin spinning={loading}>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
         <Button icon={<ArrowRightOutlined />} onClick={() => navigate('/subscriptions')}>العودة</Button>
         <Title level={4} style={{ margin: 0 }}>{isEdit ? 'تعديل اشتراك' : 'إضافة اشتراك جديد'}</Title>
@@ -239,6 +237,7 @@ const SubscriptionForm = () => {
           </div>
         </Form>
       </Card>
+      </Spin>
     </div>
   );
 };
