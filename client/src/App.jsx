@@ -46,6 +46,7 @@ import ClientBalances from './pages/Reports/ClientBalances';
 import ActiveContracts from './pages/Reports/ActiveContracts';
 import SubscriptionsReport from './pages/Reports/SubscriptionsReport';
 import PageTitleUpdater from './components/layout/PageTitleUpdater';
+import NetworkStatus from './components/ui/NetworkStatus';
 import CompletedProjects from './pages/Reports/CompletedProjects';
 import PartnerBalances from './pages/Reports/PartnerBalances';
 import EmployeePerformance from './pages/Reports/EmployeePerformance';
@@ -149,6 +150,7 @@ function App() {
         }}
       />
       <PageTitleUpdater />
+      <NetworkStatus />
       <Routes>
         <Route path="/login" element={<Login />} />
         
