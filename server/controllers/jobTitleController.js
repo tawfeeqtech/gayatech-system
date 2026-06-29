@@ -37,7 +37,7 @@ exports.getJobTitles = asyncHandler(async (req, res, next) => {
 // @route   POST /api/job-titles
 // @access  Private (admin)
 exports.createJobTitle = asyncHandler(async (req, res, next) => {
-  const { name } = req.body;
+  const { name, serviceTypes } = req.body;
 
   if (!name) {
     return next(new ApiError('اسم المسمى الوظيفي مطلوب', 400));
@@ -51,12 +51,60 @@ exports.createJobTitle = asyncHandler(async (req, res, next) => {
 
   const jobTitle = await JobTitle.create({
     name,
+    serviceTypes: serviceTypes || [],
     createdBy: req.user._id
   });
 
   res.status(201).json({
     status: 'success',
     data: { jobTitle }
+  });
+});
+
+// @desc    تحديث مسمى وظيفي (بما فيه أنواع الخدمات)
+// @route   PUT /api/job-titles/:id
+// @access  Private (admin)
+exports.updateJobTitle = asyncHandler(async (req, res, next) => {
+  const { name, serviceTypes } = req.body;
+
+  const jobTitle = await JobTitle.findById(req.params.id);
+  if (!jobTitle) {
+    return next(new ApiError('المسمى الوظيفي غير موجود', 404));
+  }
+
+  if (name) jobTitle.name = name;
+  if (serviceTypes !== undefined) jobTitle.serviceTypes = serviceTypes;
+
+  await jobTitle.save();
+
+  res.status(200).json({
+    status: 'success',
+    data: { jobTitle }
+  });
+});
+
+// @desc    الحصول على جميع أنواع الخدمات
+// @route   GET /api/job-titles/service-types/all
+// @access  Private
+exports.getAllServiceTypes = asyncHandler(async (req, res, next) => {
+  const jobTitles = await JobTitle.find({});
+  
+  // تجميع كل أنواع الخدمات من جميع المسميات
+  const serviceTypesSet = new Set();
+  for (const jt of jobTitles) {
+    if (jt.serviceTypes) {
+      for (const st of jt.serviceTypes) {
+        if (st) serviceTypesSet.add(st);
+      }
+    }
+  }
+
+  const serviceTypes = [...serviceTypesSet].sort();
+
+  res.status(200).json({
+    status: 'success',
+    results: serviceTypes.length,
+    data: { serviceTypes }
   });
 });
 

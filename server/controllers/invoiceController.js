@@ -34,7 +34,9 @@ exports.getInvoices = asyncHandler(async (req, res, next) => {
   const skip = (page - 1) * limit;
 
   const invoices = await Invoice.find(filter)
+    .populate('employee', 'name')
     .populate('client', 'name company')
+    .populate('employee', 'name')
     .populate('project', 'title')
     .populate('createdBy', 'fullName')
     .sort('-createdAt')

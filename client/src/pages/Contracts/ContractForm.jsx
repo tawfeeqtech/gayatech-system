@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, message, Spin, Switch, Typography, InputNumber } from 'antd';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, Form, Button, Space, Row, Col, Select, message, Spin, Switch, Typography, InputNumber, Input } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import FormField from '../../components/ui/FormField';
 import contractAPI from '../../api/contracts';
 import clientAPI from '../../api/clients';
+import api from '../../api/axios';
 import dayjs from 'dayjs';
 import { useCurrencies } from '../../hooks/useCurrencies';
 
@@ -19,9 +20,21 @@ const ContractForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const { currencies } = useCurrencies();
   const [clients, setClients] = useState([]);
+  const [serviceTypes, setServiceTypes] = useState([]);
+
+  const fetchServiceTypes = useCallback(async () => {
+    try {
+      const response = await api.get('/job-titles/service-types/all');
+      const types = response.data?.data?.serviceTypes || [];
+      setServiceTypes(types.map(t => ({ value: t, label: t })));
+    } catch (error) {
+      // silently fallback — المستخدم راح يكتب يدوي
+    }
+  }, []);
 
   useEffect(() => {
     fetchClients();
+    fetchServiceTypes();
     if (isEdit) fetchContract();
   }, [id]);
 
@@ -127,7 +140,7 @@ const ContractForm = () => {
 
           <Row gutter={24}>
             <Col xs={24} md={12}>
-              <FormField type="smartselect" name="serviceType" label="نوع الخدمة" rules={[{ required: true, message: 'نوع الخدمة مطلوب' }]} placeholder="مثال: تسويق رقمي" options={[]} allowCreate />
+              <FormField type="smartselect" name="serviceType" label="نوع الخدمة" rules={[{ required: true, message: 'نوع الخدمة مطلوب' }]} placeholder="مثال: تسويق رقمي" options={serviceTypes} allowCreate />
             </Col>
             <Col xs={24} md={6}>
               <FormField name="defaultMonthlyValue" label="القيمة الشهرية" type="number" rules={[{ required: true, message: 'القيمة مطلوبة' }]} min={0} />
@@ -163,7 +176,15 @@ const ContractForm = () => {
             </Col>
           </Row>
 
-          {/* إعدادات التوليد التلقائي */}
+          {isEdit && (
+            <Card title="📝 سبب التعديل" size="small" style={{ marginTop: 16, background: '#f0f9ff', border: '1px solid #bfdbfe' }}>
+              <Form.Item name="changeReason" label="سبب التعديل (سيظهر في سجل التعديلات)">
+                <Input.TextArea rows={3} placeholder="اكتب سبب التعديل... مثال: تم تقليص مدة العقد بناءً على طلب العميل" />
+              </Form.Item>
+            </Card>
+          )}
+
+        {/* إعدادات التوليد التلقائي */}
           <Card title="إعدادات التوليد التلقائي للفواتير" size="small" style={{ marginTop: 16, background: '#f8fafc' }}>
             <Row gutter={24}>
               <Col xs={24} md={8}>

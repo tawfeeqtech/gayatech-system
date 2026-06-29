@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Tabs, Row, Col, Descriptions, Button, Spin, Table, Tag, Space, message } from 'antd';
-import { ArrowRightOutlined, EditOutlined } from '@ant-design/icons';
+import { Card, Tabs, Row, Col, Descriptions, Button, Spin, Table, Tag, Space, message, Typography, Popconfirm } from 'antd';
+import { ArrowRightOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Modal, InputNumber } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import invoiceAPI from '../../api/invoices';
@@ -11,6 +11,8 @@ import contractAPI from '../../api/contracts';
 import contractMonthAPI from '../../api/contractMonths';
 import { formatCurrency, formatMonth } from '../../utils/formatters';
 
+const { Title } = Typography;
+
 const ContractDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -20,6 +22,8 @@ const ContractDetail = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editMonth, setEditMonth] = useState(null);
   const [editMonthValue, setEditMonthValue] = useState(0);
+  const [selectedChanges, setSelectedChanges] = useState([]);
+  const [deletingChanges, setDeletingChanges] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -78,6 +82,21 @@ const ContractDetail = () => {
       fetchData();
     } catch (e) {
       message.error('فشل في التحديث');
+    }
+  };
+
+  const handleDeleteChanges = async () => {
+    if (selectedChanges.length === 0) return;
+    setDeletingChanges(true);
+    try {
+      await contractAPI.bulkDeleteChanges(id, selectedChanges);
+      message.success(`تم حذف ${selectedChanges.length} سجل`);
+      setSelectedChanges([]);
+      fetchData();
+    } catch (error) {
+      message.error('فشل في حذف السجلات');
+    } finally {
+      setDeletingChanges(false);
     }
   };
 
@@ -162,6 +181,65 @@ const ContractDetail = () => {
           <Descriptions.Item label="تاريخ البداية">{contract.startDate ? new Date(contract.startDate).toLocaleDateString('ar-SA') : '—'}</Descriptions.Item>
           <Descriptions.Item label="تاريخ النهاية">{contract.endDate ? new Date(contract.endDate).toLocaleDateString('ar-SA') : 'مفتوح'}</Descriptions.Item>
         </Descriptions>
+        
+        {contract.changeLog && contract.changeLog.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Title level={5}>📋 سجل التعديلات ({contract.changeLog.length})</Title>
+              {selectedChanges.length > 0 && (
+                <Popconfirm
+                  title={`حذف ${selectedChanges.length} سجل؟`}
+                  description="هل أنت متأكد من حذف السجلات المحددة؟"
+                  onConfirm={handleDeleteChanges}
+                  okText="حذف" cancelText="إلغاء" okButtonProps={{ danger: true, loading: deletingChanges }}
+                >
+                  <Button danger icon={<DeleteOutlined />} loading={deletingChanges}>
+                    حذف المحدد ({selectedChanges.length})
+                  </Button>
+                </Popconfirm>
+              )}
+            </div>
+            <Table
+              dataSource={[...contract.changeLog].reverse()}
+              rowKey="_id"
+              rowSelection={{
+                selectedRowKeys: selectedChanges,
+                onChange: (keys) => setSelectedChanges(keys),
+              }}
+              columns={[
+                { title: '#', key: 'index', width: 50, render: (_, __, idx) => contract.changeLog.length - idx },
+                { title: 'التاريخ', dataIndex: 'changedAt', width: 120, render: (d) => d ? new Date(d).toLocaleDateString('ar-SA') : '—' },
+                { title: 'الحقل', dataIndex: 'field', width: 150, render: (f) => {
+                  const labels = {
+                    defaultMonthlyValue: 'القيمة الشهرية', currency: 'العملة', title: 'العنوان',
+                    description: 'الوصف', serviceType: 'نوع الخدمة', startDate: 'تاريخ البداية',
+                    endDate: 'تاريخ النهاية', dueDayOfMonth: 'يوم الاستحقاق', status: 'الحالة'
+                  };
+                  return labels[f] || f;
+                }},
+                { title: 'القيمة القديمة', dataIndex: 'oldValue', width: 150, render: (v, record) => {
+                  if (v === undefined || v === null) return '—';
+                  let val = String(v);
+                  if (record.field === 'startDate' || record.field === 'endDate') {
+                    return val.substring(0, 10);
+                  }
+                  return val;
+                }},
+                { title: 'القيمة الجديدة', dataIndex: 'newValue', width: 150, render: (v, record) => {
+                  if (v === undefined || v === null) return '—';
+                  let val = String(v);
+                  if (record.field === 'startDate' || record.field === 'endDate') {
+                    return val.substring(0, 10);
+                  }
+                  return val;
+                }},
+                { title: 'السبب', dataIndex: 'reason', width: 150, render: (r) => r || '—' },
+              ]}
+              pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: ['5', '10', '20', '50'] }}
+              size="small"
+            />
+          </div>
+        )}
       </Card>
 
       <Card title="أشهر العقد (الفواتير الشهرية)" style={{ borderRadius: 8 }}>

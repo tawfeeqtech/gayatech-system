@@ -20,13 +20,27 @@ const SmartSelect = ({
   const searchTextRef = useRef('');
 
   // مزامنة الـ options الخارجية مع الداخلية
+  // ⚠️ نستبدل بالكامل إذا تغيرت القيم (ليس مجرد إضافة)
+  // ⚠️ لكن لا نمسح الخيارات التي أنشأها المستخدم إذا كانت options فارغة
   useEffect(() => {
-    setLocalOptions((prev) => {
-      const existingValues = new Set(prev.map((o) => o.value));
-      const newItems = options.filter((o) => !existingValues.has(o.value));
-      if (newItems.length === 0) return prev;
-      return [...prev, ...newItems];
-    });
+    const incomingKeys = new Set(options.map((o) => o.value));
+    const localKeys = new Set(localOptions.map((o) => o.value));
+    const isSame =
+      incomingKeys.size === localKeys.size &&
+      [...incomingKeys].every((k) => localKeys.has(k));
+    if (isSame) return;
+
+    // إذا كانت options الجديدة فارغة والمستخدم لديه خيارات — احتفظ بها
+    if (options.length === 0 && localOptions.length > 0) return;
+
+    // دمج: احتفظ بالخيارات التي أنشأها المستخدم + أضف الجديدة
+    const merged = [...options];
+    for (const opt of localOptions) {
+      if (!merged.some((m) => m.value === opt.value)) {
+        merged.push(opt);
+      }
+    }
+    setLocalOptions(merged);
   }, [options]);
 
   const handleSearch = (searchValue) => {
@@ -51,7 +65,7 @@ const SmartSelect = ({
   };
 
   // زر الإضافة في قاع القائمة المنسدلة
-  const dropdownRender = (menu) => {
+  const popupRender = (menu) => {
     const searchValue = searchTextRef.current.trim();
     if (!allowCreate || !searchValue) return menu;
 
@@ -108,7 +122,7 @@ const SmartSelect = ({
       }
       options={localOptions}
       mode={mode}
-      dropdownRender={allowCreate ? dropdownRender : undefined}
+      popupRender={allowCreate ? popupRender : undefined}
       onSearch={handleSearch}
       style={{ width: '100%', fontFamily: 'Cairo, sans-serif' }}
       {...rest}

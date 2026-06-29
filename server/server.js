@@ -82,6 +82,9 @@ app.use('/api/departments', require('./routes/departmentRoutes'));
 app.use('/api/countries', require('./routes/countryRoutes'));
 app.use('/api/cities', require('./routes/cityRoutes'));
 
+// تشغيل المهام المجدولة
+require('./cron/scheduledTasks');
+
 // الصفحة الرئيسية
 app.get('/', (req, res) => {
   res.json({

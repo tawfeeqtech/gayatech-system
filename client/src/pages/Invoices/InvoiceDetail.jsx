@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Descriptions, Button, Spin, message, Typography, Tag, Row, Col, Table } from 'antd';
-import { ArrowRightOutlined, EditOutlined } from '@ant-design/icons';
+import { Card, Descriptions, Button, Spin, message, Typography, Tag, Row, Col, Table, Popconfirm, Space } from 'antd';
+import { ArrowRightOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import StatusBadge, { statusColors } from '../../components/ui/StatusBadge';
 import StatCard from '../../components/ui/StatCard';
@@ -63,25 +63,54 @@ const InvoiceDetail = () => {
         </Col>
       </Row>
 
-      {/* معلومات الفاتورة */}
+      {/* معلومات الفاتورة - عرض منظم في جدول */}
       <Card style={{ borderRadius: 8, marginBottom: 24 }}>
-        <Descriptions title="معلومات الفاتورة" column={{ xs: 1, sm: 2, md: 3 }}>
-          <Descriptions.Item label="العميل">{invoice.client?.name || '—'}</Descriptions.Item>
-          <Descriptions.Item label="نوع الفاتورة">{invoice.invoiceType}</Descriptions.Item>
-          <Descriptions.Item label="الحالة">
-            <StatusBadge status={invoice.status} mapping={statusColors.invoice} />
-          </Descriptions.Item>
-          <Descriptions.Item label="تاريخ الإصدار">
-            {invoice.issueDate ? new Date(invoice.issueDate).toLocaleDateString('ar-SA') : '—'}
-          </Descriptions.Item>
-          <Descriptions.Item label="تاريخ الاستحقاق">
-            {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('ar-SA') : '—'}
-          </Descriptions.Item>
-          <Descriptions.Item label="العملة">{invoice.currency}</Descriptions.Item>
-        </Descriptions>
-        {invoice.notes && (
-          <Descriptions.Item label="ملاحظات">{invoice.notes}</Descriptions.Item>
-        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <Title level={5} style={{ margin: 0 }}>📄 معلومات الفاتورة</Title>
+          <Space>
+            <Button icon={<EditOutlined />} onClick={() => navigate(`/invoices/edit/${id}`)}>تعديل</Button>
+            <Popconfirm
+              title="حذف الفاتورة"
+              description="هل أنت متأكد من حذف هذه الفاتورة؟ لا يمكن التراجع."
+              onConfirm={async () => {
+                try {
+                  await invoiceAPI.delete(id);
+                  message.success('تم حذف الفاتورة');
+                  navigate('/invoices');
+                } catch (e) {
+                  message.error(e.response?.data?.message || 'فشل في الحذف');
+                }
+              }}
+              okText="حذف" cancelText="إلغاء" okButtonProps={{ danger: true }}
+            >
+              <Button danger icon={<DeleteOutlined />}>حذف</Button>
+            </Popconfirm>
+          </Space>
+        </div>
+        <Table
+          dataSource={[
+            { label: 'العميل', value: invoice.client?.name || '—' },
+            { label: 'نوع الفاتورة', value: invoice.invoiceType },
+            { label: 'الحالة', value: <StatusBadge status={invoice.status} mapping={statusColors.invoice} /> },
+            { label: 'رقم الفاتورة', value: <Tag color="blue">{invoice.invoiceNumber || '—'}</Tag> },
+            { label: 'المبلغ الإجمالي', value: <strong>{formatCurrency(invoice.totalAmount, invoice.currency)}</strong> },
+            { label: 'المبلغ المدفوع', value: <span style={{ color: '#10b981' }}>{formatCurrency(invoice.paidAmount || 0, invoice.currency)}</span> },
+            { label: 'المتبقي', value: <span style={{ color: (invoice.totalAmount - (invoice.paidAmount || 0)) > 0 ? '#ef4444' : '#10b981', fontWeight: 600 }}>{formatCurrency((invoice.totalAmount - (invoice.paidAmount || 0)), invoice.currency)}</span> },
+            { label: 'تاريخ الإصدار', value: invoice.issueDate ? new Date(invoice.issueDate).toLocaleDateString('ar-SA') : '—' },
+            { label: 'تاريخ الاستحقاق', value: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('ar-SA') : '—' },
+            { label: 'العملة', value: invoice.currency },
+            ...(invoice.notes ? [{ label: 'ملاحظات', value: <div style={{ whiteSpace: 'pre-wrap', background: '#f8fafc', padding: 8, borderRadius: 4 }}>{invoice.notes}</div> }] : []),
+          ]}
+          columns={[
+            { title: 'الحقل', dataIndex: 'label', key: 'label', width: '30%', render: (v) => <strong>{v}</strong> },
+            { title: 'القيمة', dataIndex: 'value', key: 'value', width: '70%' },
+          ]}
+          pagination={false}
+          showHeader={false}
+          rowKey="label"
+          size="small"
+          style={{ fontFamily: 'Cairo, sans-serif' }}
+        />
       </Card>
 
       {/* المعاملات المرتبطة */}

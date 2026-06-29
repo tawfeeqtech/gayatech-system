@@ -103,6 +103,13 @@ const ContractList = () => {
       render: (date) => (date ? new Date(date).toLocaleDateString('ar-SA') : '—'),
     },
     {
+      title: 'تاريخ النهاية',
+      dataIndex: 'endDate',
+      key: 'endDate',
+      width: 120,
+      render: (date) => date ? new Date(date).toLocaleDateString('ar-SA') : <Tag style={{ fontSize: 11 }} color="green">غير محدد</Tag>,
+    },
+    {
       title: 'الحالة',
       dataIndex: 'status',
       key: 'status',

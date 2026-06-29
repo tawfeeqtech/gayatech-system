@@ -60,8 +60,16 @@ const InvoiceList = () => {
       render: (text) => <Tag color="blue">{text || '—'}</Tag>,
     },
     {
-      title: 'العميل', key: 'client', width: 160,
-      render: (_, r) => r.client?.name || '—',
+      title: 'العميل/الموظف', key: 'client', width: 180,
+      render: (_, r) => {
+        if (r.employee) {
+          return <a onClick={(e) => { e.preventDefault(); navigate('/employees/' + r.employee._id); }} style={{ color: '#8b5cf6' }}>{r.employee.name}</a>;
+        }
+        if (r.client) {
+          return <a onClick={(e) => { e.preventDefault(); navigate('/clients/' + r.client._id); }} style={{ color: '#3b82f6' }}>{r.client.name}{r.client.company ? ` - ${r.client.company}` : ''}</a>;
+        }
+        return '—';
+      },
     },
     {
       title: 'النوع', dataIndex: 'invoiceType', key: 'type', width: 100,

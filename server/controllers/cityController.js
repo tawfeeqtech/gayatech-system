@@ -9,7 +9,19 @@ exports.getCities = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const filter = {};
-  if (req.query.country) filter.country = req.query.country;
+  if (req.query.country) {
+    // Accept both ObjectId and country name
+    const mongoose = require('mongoose');
+    if (mongoose.Types.ObjectId.isValid(req.query.country)) {
+      filter.country = req.query.country;
+    } else {
+      // Try to find country by name
+      const Country = require('../models/Country');
+      const found = await Country.findOne({ name: { $regex: `^${req.query.country}$`, $options: 'i' } });
+      if (found) filter.country = found._id;
+      else return res.status(200).json({ status: 'success', results: 0, total: 0, data: { cities: [] } });
+    }
+  }
   if (req.query.search) filter.name = { $regex: req.query.search, $options: 'i' };
 
   const cities = await City.find(filter)

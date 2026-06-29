@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Typography, InputNumber, DatePicker, List, Divider } from 'antd';
+import { Card, Form, Button, Space, Row, Col, Typography, InputNumber, DatePicker, List, Divider, Select } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import salaryAPI from '../../api/salaries';

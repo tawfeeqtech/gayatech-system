@@ -18,6 +18,7 @@ router.get('/:id/months', roleCheck('admin', 'pm'), contractController.getContra
 router.post('/', roleCheck('admin', 'pm'), contractController.createContract);
 router.put('/:id', roleCheck('admin', 'pm'), contractController.updateContract);
 router.patch('/:id/status', roleCheck('admin', 'pm'), contractController.updateContractStatus);
+router.post('/:id/changes/delete', roleCheck('admin'), contractController.deleteChangeLogEntries);
 router.delete('/:id', roleCheck('admin'), contractController.deleteContract);
 
 module.exports = router;

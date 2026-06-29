@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Form, Button, Space, Row, Col, Select, message, Spin, Typography, Switch } from 'antd';
 import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -7,6 +7,7 @@ import projectAPI from '../../api/projects';
 import projectTaskAPI from '../../api/projectTasks';
 import clientAPI from '../../api/clients';
 import employeeAPI from '../../api/employees';
+import api from '../../api/axios';
 import dayjs from 'dayjs';
 import { useCurrencies } from '../../hooks/useCurrencies';
 
@@ -22,6 +23,7 @@ const ProjectForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [clients, setClients] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [serviceTypes, setServiceTypes] = useState([]);
   const [customRoles, setCustomRoles] = useState([
     'مطور رئيسي', 'مطور مساعد', 'مصمم رئيسي', 'مصمم جرافيك',
     'مسوق رقمي', 'مدير مشروع', 'محلل بيانات', 'مهندس DevOps',
@@ -30,6 +32,7 @@ const ProjectForm = () => {
 
   useEffect(() => {
     Promise.all([fetchClients(), fetchEmployees()]);
+    fetchServiceTypes();
     if (isEdit) fetchProject();
   }, [id]);
 
@@ -39,6 +42,16 @@ const ProjectForm = () => {
   const fetchEmployees = async () => {
     try { const r = await employeeAPI.getAll({ limit: 100 }); setEmployees(r.data.data.employees || []); } catch {}
   };
+
+  const fetchServiceTypes = useCallback(async () => {
+    try {
+      const response = await api.get('/job-titles/service-types/all');
+      const types = response.data?.data?.serviceTypes || [];
+      setServiceTypes(types.map(t => ({ value: t, label: t })));
+    } catch {
+      // silently fallback
+    }
+  }, []);
 
   const fetchProject = async () => {
     setLoading(true);
@@ -152,7 +165,7 @@ const ProjectForm = () => {
 
           <Row gutter={24}>
             <Col xs={24} md={12}>
-              <FormField type="smartselect" name="serviceType" label="نوع الخدمة" rules={[{ required: true }]} placeholder="مثال: تصميم جرافيك" options={[]} allowCreate />
+              <FormField type="smartselect" name="serviceType" label="نوع الخدمة" rules={[{ required: true }]} placeholder="مثال: تصميم جرافيك" options={serviceTypes} allowCreate />
             </Col>
             <Col xs={24} md={6}>
               <FormField name="totalValue" label="قيمة المشروع" type="number" rules={[{ required: true }]} min={0} />
