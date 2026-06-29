@@ -90,7 +90,7 @@ const ProjectList = () => {
         const invoiced = stats.totalInvoiced || 0;
         const paid = stats.totalPaid || 0;
         
-        if (invoiced === 0) return <Tag>—</Tag>;
+        if (invoiced === 0 && paid === 0) return <Tag>—</Tag>;
         if (paid === 0) return <Tag color="orange">غير مدفوع</Tag>;
         if (paid >= invoiced) return <Tag color="green">مدفوع</Tag>;
         return <Tag color="blue">مدفوع جزئياً</Tag>;

@@ -473,6 +473,7 @@ async function updateInvoiceAndLinkedStatus(invoiceId, amount, transactionId, is
     const Project = require('../models/Project');
     const project = await Project.findById(invoice.project);
     if (project) {
+      project.computedStats.totalInvoiced = invoice.totalAmount;
       project.computedStats.totalPaid = invoice.paidAmount;
       project.computedStats.totalRemaining = project.totalValue - invoice.paidAmount;
       await project.save();
