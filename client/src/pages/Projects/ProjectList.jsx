@@ -84,6 +84,19 @@ const ProjectList = () => {
       },
     },
     {
+      title: 'الدفع', key: 'payment', width: 100,
+      render: (_, record) => {
+        const stats = record.computedStats || {};
+        const invoiced = stats.totalInvoiced || 0;
+        const paid = stats.totalPaid || 0;
+        
+        if (invoiced === 0) return <Tag>—</Tag>;
+        if (paid === 0) return <Tag color="orange">غير مدفوع</Tag>;
+        if (paid >= invoiced) return <Tag color="green">مدفوع</Tag>;
+        return <Tag color="blue">مدفوع جزئياً</Tag>;
+      },
+    },
+    {
       title: 'الحالة', dataIndex: 'status', key: 'status', width: 110,
       render: (s) => <StatusBadge status={s} mapping={statusColors.project} />,
     },

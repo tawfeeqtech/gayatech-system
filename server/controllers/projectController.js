@@ -25,17 +25,26 @@ exports.getProjects = asyncHandler(async (req, res, next) => {
   let projects = await Project.find(filter)
     .populate('client', 'name company')
     .populate('team.employee', 'name jobTitle')
+    .populate('invoices', 'status totalAmount paidAmount')
     .sort(req.query.sortBy || '-createdAt')
     .skip(skip)
     .limit(limit);
 
-  // إخفاء البيانات المالية عن مدير المشاريع
+  // إخفاء البيانات المالية عن مدير المشاريع (مع إبقاء حالة الدفع)
   if (req.user.role === 'pm') {
     projects = projects.map(p => {
       const obj = p.toObject();
       delete obj.totalValue;
       delete obj.currency;
-      delete obj.computedStats;
+      // إبقاء حالة الدفع فقط
+      obj.computedStats = {
+        totalInvoiced: p.computedStats?.totalInvoiced || 0,
+        totalPaid: p.computedStats?.totalPaid || 0,
+        totalRemaining: p.computedStats?.totalRemaining || 0,
+        totalTasks: p.computedStats?.totalTasks || 0,
+        completedTasks: p.computedStats?.completedTasks || 0,
+        progressPercentage: p.computedStats?.progressPercentage || 0,
+      };
       return obj;
     });
   }
@@ -64,12 +73,19 @@ exports.getProject = asyncHandler(async (req, res, next) => {
     return next(new ApiError('المشروع غير موجود', 404));
   }
 
-  // إخفاء البيانات المالية عن مدير المشاريع
+  // إخفاء البيانات المالية عن مدير المشاريع (مع إبقاء حالة الدفع)
   if (req.user.role === 'pm') {
     const obj = project.toObject();
     delete obj.totalValue;
     delete obj.currency;
-    delete obj.computedStats;
+    obj.computedStats = {
+      totalInvoiced: project.computedStats?.totalInvoiced || 0,
+      totalPaid: project.computedStats?.totalPaid || 0,
+      totalRemaining: project.computedStats?.totalRemaining || 0,
+      totalTasks: project.computedStats?.totalTasks || 0,
+      completedTasks: project.computedStats?.completedTasks || 0,
+      progressPercentage: project.computedStats?.progressPercentage || 0,
+    };
     return res.status(200).json({
       status: 'success',
       data: { project: obj }
@@ -114,8 +130,14 @@ exports.createProject = asyncHandler(async (req, res, next) => {
     createdBy: req.user._id,
   });
 
-  // ربط الفاتورة بالمشروع
+  // ربط الفاتورة بالمشروع وتحديث الإحصائيات المالية
   project.invoices = [invoice._id];
+  project.computedStats = {
+    ...(project.computedStats || {}),
+    totalInvoiced: project.totalValue,
+    totalPaid: 0,
+    totalRemaining: project.totalValue,
+  };
   await project.save();
 
   if (project.team && project.team.length > 0) {
