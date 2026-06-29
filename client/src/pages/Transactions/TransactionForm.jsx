@@ -47,6 +47,7 @@ const TransactionForm = () => {
   const [vendors, setVendors] = useState([]);
 
   // 👈 تحويل العملات التلقائي
+  const [conversionFeatureEnabled, setConversionFeatureEnabled] = useState(false);
   const [allAccountWallets, setAllAccountWallets] = useState([]);
   const [conversionWallet, setConversionWallet] = useState(null);
   const [exchangeRate, setExchangeRate] = useState(null);
@@ -319,6 +320,7 @@ const TransactionForm = () => {
 
   // 👈 فحص رصيد المحفظة واقتراح التحويل
   const checkWalletBalance = async (walletId, accountId, amount) => {
+    if (!conversionFeatureEnabled) return;
     setShowConversion(false);
     setConversionWallet(null);
     setExchangeRate(null);
@@ -490,6 +492,15 @@ const TransactionForm = () => {
         <Title level={4} style={{ margin: 0 }}>
           {isEdit ? 'تعديل معاملة مالية' : 'إضافة معاملة مالية جديدة'}
         </Title>
+        <label style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: conversionFeatureEnabled ? '#16a34a' : '#94a3b8' }}>
+          <input 
+            type="checkbox" 
+            checked={conversionFeatureEnabled} 
+            onChange={(e) => setConversionFeatureEnabled(e.target.checked)}
+            style={{ cursor: 'pointer' }}
+          />
+          🔄 تحويل تلقائي عند نقص الرصيد
+        </label>
       </div>
 
       <Card style={{ borderRadius: 8 }}>
