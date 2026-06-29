@@ -63,7 +63,7 @@ const ProjectForm = () => {
         client: p.client?._id,
         startDate: p.startDate ? dayjs(p.startDate) : undefined,      // ✅ dayjs
         deliveryDate: p.deliveryDate ? dayjs(p.deliveryDate) : undefined, // ✅ dayjs
-        team: p.team?.map(t => ({ employee: t.employee?._id, role: t.role })),
+        team: p.team?.map(t => ({ employee: t.employee?._id, role: t.role, startDate: t.startDate ? dayjs(t.startDate).format('YYYY-MM-DD') : '' })),
       });
     } catch { 
       message.error('فشل في جلب بيانات المشروع'); 
