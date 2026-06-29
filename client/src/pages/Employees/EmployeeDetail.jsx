@@ -57,6 +57,8 @@ const EmployeeDetail = () => {
     },
   ];
 
+  const currencySymbol = { USD: '$', ILS: '₪', SAR: '﷼', JOD: 'د.أ', EUR: '€' }[employee.salaryCurrency] || '$';
+
   return (
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -68,10 +70,10 @@ const EmployeeDetail = () => {
       </div>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={6}><StatCard title="الراتب" value={employee.baseSalary} prefix="$" color="#3b82f6" /></Col>
+        <Col xs={24} sm={6}><StatCard title="الراتب" value={employee.baseSalary} prefix={currencySymbol} color="#3b82f6" /></Col>
         <Col xs={24} sm={6}><StatCard title="المشاريع" value={stats.activeProjects || 0} color="#8b5cf6" /></Col>
         <Col xs={24} sm={6}><StatCard title="المهام المنجزة" value={stats.completedTasks || 0} color="#10b981" /></Col>
-        <Col xs={24} sm={6}><StatCard title="سلف معلقة" value={stats.pendingAdvances || 0} prefix="$" color="#f59e0b" /></Col>
+        <Col xs={24} sm={6}><StatCard title="سلف معلقة" value={stats.pendingAdvances || 0} prefix={currencySymbol} color="#f59e0b" /></Col>
       </Row>
 
       <Card style={{ borderRadius: 8, marginBottom: 24 }}>
