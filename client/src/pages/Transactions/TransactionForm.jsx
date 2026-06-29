@@ -212,11 +212,17 @@ const TransactionForm = () => {
           m.status === 'partially_paid' || 
           m.status === 'pending_review'
         );
+        // اسم العميل من العقد
+        const contractClientName = typeof contract.client === 'object' 
+          ? (contract.client?.name || '') 
+          : '';
+        
         unpaidMonths.forEach(m => {
           allMonths.push({ 
             ...m, 
             contractTitle: contract.title,
-            contractId: contract._id 
+            contractId: contract._id,
+            clientName: contractClientName,
           });
         });
       });
@@ -562,10 +568,22 @@ const TransactionForm = () => {
                       loading={loadingInvoices}
                       notFoundContent="لا توجد فواتير"
                       options={[
-                        ...(type === 'دخل' ? invoices : otherInvoices).map(inv => ({
-                          value: inv._id,
-                          label: `[${inv.invoiceType || ''}] ${inv.invoiceNumber || '—'} | متبقي: ${formatCurrency(inv.totalAmount - inv.paidAmount, inv.currency)}`
-                        }))
+                        ...(type === 'دخل' ? invoices : otherInvoices).map(inv => {
+                          // استخراج اسم العميل (السلسلة الأولى حتى أول مسافة لتوفير المساحة)
+                          const clientName = typeof inv.client === 'object' ? (inv.client?.name || '') : '';
+                          const clientCompany = typeof inv.client === 'object' ? (inv.client?.company || '') : '';
+                          const clientLabel = clientName ? `${clientName}${clientCompany ? ` - ${clientCompany}` : ''}` : '';
+                          
+                          // معلومات الشهر إذا كانت فاتورة مرتبطة بشهر عقد
+                          const monthInfo = inv.contractMonth?.month ? ` | شهر ${inv.contractMonth.month}` : '';
+                          
+                          const remaining = inv.totalAmount - (inv.paidAmount || 0);
+                          
+                          return {
+                            value: inv._id,
+                            label: `${inv.invoiceNumber || '—'} [${inv.invoiceType || ''}]${clientLabel ? ` | ${clientLabel}` : ''}${monthInfo} | ${formatCurrency(remaining, inv.currency)} متبقي`
+                          };
+                        })
                       ]} />
                   </Form.Item>
                 </Col>
@@ -580,7 +598,7 @@ const TransactionForm = () => {
                       notFoundContent="لا توجد أشهر عقود غير مدفوعة"
                       options={contractMonths.map(m => ({
                         value: m._id,
-                        label: `${m.contractTitle || 'عقد'} | ${m.month} | ${formatCurrency(m.value - (m.paidAmount || 0), m.currency)} متبقي`
+                        label: `${m.clientName ? m.clientName + ' | ' : ''}${m.contractTitle || 'عقد'} | شهر ${m.month} | ${formatCurrency(m.value - (m.paidAmount || 0), m.currency)} متبقي`
                       }))} />
                   </Form.Item>
                 </Col>
