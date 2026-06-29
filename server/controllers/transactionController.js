@@ -159,6 +159,76 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // 👈 تحويل العملات التلقائي عند نقص الرصيد
+  if (req.body.conversionSource) {
+    const { wallet: sourceWalletId, exchangeRate } = req.body.conversionSource;
+    
+    if (!sourceWalletId || !exchangeRate || exchangeRate <= 0) {
+      return next(new ApiError('بيانات التحويل غير مكتملة: المحفظة وسعر الصرف مطلوبان', 400));
+    }
+    
+    const sourceWallet = await Wallet.findById(sourceWalletId);
+    if (!sourceWallet) {
+      return next(new ApiError('المحفظة المصدرية غير موجودة', 404));
+    }
+    
+    // تحديد المحفظة الهدف (التي ستتأثر بالمعاملة الأصلية)
+    const targetWalletId = type === 'مصروف' ? fromWallet : toWallet;
+    const targetWallet = await Wallet.findById(targetWalletId);
+    if (!targetWallet) {
+      return next(new ApiError('المحفظة الهدف غير موجودة', 404));
+    }
+    
+    // التحقق من العملات مختلفة
+    if (sourceWallet.currency === targetWallet.currency) {
+      return next(new ApiError('المحفظتين بنفس العملة — لا حاجة للتحويل', 400));
+    }
+    
+    // حساب المبلغ المصدر
+    const sourceAmount = Math.round(amount * exchangeRate * 100) / 100;
+    
+    // التحقق من رصيد المحفظة المصدر
+    if (sourceWallet.balance < sourceAmount) {
+      return next(new ApiError(
+        `رصيد غير كافٍ في محفظة ${sourceWallet.currency}. المتوفر: ${sourceWallet.balance.toFixed(2)} ${sourceWallet.currency}`,
+        400
+      ));
+    }
+    
+    // تنفيذ التحويل
+    await Wallet.findByIdAndUpdate(sourceWalletId, { $inc: { balance: -sourceAmount } });
+    await Wallet.findByIdAndUpdate(targetWalletId, { $inc: { balance: amount } });
+    
+    // تسجيل عملية تحويل العملات
+    await CurrencyExchange.create({
+      fromCurrency: sourceWallet.currency,
+      toCurrency: targetWallet.currency,
+      fromAmount: sourceAmount,
+      toAmount: amount,
+      exchangeRate: exchangeRate,
+      exchangeDate: req.body.transactionDate || new Date(),
+      via: req.body.paymentMethod || 'تحويل بنكي',
+      fromWallet: sourceWalletId,
+      toWallet: targetWalletId,
+      notes: `تحويل تلقائي: ${sourceAmount} ${sourceWallet.currency} → ${amount} ${targetWallet.currency} بسعر ${exchangeRate}`,
+      createdBy: req.user._id
+    });
+    
+    // حفظ تفاصيل التحويل في المعاملة
+    req.body.conversionDetails = {
+      sourceWallet: sourceWalletId,
+      sourceCurrency: sourceWallet.currency,
+      sourceAmount: sourceAmount,
+      targetCurrency: targetWallet.currency,
+      targetAmount: amount,
+      exchangeRate: exchangeRate
+    };
+    
+    // منع التكرار: المعاملة الأصلية هتخصم/تضيف من المحفظة الهدف تاني
+    // والتحويل خلاص أضاف الرصيد، فالمعاملة هترجع الرصيد لطبيعته
+    req._conversionDone = true;
+  }
+
   const transaction = await Transaction.create(req.body);
 
   // معالجة التوزيعات

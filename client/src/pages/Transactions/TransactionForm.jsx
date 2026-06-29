@@ -46,6 +46,13 @@ const TransactionForm = () => {
   const [employees, setEmployees] = useState([]);
   const [vendors, setVendors] = useState([]);
 
+  // 👈 تحويل العملات التلقائي
+  const [allAccountWallets, setAllAccountWallets] = useState([]);
+  const [conversionWallet, setConversionWallet] = useState(null);
+  const [exchangeRate, setExchangeRate] = useState(null);
+  const [showConversion, setShowConversion] = useState(false);
+  const [convertedAmount, setConvertedAmount] = useState(0);
+
   useEffect(() => { 
     clientAPI.getAll({ limit: 100 }).then(r => setClients(r.data.data.clients || [])).catch(() => {});
     accountAPI.getAll().then(r => setAccounts(r.data.data.accounts || [])).catch(() => {});
@@ -310,6 +317,53 @@ const TransactionForm = () => {
     }
   };
 
+  // 👈 فحص رصيد المحفظة واقتراح التحويل
+  const checkWalletBalance = async (walletId, accountId, amount) => {
+    setShowConversion(false);
+    setConversionWallet(null);
+    setExchangeRate(null);
+    setConvertedAmount(0);
+    
+    if (!walletId || !amount || amount <= 0 || !accountId) return;
+    
+    try {
+      // جلب جميع محافظ الحساب
+      const res = await api.get(`/accounts/${accountId}/wallets`);
+      const allWallets = res.data.data.wallets || [];
+      setAllAccountWallets(allWallets);
+      
+      // العثور على المحفظة المحددة
+      const selectedWallet = allWallets.find(w => w._id === walletId);
+      if (!selectedWallet) return;
+      
+      if (selectedWallet.balance >= amount) {
+        setShowConversion(false);
+        return;
+      }
+      
+      // الرصيد غير كافٍ — هل فيه محافظ أخرى؟
+      const otherWallets = allWallets.filter(w => 
+        w._id !== walletId && w.currency !== selectedWallet.currency
+      );
+      
+      if (otherWallets.length === 0) return;
+      
+      setShowConversion(true);
+    } catch (e) {
+      console.error('Error checking wallet balance:', e);
+    }
+  };
+
+  // 👈 حساب المبلغ المحول عند تغير سعر الصرف
+  useEffect(() => {
+    const amount = form.getFieldValue('amount') || 0;
+    if (exchangeRate && exchangeRate > 0 && amount > 0) {
+      setConvertedAmount(Math.round(amount * exchangeRate * 100) / 100);
+    } else {
+      setConvertedAmount(0);
+    }
+  }, [exchangeRate, form.getFieldValue('amount')]);
+
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
@@ -355,6 +409,15 @@ const TransactionForm = () => {
             values.originalAmount = values.amount;
           }
         }
+        
+        // 👈 إضافة تفاصيل تحويل العملات التلقائي
+        if (showConversion && conversionWallet && exchangeRate && exchangeRate > 0) {
+          values.conversionSource = {
+            wallet: conversionWallet,
+            exchangeRate: exchangeRate
+          };
+        }
+        
         await transactionAPI.create(values);
         message.success('تمت إضافة المعاملة بنجاح');
       }
@@ -499,6 +562,15 @@ const TransactionForm = () => {
                   <Form.Item name="toWallet" label="إلى محفظة" rules={[{ required: true, message: 'اختر المحفظة' }]}>
                     <Select placeholder={loadingToWallets ? 'جاري...' : 'اختر المحفظة'}
                       loading={loadingToWallets} disabled={toWallets.length === 0}
+                      onChange={(walletId) => {
+                        if (walletId) {
+                          const accountId = form.getFieldValue('toAccount');
+                          const amt = form.getFieldValue('amount') || 0;
+                          checkWalletBalance(walletId, accountId, amt);
+                        } else {
+                          setShowConversion(false);
+                        }
+                      }}
                       options={toWallets.map(w => ({ value: w._id, label: `${w.name} (${formatCurrency(w.balance, w.currency)})` }))} />
                   </Form.Item>
                 </Col>
@@ -515,6 +587,15 @@ const TransactionForm = () => {
                   <Form.Item name="fromWallet" label="من محفظة" rules={[{ required: true, message: 'اختر المحفظة' }]}>
                     <Select placeholder={loadingFromWallets ? 'جاري...' : 'اختر المحفظة'}
                       loading={loadingFromWallets} disabled={fromWallets.length === 0}
+                      onChange={(walletId) => {
+                        if (walletId) {
+                          const accountId = form.getFieldValue('fromAccount');
+                          const amt = form.getFieldValue('amount') || 0;
+                          checkWalletBalance(walletId, accountId, amt);
+                        } else {
+                          setShowConversion(false);
+                        }
+                      }}
                       options={fromWallets.map(w => ({ value: w._id, label: `${w.name} (${formatCurrency(w.balance, w.currency)})` }))} />
                   </Form.Item>
                 </Col>
@@ -534,6 +615,109 @@ const TransactionForm = () => {
               </Form.Item>
             </Col>
           </Row>
+
+          {/* 👈 قسم تحويل العملات عند نقص الرصيد */}
+          {showConversion && (type === 'مصروف' || type === 'دخل') && allAccountWallets.length > 0 && (
+            <Row gutter={24} style={{ marginTop: 0, marginBottom: 16 }}>
+              <Col span={24}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    background: '#fff7ed', 
+                    border: '1px solid #fdba74', 
+                    borderRadius: 8 
+                  }}
+                  title={
+                    <span style={{ color: '#c2410c' }}>
+                      ⚠️ رصيد غير كافٍ — تحويل من محفظة أخرى
+                    </span>
+                  }
+                >
+                  <Row gutter={16} align="middle">
+                    <Col xs={24} md={8}>
+                      <div style={{ marginBottom: 4, fontSize: 13, color: '#64748b' }}>المحفظة البديلة</div>
+                      <Select
+                        placeholder="اختر المحفظة"
+                        style={{ width: '100%' }}
+                        value={conversionWallet}
+                        onChange={(val) => {
+                          setConversionWallet(val);
+                          setExchangeRate(null);
+                          setConvertedAmount(0);
+                        }}
+                        options={allAccountWallets
+                          .filter(w => {
+                            const targetWalletId = type === 'مصروف' 
+                              ? form.getFieldValue('fromWallet') 
+                              : form.getFieldValue('toWallet');
+                            return w._id !== targetWalletId;
+                          })
+                          .map(w => ({
+                            value: w._id,
+                            label: `${w.name} (${formatCurrency(w.balance, w.currency)}) [${w.currency}]`
+                          }))
+                        }
+                      />
+                    </Col>
+                    <Col xs={24} md={6}>
+                      <div style={{ marginBottom: 4, fontSize: 13, color: '#64748b' }}>سعر الصرف</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
+                          1 {(() => {
+                            const twId = type === 'مصروف' ? form.getFieldValue('fromWallet') : form.getFieldValue('toWallet');
+                            const tw = allAccountWallets.find(w => w._id === twId);
+                            return tw?.currency || '—';
+                          })()} =
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          placeholder="سعر الصرف"
+                          disabled={!conversionWallet}
+                          value={exchangeRate || ''}
+                          onChange={(e) => setExchangeRate(e.target.value ? parseFloat(e.target.value) : null)}
+                          style={{
+                            padding: '4px 11px',
+                            borderRadius: 6,
+                            border: '1px solid #d1d5db',
+                            width: 100
+                          }}
+                        />
+                        <span style={{ fontSize: 13 }}>
+                          {conversionWallet 
+                            ? allAccountWallets.find(w => w._id === conversionWallet)?.currency || '—'
+                            : '—'}
+                        </span>
+                      </div>
+                    </Col>
+                    <Col xs={24} md={10}>
+                      {convertedAmount > 0 && exchangeRate > 0 && (
+                        <div style={{ 
+                          padding: '8px 12px', 
+                          background: '#f0fdf4', 
+                          borderRadius: 6,
+                          border: '1px solid #86efac',
+                          fontSize: 14
+                        }}>
+                          💱 سيتم خصم{' '}
+                          <strong>{convertedAmount.toLocaleString()} {allAccountWallets.find(w => w._id === conversionWallet)?.currency}</strong>
+                          {' '}(ما يعادل{' '}
+                          <strong>{form.getFieldValue('amount')?.toLocaleString() || 0} {
+                            (() => {
+                              const twId = type === 'مصروف' ? form.getFieldValue('fromWallet') : form.getFieldValue('toWallet');
+                              const tw = allAccountWallets.find(w => w._id === twId);
+                              return tw?.currency || '—';
+                            })()
+                          }</strong>) بسعر <strong>{exchangeRate}</strong>
+                        </div>
+                      )}
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+            </Row>
+          )}
 
           {/* الصف الثالث: العميل + الفاتورة + شهر العقد (للدخل فقط) */}
           {(type === 'دخل' || type === 'مصروف') && !allocationMode && (

@@ -156,6 +156,16 @@ const TransactionSchema = new mongoose.Schema({
     enum: ['USD', 'ILS', 'SAR', 'JOD', 'EUR']
   },
   
+  // تفاصيل تحويل العملات التلقائي
+  conversionDetails: {
+    sourceWallet: { type: mongoose.Schema.Types.ObjectId, ref: 'Wallet' },
+    sourceCurrency: String,
+    sourceAmount: Number,
+    targetCurrency: String,
+    targetAmount: Number,
+    exchangeRate: Number
+  },
+  
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
