@@ -5,7 +5,7 @@
 set -e
 
 PROJECT="غايتك"
-PORT=5173
+PORT=9173
 URL_FILE="/data/gayatech-system/.tunnel_url.txt"
 LOG_FILE="/data/gayatech-system/tunnel.log"
 PID_FILE="/data/gayatech-system/.tunnel.pid"
@@ -107,7 +107,7 @@ watchdog() {
 # === التحقق من السيرفرات ===
 ensure_servers() {
     local SERVER_OK CLIENT_OK
-    curl -s --max-time 2 -o /dev/null http://localhost:5000/ && SERVER_OK=1 || SERVER_OK=0
+    curl -s --max-time 2 -o /dev/null http://localhost:9001/ && SERVER_OK=1 || SERVER_OK=0
     curl -s --max-time 2 -o /dev/null http://localhost:$PORT/ && CLIENT_OK=1 || CLIENT_OK=0
     
     [ "$SERVER_OK" = "0" ] && { log "⚠️ Express ساكت، أشغله..."; (cd /data/gayatech-system/server && node server.js &); }

@@ -3,7 +3,7 @@ const { clientUrl } = require('./env');
 
 const allowedOrigins = [
   clientUrl,
-  'http://localhost:5173',
+  'http://localhost:9173',
   'http://localhost:3000',
   /\.trycloudflare\.com$/
 ];

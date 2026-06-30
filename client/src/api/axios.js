@@ -3,7 +3,7 @@ import { getToken } from '../utils/auth';
 import toast from 'react-hot-toast';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:9001/api',
   headers: {
     'Content-Type': 'application/json',
   },
