@@ -92,19 +92,20 @@ exports.getAdminDashboard = asyncHandler(async (req, res) => {
   const { range = 'month' } = req.query;
   const { from } = getDateRange(range, now);
 
-  const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  // حساب الفترة السابقة بنفس المدة للمقارنة
+  const rangeMs = now.getTime() - from.getTime();
+  const prevTo = new Date(from.getTime() - 1);
+  const prevFrom = new Date(prevTo.getTime() - rangeMs);
 
-  // 📊 1. الإيرادات الشهرية + مقارنة شهرية
+  // 📊 1. الإيرادات — فترة محددة + مقارنة مع الفترة السابقة
   const [revenue, prevRevenue] = await Promise.all([
-    aggregateIncome(thisMonth), aggregateIncome(lastMonth, lastMonthEnd)
+    aggregateIncome(from, now), aggregateIncome(prevFrom, prevTo)
   ]);
   const revenueKPI = calcChange(revenue, prevRevenue);
 
-  // 📊 2. المصاريف الشهرية + مقارنة شهرية
+  // 📊 2. المصاريف — فترة محددة + مقارنة
   const [expenses, prevExpenses] = await Promise.all([
-    aggregateExpense(thisMonth), aggregateExpense(lastMonth, lastMonthEnd)
+    aggregateExpense(from, now), aggregateExpense(prevFrom, prevTo)
   ]);
   const expensesKPI = calcChange(expenses, prevExpenses);
 
@@ -237,10 +238,14 @@ exports.getFinanceDashboard = asyncHandler(async (req, res) => {
   const now = new Date();
   const { range = 'month' } = req.query;
   const { from } = getDateRange(range, now);
-  const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // الفترة السابقة للمقارنة
+  const rangeMs = now.getTime() - from.getTime();
+  const prevTo = new Date(from.getTime() - 1);
+  const prevFrom = new Date(prevTo.getTime() - rangeMs);
 
   const [revenue, expenses, wallets, pendingInvoices, recentCollections] = await Promise.all([
-    aggregateIncome(from), aggregateExpense(from),
+    aggregateIncome(from, now), aggregateExpense(from, now),
     Wallet.aggregate([{ $group: { _id: null, total: { $sum: '$balance' } } }]),
     Invoice.find({ status: { $in: ['مصدرة', 'مرسلة'] } }).sort({ dueDate: 1 }).limit(10).populate('client', 'name').lean(),
     Transaction.find({ type: 'income', status: { $ne: 'cancelled' } }).sort({ date: -1 }).limit(5).populate('client', 'name').lean()
@@ -259,11 +264,9 @@ exports.getFinanceDashboard = asyncHandler(async (req, res) => {
   const monthlyChart = await getMonthlyChart();
   const forecast = forecastFromChart(monthlyChart);
 
-  // مقارنة شهرية
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  // مقارنة مع الفترة السابقة
   const [prevRevenue, prevExpenses] = await Promise.all([
-    aggregateIncome(lastMonth, lastMonthEnd), aggregateExpense(lastMonth, lastMonthEnd)
+    aggregateIncome(prevFrom, prevTo), aggregateExpense(prevFrom, prevTo)
   ]);
 
   res.json({
