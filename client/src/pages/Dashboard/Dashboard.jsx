@@ -799,8 +799,10 @@ const Dashboard = () => {
     }
   }, [role, timeRange]);
 
-  // Initial fetch + auto-refresh every 30s
+  // Initial fetch + auto-refresh every 30s — re-fetch when user role changes
   useEffect(() => {
+    if (!user) return;  // wait for auth to load
+    setData(null);      // clear stale data from previous role
     fetchDashboard();
 
     intervalRef.current = setInterval(() => {
@@ -810,7 +812,7 @@ const Dashboard = () => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, []); // eslint-disable-line
+  }, [role]); // eslint-disable-line
 
   // Fetch when time range changes
   useEffect(() => {
