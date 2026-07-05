@@ -281,36 +281,6 @@ const Dashboard = () => {
         </Col>
       </Row>
 
-      <Row gutter={[16, 16] ?? []} style={{ marginTop: '24px' }}>
-        <Col span={24}>
-          <Card 
-            title={<span style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 'bold' }}>رصد التدفق المالي (الإيرادات والمصاريف)</span>} 
-            bordered={false} 
-            style={{ borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
-          >
-            <div style={{ width: '100%', height: 350 }}>
-              <ResponsiveContainer>
-                <LineChart
-                  data={data}
-                  margin={{
-                    top: 5,
-                    right: 30,
-                    left: 20,
-                    bottom: 5,
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" style={{ fontFamily: 'Cairo, sans-serif' }} />
-                  <YAxis style={{ fontFamily: 'Cairo, sans-serif' }} />
-                  <Tooltip style={{ fontFamily: 'Cairo, sans-serif' }} />
-                  <Line type="monotone" dataKey="revenue" name="الإيرادات" stroke="#2563eb" strokeWidth={3} activeDot={{ r: 8 }} />
-                  <Line type="monotone" dataKey="expenses" name="المصاريف" stroke="#ef4444" strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </Col>
-      </Row>
     </div>
   );
 
