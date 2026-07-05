@@ -1,56 +1,246 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Card, Statistic, Typography, Spin, Tag, List, Badge, Skeleton, Empty, Button } from 'antd';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  Row, Col, Card, Statistic, Typography, Spin, Tag, List, Badge, Skeleton,
+  Empty, Button, Segmented, Dropdown, Space, Tooltip, Drawer, Popover, Modal
+} from 'antd';
 import {
   ArrowUpOutlined, ArrowDownOutlined, ProjectOutlined, FileTextOutlined,
   TeamOutlined, DollarOutlined, WalletOutlined, CrownOutlined,
   ReloadOutlined, WarningOutlined, InfoCircleOutlined, BankOutlined,
-  CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined
+  CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined,
+  BellOutlined, PrinterOutlined, DownloadOutlined, FilterOutlined,
+  MinusOutlined, DragOutlined, SettingOutlined, EyeOutlined
 } from '@ant-design/icons';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend,
+  ComposedChart, Area
+} from 'recharts';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../api/axios';
 import dayjs from 'dayjs';
 
 const { Title, Paragraph, Text } = Typography;
-
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 const rtlStyle = { fontFamily: 'Cairo, sans-serif' };
 
+// ===================== HELPERS =====================
+
+const formatCurrency = (v) => v?.toLocaleString?.() || '0';
+const kpiArrow = (trend) => trend === 'up' ? <ArrowUpOutlined style={{ color: '#10b981' }} /> :
+  trend === 'down' ? <ArrowDownOutlined style={{ color: '#ef4444' }} /> : <MinusOutlined style={{ color: '#94a3b8' }} />;
+const kpiColor = (trend) => trend === 'up' ? '#10b981' : trend === 'down' ? '#ef4444' : '#94a3b8';
+
+// ===================== KPI CARD =====================
+
+const KPICard = ({ title, value, prefix, suffix, change, trend, icon, color, yoy }) => (
+  <Card
+    size="small"
+    style={{ borderRadius: 12, border: '1px solid #e2e8f0', height: '100%' }}
+    bodyStyle={{ padding: '16px 20px' }}
+  >
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ flex: 1 }}>
+        <Text type="secondary" style={{ fontSize: 12, ...rtlStyle }}>{title}</Text>
+        <div style={{ fontSize: 24, fontWeight: 700, margin: '4px 0', ...rtlStyle, color: '#1e293b' }}>
+          {prefix}{formatCurrency(value)}{suffix}
+        </div>
+        {change !== undefined && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {kpiArrow(trend)}
+            <Text style={{ fontSize: 13, color: kpiColor(trend), ...rtlStyle }}>
+              {Math.abs(change)}% {trend === 'up' ? 'ارتفاع' : trend === 'down' ? 'انخفاض' : 'ثبات'}
+            </Text>
+            <Text type="secondary" style={{ fontSize: 11, ...rtlStyle }}>من الشهر الماضي</Text>
+          </div>
+        )}
+        {yoy !== undefined && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+            <Text style={{ fontSize: 11, color: kpiColor(yoy.trend), ...rtlStyle }}>
+              مقارنة سنوية: {yoy.trend === 'up' ? '▲' : yoy.trend === 'down' ? '▼' : '–'} {Math.abs(yoy.value)}%
+            </Text>
+          </div>
+        )}
+      </div>
+      {icon && <div style={{ fontSize: 28, color: color || '#3b82f6', opacity: 0.6 }}>{icon}</div>}
+    </div>
+  </Card>
+);
+
+// ===================== STAT ROW =====================
+
+const StatCard = ({ col, title, value, prefix, suffix, change, trend, icon, color }) => (
+  <Col xs={24} sm={12} md={col || 6}>
+    <Card
+      size="small"
+      style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
+      bodyStyle={{ padding: '16px' }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        {icon && <span style={{ fontSize: 18, color: color || '#3b82f6' }}>{icon}</span>}
+        <Text type="secondary" style={{ fontSize: 13, ...rtlStyle }}>{title}</Text>
+      </div>
+      <Statistic
+        value={value}
+        prefix={prefix}
+        suffix={suffix}
+        valueStyle={{ fontSize: 22, fontWeight: 700, ...rtlStyle, color: '#1e293b' }}
+      />
+      {change !== undefined && (
+        <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+          {kpiArrow(trend)}
+          <Text style={{ fontSize: 12, color: kpiColor(trend), ...rtlStyle }}>{Math.abs(change)}%</Text>
+        </div>
+      )}
+    </Card>
+  </Col>
+);
+
+// ===================== SKELETON =====================
+
+const DashboardSkeleton = () => (
+  <div style={rtlStyle}>
+    <Skeleton active paragraph={{ rows: 1 }} style={{ marginBottom: 16 }} />
+    <Row gutter={[16, 16]}>
+      {[1, 2, 3, 4].map(i => (
+        <Col xs={24} sm={12} md={6} key={i}><Card><Skeleton active paragraph={{ rows: 1 }} /></Card></Col>
+      ))}
+    </Row>
+  </div>
+);
+
+// ===================== TIME FILTER =====================
+
+const TimeFilter = ({ value, onChange }) => (
+  <Segmented
+    value={value}
+    onChange={onChange}
+    options={[
+      { label: 'اليوم', value: 'day' },
+      { label: 'الأسبوع', value: 'week' },
+      { label: 'الشهر', value: 'month' },
+      { label: 'السنة', value: 'year' },
+    ]}
+  />
+);
+
+// ===================== NOTIFICATIONS PANEL =====================
+
+const NotificationsPopover = ({ notifications, unreadCount, loading }) => (
+  <Popover
+    trigger="click"
+    placement="bottomLeft"
+    title={<Text strong style={rtlStyle}>🔔 الإشعارات الأخيرة</Text>}
+    content={
+      <div style={{ width: 320, maxHeight: 400, overflow: 'auto' }}>
+        {loading ? <Spin /> : notifications?.length === 0 ? (
+          <Empty description="لا توجد إشعارات" />
+        ) : (
+          <List
+            dataSource={notifications}
+            renderItem={n => (
+              <List.Item style={{ padding: '8px 0' }}>
+                <div>
+                  <Text style={{ fontSize: 13, ...rtlStyle }}>{n.title || n.message}</Text>
+                  {n.createdAt && (
+                    <br />
+                  )}
+                  {n.createdAt && <Text type="secondary" style={{ fontSize: 11 }}>{dayjs(n.createdAt).fromNow()}</Text>}
+                </div>
+              </List.Item>
+            )}
+          />
+        )}
+      </div>
+    }
+  >
+    <Badge count={unreadCount} size="small" offset={[-4, 4]}>
+      <Button icon={<BellOutlined />} size="small" style={{ borderRadius: 8 }} />
+    </Badge>
+  </Popover>
+);
+
 // ===================== ADMIN DASHBOARD =====================
-const AdminDashboard = ({ data, loading, onRefresh }) => {
+
+const AdminDashboard = ({ data, loading, onRefresh, timeRange, onTimeChange }) => {
+  const [widgetOrder, setWidgetOrder] = useState([
+    'monthlyChart', 'forecastChart', 'incomeBySource', 'projectStatus'
+  ]);
+
   if (loading) return <DashboardSkeleton />;
   if (!data) return <Empty description="لا توجد بيانات" />;
 
-  const { stats, charts, alerts, recentTransactions } = data;
+  const { stats, yoy, charts, alerts, notifications, recentTransactions } = data;
+
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+    const items = Array.from(widgetOrder);
+    const [reordered] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reordered);
+    setWidgetOrder(items);
+  };
+
+  const handlePrint = () => window.print();
+
+  const handleExportPDF = async () => {
+    try {
+      const res = await api.get('/dashboard/export');
+      const blob = new Blob([JSON.stringify(res.data.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `dashboard-export-${dayjs().format('YYYY-MM-DD')}.json`;
+      a.click(); URL.revokeObjectURL(url);
+    } catch (e) { /* ignore */ }
+  };
 
   return (
-    <div style={rtlStyle}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+    <div style={rtlStyle} className="dashboard-printable">
+      {/* HEADER */}
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <Title level={2} style={{ margin: 0, color: '#1e3a8a', ...rtlStyle }}>🌟 لوحة التحكم العامة</Title>
-          <Paragraph style={{ margin: '8px 0 0 0', color: '#64748b', ...rtlStyle }}>
+          <Paragraph style={{ margin: '4px 0 0', color: '#64748b', ...rtlStyle }}>
             مرحباً بك في نظام غايتك المالي والتشغيلي المتكامل
           </Paragraph>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-          <Text type="secondary" style={rtlStyle}>آخر تحديث: منذ لحظات</Text>
-          <Button icon={<ReloadOutlined />} onClick={onRefresh} size="small">تحديث</Button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <NotificationsPopover
+            notifications={notifications}
+            unreadCount={notifications?.length || 0}
+            loading={loading}
+          />
+          <TimeFilter value={timeRange} onChange={onTimeChange} />
+          <Tooltip title="تحديث"><Button icon={<ReloadOutlined />} onClick={onRefresh} size="small" /></Tooltip>
+          <Tooltip title="طباعة"><Button icon={<PrinterOutlined />} onClick={handlePrint} size="small" /></Tooltip>
+          <Tooltip title="تصدير"><Button icon={<DownloadOutlined />} onClick={handleExportPDF} size="small" /></Tooltip>
         </div>
       </div>
 
-      {/* Stats Row 1 */}
+      {/* KPI Cards - Row 1 with YoY */}
       <Row gutter={[16, 16]}>
-        <StatCard col={6} title="💰 الإيرادات هذا الشهر" value={stats.revenue.value} prefix="$"
-          change={stats.revenue.change} trend={stats.revenue.trend} />
-        <StatCard col={6} title="💸 المصاريف هذا الشهر" value={stats.expenses.value} prefix="$"
-          change={stats.expenses.change} trend={stats.expenses.trend} />
-        <StatCard col={6} title="📈 صافي الربح" value={stats.netProfit.value} prefix="$"
-          change={stats.netProfit.change} trend={stats.netProfit.trend} />
-        <StatCard col={6} title="🏦 رصيد الشركة" value={stats.totalBalance.value} prefix="$"
-          icon={<BankOutlined />} color="#3b82f6" />
+        <Col xs={24} sm={12} md={6}>
+          <KPICard title="💰 الإيرادات هذا الشهر" value={stats.revenue.value} prefix="$"
+            change={stats.revenue.change} trend={stats.revenue.trend} yoy={yoy?.revenue}
+            icon={<DollarOutlined />} color="#10b981" />
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <KPICard title="💸 المصاريف هذا الشهر" value={stats.expenses.value} prefix="$"
+            change={stats.expenses.change} trend={stats.expenses.trend} yoy={yoy?.expenses}
+            icon={<WalletOutlined />} color="#ef4444" />
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <KPICard title="📈 صافي الربح" value={stats.netProfit.value} prefix="$"
+            change={stats.netProfit.change} trend={stats.netProfit.trend}
+            icon={<CrownOutlined />} color="#3b82f6" />
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <KPICard title="🏦 رصيد الشركة" value={stats.totalBalance.value} prefix="$"
+            icon={<BankOutlined />} color="#3b82f6" />
+        </Col>
       </Row>
 
-      {/* Stats Row 2 */}
+      {/* KPI Cards - Row 2 */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <StatCard col={6} title="📋 عقود نشطة" value={stats.activeContracts.value} icon={<FileTextOutlined />} color="#f59e0b" />
         <StatCard col={6} title="🚀 مشاريع نشطة" value={stats.activeProjects.value} icon={<ProjectOutlined />} color="#3b82f6" />
@@ -60,190 +250,308 @@ const AdminDashboard = ({ data, loading, onRefresh }) => {
           icon={<ExclamationCircleOutlined />} color="#ef4444" />
       </Row>
 
-      {/* Charts Row */}
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col xs={24} lg={14}>
-          <Card title={<span style={rtlStyle}>📈 الإيرادات vs المصاريف</span>} bordered={false} style={{ borderRadius: 8 }}>
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
-                <LineChart data={charts.monthly} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" style={rtlStyle} />
-                  <YAxis style={rtlStyle} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="revenue" name="الإيرادات" stroke="#2563eb" strokeWidth={3} activeDot={{ r: 8 }} />
-                  <Line type="monotone" dataKey="expenses" name="المصاريف" stroke="#ef4444" strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+      {/* DRAGGABLE WIDGETS - Charts Section */}
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="dashboard-widgets" direction="horizontal">
+          {(provided) => (
+            <Row gutter={[16, 16]} style={{ marginTop: 20 }} ref={provided.innerRef} {...provided.droppableProps}>
+              {widgetOrder.map((widgetId, index) => {
+                let widgetContent = null;
+                switch (widgetId) {
+                  case 'monthlyChart':
+                    widgetContent = (
+                      <Card
+                        title={<span style={rtlStyle}>📊 الإيرادات والمصاريف (آخر 12 شهر)</span>}
+                        extra={<DragOutlined />}
+                        size="small" style={{ borderRadius: 12, height: '100%' }}
+                      >
+                        <ResponsiveContainer width="100%" height={300}>
+                          <ComposedChart data={charts.monthly}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <ReTooltip formatter={(v) => `$${v.toLocaleString()}`} />
+                            <Legend />
+                            <Bar dataKey="revenue" name="الإيرادات" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="expenses" name="المصاريف" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </Card>
+                    );
+                    break;
+                  case 'forecastChart':
+                    widgetContent = (
+                      <Card
+                        title={<span style={rtlStyle}>🔮 التنبؤ المالي (3 شهور قادمة)</span>}
+                        extra={<DragOutlined />}
+                        size="small" style={{ borderRadius: 12, height: '100%' }}
+                      >
+                        <ResponsiveContainer width="100%" height={300}>
+                          <ComposedChart data={[...(charts.monthly || []), ...(charts.forecast || [])]}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <ReTooltip formatter={(v, name) => [`$${v.toLocaleString()}`, name === 'revenue' ? 'الإيرادات' : 'المصاريف']} />
+                            <Legend />
+                            <Bar dataKey="revenue" name="الإيرادات" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="expenses" name="المصاريف" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                            {charts.forecast?.length > 0 && (
+                              <Area type="monotone" dataKey="revenue" name="متوقع الإيرادات"
+                                stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeDasharray="5 5" />
+                            )}
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </Card>
+                    );
+                    break;
+                  case 'incomeBySource':
+                    widgetContent = (
+                      <Card
+                        title={<span style={rtlStyle}>📥 توزيع الدخل حسب المصدر</span>}
+                        extra={<DragOutlined />}
+                        size="small" style={{ borderRadius: 12, height: '100%' }}
+                      >
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie data={charts.incomeBySource} dataKey="total" nameKey="_id"
+                              cx="50%" cy="50%" outerRadius={100} label={({ _id, total }) => `${_id}: $${total.toLocaleString()}`}>
+                              {charts.incomeBySource?.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                            </Pie>
+                            <ReTooltip formatter={(v) => `$${v.toLocaleString()}`} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </Card>
+                    );
+                    break;
+                  case 'projectStatus':
+                    widgetContent = (
+                      <Card
+                        title={<span style={rtlStyle}>📋 حالة المشاريع</span>}
+                        extra={<DragOutlined />}
+                        size="small" style={{ borderRadius: 12, height: '100%' }}
+                      >
+                        {charts.projectStatus?.length > 0 ? (
+                          <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                              <Pie data={charts.projectStatus} dataKey="count" nameKey="_id"
+                                cx="50%" cy="50%" outerRadius={100} label={({ _id, count }) => `${_id}: ${count}`}>
+                                {charts.projectStatus?.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                              </Pie>
+                              <ReTooltip />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <Empty description="لا توجد مشاريع" />
+                        )}
+                      </Card>
+                    );
+                    break;
+                  default:
+                    widgetContent = null;
+                }
+
+                return (
+                  <Draggable key={widgetId} draggableId={widgetId} index={index}>
+                    {(provided) => (
+                      <Col
+                        xs={24} lg={12}
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        style={{ ...provided.draggableProps.style }}
+                      >
+                        {widgetContent}
+                      </Col>
+                    )}
+                  </Draggable>
+                );
+              })}
+              {provided.placeholder}
+            </Row>
+          )}
+        </Droppable>
+      </DragDropContext>
+
+      {/* BOTTOM ROW: Alerts + Recent Transactions */}
+      <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
+        {/* Alerts */}
+        <Col xs={24} md={8}>
+          <Card
+            title={<span style={rtlStyle}>⚠️ تنبيهات</span>}
+            size="small" style={{ borderRadius: 12 }}
+          >
+            {alerts?.length > 0 ? (
+              <List
+                dataSource={alerts}
+                renderItem={a => (
+                  <List.Item>
+                    <Tag color={a.type === 'warning' ? 'orange' : 'blue'}>{a.icon}</Tag>
+                    <Text style={{ fontSize: 13, ...rtlStyle }}>{a.message}</Text>
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Empty description="لا توجد تنبيهات" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            )}
           </Card>
         </Col>
-        <Col xs={24} lg={10}>
-          <Card title={<span style={rtlStyle}>🥧 توزيع الدخل</span>} bordered={false} style={{ borderRadius: 8 }}>
-            <div style={{ width: '100%', height: 300 }}>
-              {charts.incomeBySource.length > 0 ? (
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie data={charts.incomeBySource} dataKey="total" nameKey="_id" cx="50%" cy="50%" outerRadius={100}
-                      label={({ _id, total }) => `$${total.toLocaleString()}`}>
-                      {charts.incomeBySource.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : <Empty description="لا توجد بيانات" />}
-            </div>
+
+        {/* Recent Transactions */}
+        <Col xs={24} md={16}>
+          <Card
+            title={<span style={rtlStyle}>🔄 آخر المعاملات</span>}
+            size="small" style={{ borderRadius: 12 }}
+          >
+            {recentTransactions?.length > 0 ? (
+              <List
+                dataSource={recentTransactions}
+                renderItem={t => (
+                  <List.Item>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                      <Tag color={t.type === 'income' ? 'green' : 'red'}>
+                        {t.type === 'income' ? 'دخل' : 'مصروف'}
+                      </Tag>
+                      <Text style={{ flex: 1, ...rtlStyle }}>{t.clientName || t.projectName || '—'}</Text>
+                      <Text strong style={{ color: t.type === 'income' ? '#10b981' : '#ef4444', ...rtlStyle }}>
+                        {t.type === 'income' ? '+' : '-'}${t.amount?.toLocaleString()}
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>{dayjs(t.date).format('YYYY/MM/DD')}</Text>
+                    </div>
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Empty description="لا توجد معاملات" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            )}
           </Card>
         </Col>
       </Row>
 
-      {/* Second Charts Row */}
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col xs={24} lg={12}>
-          <Card title={<span style={rtlStyle}>🏦 أرصدة الحسابات</span>} bordered={false} style={{ borderRadius: 8 }}>
-            {charts.accountBalances.length > 0 ? (
-              <List dataSource={charts.accountBalances} renderItem={item => (
-                <List.Item extra={<Text strong>${item.balance?.toLocaleString()}</Text>}>
-                  <List.Item.Meta title={item.name} description={item.currency} />
-                </List.Item>
-              )} />
-            ) : <Empty description="لا توجد حسابات" />}
-          </Card>
-        </Col>
-        <Col xs={24} lg={12}>
-          <Card title={<span style={rtlStyle}>📊 أداء المشاريع</span>} bordered={false} style={{ borderRadius: 8 }}>
-            <div style={{ width: '100%', height: 250 }}>
-              {charts.projectStatus.length > 0 ? (
-                <ResponsiveContainer>
-                  <BarChart data={charts.projectStatus} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis type="category" dataKey="_id" style={rtlStyle} />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#3b82f6" name="عدد المشاريع" radius={[0, 8, 8, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : <Empty description="لا توجد بيانات" />}
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Alerts & Recent Transactions */}
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col xs={24} lg={8}>
-          <Card title={<span style={rtlStyle}>🔔 تنبيهات سريعة</span>} bordered={false} style={{ borderRadius: 8 }}>
-            {alerts.length > 0 ? (
-              <List dataSource={alerts} renderItem={(alert, i) => (
-                <List.Item>
-                  <Text style={rtlStyle}>{alert.icon} {alert.message}</Text>
-                </List.Item>
-              )} />
-            ) : <Empty description="لا توجد تنبيهات" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
-          </Card>
-        </Col>
-        <Col xs={24} lg={16}>
-          <Card title={<span style={rtlStyle}>📋 آخر المعاملات</span>} bordered={false} style={{ borderRadius: 8 }}>
-            {recentTransactions.length > 0 ? (
-              <List dataSource={recentTransactions} renderItem={tx => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={`${tx.number || 'TRX'} | ${tx.type === 'دخل' ? '🟢' : tx.type === 'مصروف' ? '🔴' : '🔵'} ${tx.type}`}
-                    description={`${tx.clientName || tx.projectName || ''} | ${dayjs(tx.date).format('YYYY-MM-DD')}`}
-                  />
-                  <Text strong style={{ color: tx.type === 'دخل' ? '#10b981' : '#ef4444' }}>
-                    {tx.type === 'دخل' ? '+' : '-'}${tx.amount?.toLocaleString()}
-                  </Text>
-                </List.Item>
-              )} />
-            ) : <Empty description="لا توجد معاملات" />}
-          </Card>
-        </Col>
-      </Row>
+      {/* Account Balances */}
+      {charts.accountBalances?.length > 0 && (
+        <Card
+          title={<span style={rtlStyle}>💳 أرصدة الحسابات</span>}
+          size="small" style={{ borderRadius: 12, marginTop: 16 }}
+        >
+          <Row gutter={[12, 12]}>
+            {charts.accountBalances.map((acc, i) => (
+              <Col xs={24} sm={12} md={6} key={i}>
+                <Card size="small" style={{ background: '#f8fafc' }}>
+                  <Text style={{ fontSize: 13, ...rtlStyle }}>{acc.name}</Text>
+                  <div style={{ fontSize: 18, fontWeight: 600 }}>
+                    {acc.currency} {acc.balance?.toLocaleString()}
+                  </div>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Card>
+      )}
     </div>
   );
 };
 
 // ===================== FINANCE DASHBOARD =====================
-const FinanceDashboard = ({ data, loading, onRefresh }) => {
+
+const FinanceDashboard = ({ data, loading, onRefresh, timeRange, onTimeChange }) => {
   if (loading) return <DashboardSkeleton />;
   if (!data) return <Empty description="لا توجد بيانات" />;
 
-  const { stats, balance, charts, pendingInvoices, recentCollections } = data;
+  const { stats, kpi, balance, charts, pendingInvoices, recentCollections } = data;
 
   return (
     <div style={rtlStyle}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <Title level={2} style={{ margin: 0, color: '#1e3a8a', ...rtlStyle }}>💳 لوحة الإدارة المالية</Title>
-          <Paragraph style={{ margin: '8px 0 0 0', color: '#64748b', ...rtlStyle }}>نظرة عامة مالية شاملة</Paragraph>
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <Title level={2} style={{ margin: 0, color: '#1e3a8a', ...rtlStyle }}>📊 لوحة التحكم المالية</Title>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <TimeFilter value={timeRange} onChange={onTimeChange} />
+          <Button icon={<ReloadOutlined />} onClick={onRefresh} size="small" />
         </div>
-        <Button icon={<ReloadOutlined />} onClick={onRefresh} size="small">تحديث</Button>
       </div>
 
+      {/* KPI Cards */}
       <Row gutter={[16, 16]}>
-        <StatCard col={6} title="💰 الإيرادات" value={stats.revenue} prefix="$" color="#10b981" />
-        <StatCard col={6} title="💸 المصاريف" value={stats.expenses} prefix="$" color="#ef4444" />
-        <StatCard col={6} title="📈 صافي الربح" value={stats.netProfit} prefix="$" color="#3b82f6" />
-        <StatCard col={6} title="⚠️ الديون" value={stats.totalDebt} prefix="$" suffix={stats.debtCount > 0 ? ` (${stats.debtCount})` : ''} color="#f59e0b" />
-      </Row>
-
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col xs={24} lg={14}>
-          <Card title={<span style={rtlStyle}>📈 الإيرادات الشهرية</span>} bordered={false} style={{ borderRadius: 8 }}>
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
-                <LineChart data={charts.monthly} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" style={rtlStyle} />
-                  <YAxis style={rtlStyle} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="revenue" name="الإيرادات" stroke="#10b981" strokeWidth={3} />
-                  <Line type="monotone" dataKey="expenses" name="المصاريف" stroke="#ef4444" strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+        <Col xs={24} sm={12} md={6}>
+          <KPICard title="💰 الإيرادات" value={stats.revenue} prefix="$"
+            change={kpi?.revenue?.value} trend={kpi?.revenue?.trend} icon={<DollarOutlined />} color="#10b981" />
         </Col>
-        <Col xs={24} lg={10}>
-          <Card title={<span style={rtlStyle}>💰 توزيع المصاريف</span>} bordered={false} style={{ borderRadius: 8 }}>
-            <div style={{ width: '100%', height: 300 }}>
-              {charts.expensesByCategory?.length > 0 ? (
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie data={charts.expensesByCategory} dataKey="total" nameKey="_id" cx="50%" cy="50%" outerRadius={100}>
-                      {charts.expensesByCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : <Empty description="لا توجد بيانات" />}
-            </div>
-          </Card>
+        <Col xs={24} sm={12} md={6}>
+          <KPICard title="💸 المصاريف" value={stats.expenses} prefix="$"
+            change={kpi?.expenses?.value} trend={kpi?.expenses?.trend} icon={<WalletOutlined />} color="#ef4444" />
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <KPICard title="📈 صافي الربح" value={stats.netProfit} prefix="$"
+            change={kpi?.netProfit?.value} trend={kpi?.netProfit?.trend} icon={<CrownOutlined />} color="#3b82f6" />
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <KPICard title="💳 الديون المستحقة" value={stats.totalDebt} prefix="$"
+            suffix={` (${stats.debtCount})`} icon={<ExclamationCircleOutlined />} color="#f59e0b" />
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+      {/* Charts */}
+      <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
         <Col xs={24} lg={12}>
-          <Card title={<span style={rtlStyle}>📋 الفواتير المستحقة</span>} bordered={false} style={{ borderRadius: 8 }}>
+          <Card title={<span style={rtlStyle}>📊 الإيرادات والمصاريف</span>} size="small" style={{ borderRadius: 12 }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={[...(charts?.monthly || []), ...(charts?.forecast || [])]}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <ReTooltip />
+                <Legend />
+                <Bar dataKey="revenue" name="الإيرادات" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" name="المصاريف" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title={<span style={rtlStyle}>📥 توزيع المصاريف</span>} size="small" style={{ borderRadius: 12 }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie data={charts?.expensesByCategory} dataKey="total" nameKey="_id"
+                  cx="50%" cy="50%" outerRadius={100}>
+                  {charts?.expensesByCategory?.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <ReTooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Pending Invoices */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} md={12}>
+          <Card title={<span style={rtlStyle}>📄 فواتير معلقة</span>} size="small" style={{ borderRadius: 12 }}>
             {pendingInvoices?.length > 0 ? (
-              <List dataSource={pendingInvoices} renderItem={inv => (
-                <List.Item extra={<Text strong>${inv.total?.toLocaleString()}</Text>}>
-                  <List.Item.Meta title={inv.invoiceNumber} description={inv.client?.name || ''} />
-                </List.Item>
-              )} />
+              <List
+                dataSource={pendingInvoices.slice(0, 5)}
+                renderItem={inv => (
+                  <List.Item>
+                    <Text style={rtlStyle}>{inv.invoiceNumber} - {inv.client?.name}</Text>
+                    <Text strong>${inv.total?.toLocaleString()}</Text>
+                  </List.Item>
+                )}
+              />
             ) : <Empty description="لا توجد فواتير معلقة" />}
           </Card>
         </Col>
-        <Col xs={24} lg={12}>
-          <Card title={<span style={rtlStyle}>📥 آخر التحصيلات</span>} bordered={false} style={{ borderRadius: 8 }}>
+        <Col xs={24} md={12}>
+          <Card title={<span style={rtlStyle}>✅ آخر التحصيلات</span>} size="small" style={{ borderRadius: 12 }}>
             {recentCollections?.length > 0 ? (
-              <List dataSource={recentCollections} renderItem={tx => (
-                <List.Item extra={<Text strong style={{ color: '#10b981' }}>+${tx.amount?.toLocaleString()}</Text>}>
-                  <List.Item.Meta title={tx.client?.name || tx.description} description={dayjs(tx.date).format('YYYY-MM-DD')} />
-                </List.Item>
-              )} />
-            ) : <Empty description="لا توجد تحصيلات" />}
+              <List
+                dataSource={recentCollections.slice(0, 5)}
+                renderItem={tx => (
+                  <List.Item>
+                    <Text style={rtlStyle}>{tx.client?.name || '—'}</Text>
+                    <Text strong style={{ color: '#10b981' }}>+${tx.amount?.toLocaleString()}</Text>
+                  </List.Item>
+                )}
+              />
+            ) : <Empty description="لا توجد تحصيلات حديثة" />}
           </Card>
         </Col>
       </Row>
@@ -252,7 +560,8 @@ const FinanceDashboard = ({ data, loading, onRefresh }) => {
 };
 
 // ===================== PM DASHBOARD =====================
-const PMDashboard = ({ data, loading, onRefresh }) => {
+
+const PMDashboard = ({ data, loading, onRefresh, timeRange, onTimeChange }) => {
   if (loading) return <DashboardSkeleton />;
   if (!data) return <Empty description="لا توجد بيانات" />;
 
@@ -260,58 +569,64 @@ const PMDashboard = ({ data, loading, onRefresh }) => {
 
   return (
     <div style={rtlStyle}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <Title level={2} style={{ margin: 0, color: '#1e3a8a', ...rtlStyle }}>🚀 لوحة إدارة المشاريع</Title>
-          <Paragraph style={{ margin: '8px 0 0 0', color: '#64748b', ...rtlStyle }}>إحصائيات المشاريع والعملاء</Paragraph>
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <Title level={2} style={{ margin: 0, color: '#1e3a8a', ...rtlStyle }}>🚀 لوحة إدارة المشاريع</Title>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <TimeFilter value={timeRange} onChange={onTimeChange} />
+          <Button icon={<ReloadOutlined />} onClick={onRefresh} size="small" />
         </div>
-        <Button icon={<ReloadOutlined />} onClick={onRefresh} size="small">تحديث</Button>
       </div>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} style={{ borderRadius: 8 }}>
-            <Statistic title="🚀 مشاريع نشطة" value={stats.activeProjects} valueStyle={{ color: '#3b82f6' }}
-              suffix={<Text type="secondary" style={rtlStyle}> / {stats.completedProjects} مكتملة</Text>} />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} style={{ borderRadius: 8 }}>
-            <Statistic title="📋 عقود" value={stats.activeContracts} valueStyle={{ color: '#f59e0b' }}
-              suffix={<Text type="secondary" style={rtlStyle}> / {stats.endedContracts} منتهية</Text>} />
-          </Card>
-        </Col>
-        <StatCard col={6} title="👥 عملاء نشطون" value={stats.activeClients} icon={<TeamOutlined />} color="#10b981" />
-        <StatCard col={6} title="📝 مهام معلقة" value={stats.pendingTasks} icon={<ClockCircleOutlined />} color="#ef4444" />
+        <StatCard col={6} title="🚀 مشاريع نشطة" value={stats.activeProjects} icon={<ProjectOutlined />} color="#3b82f6" />
+        <StatCard col={6} title="✅ مشاريع مكتملة" value={stats.completedProjects} icon={<CheckCircleOutlined />} color="#10b981" />
+        <StatCard col={6} title="📋 عقود نشطة" value={stats.activeContracts} icon={<FileTextOutlined />} color="#f59e0b" />
+        <StatCard col={6} title="⏳ مهام معلقة" value={stats.pendingTasks} icon={<ClockCircleOutlined />} color="#ef4444" />
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col xs={24} lg={12}>
-          <Card title={<span style={rtlStyle}>📊 تقدم المشاريع</span>} bordered={false} style={{ borderRadius: 8 }}>
-            <div style={{ width: '100%', height: 280 }}>
-              {projectStatus.length > 0 ? (
-                <ResponsiveContainer>
-                  <BarChart data={projectStatus} margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis type="category" dataKey="_id" style={rtlStyle} />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#3b82f6" name="عدد المشاريع" radius={[0, 8, 8, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : <Empty description="لا توجد بيانات" />}
-            </div>
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <StatCard col={6} title="👥 عملاء نشطون" value={stats.activeClients} icon={<TeamOutlined />} color="#8b5cf6" />
+        <StatCard col={6} title="🏁 عقود منتهية" value={stats.endedContracts} icon={<FileTextOutlined />} color="#94a3b8" />
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
+        <Col xs={24} md={8}>
+          <Card title={<span style={rtlStyle}>📊 حالة المشاريع</span>} size="small" style={{ borderRadius: 12 }}>
+            {projectStatus?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie data={projectStatus} dataKey="count" nameKey="_id" cx="50%" cy="50%" outerRadius={80}>
+                    {projectStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Pie>
+                  <ReTooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : <Empty />}
           </Card>
         </Col>
-        <Col xs={24} lg={12}>
-          <Card title={<span style={rtlStyle}>🗓 العقود النشطة</span>} bordered={false} style={{ borderRadius: 8 }}>
-            {projects.length > 0 ? (
-              <List dataSource={projects.slice(0, 5)} renderItem={p => (
-                <List.Item>
-                  <List.Item.Meta title={p.name} description={`${p.client?.name || ''} | ${p.status}`} />
-                </List.Item>
-              )} />
-            ) : <Empty description="لا توجد بيانات" />}
+        <Col xs={24} md={16}>
+          <Card title={<span style={rtlStyle}>📋 آخر المشاريع</span>} size="small" style={{ borderRadius: 12 }}>
+            {projects?.length > 0 ? (
+              <List
+                dataSource={projects.slice(0, 8)}
+                renderItem={p => (
+                  <List.Item>
+                    <div style={{ width: '100%' }}>
+                      <Text strong style={rtlStyle}>{p.name}</Text>
+                      <div style={{ marginTop: 4 }}>
+                        <Tag color={p.status === 'active' ? 'green' : p.status === 'completed' ? 'blue' : 'default'}>
+                          {p.status === 'active' ? 'نشط' : p.status === 'completed' ? 'مكتمل' : p.status}
+                        </Tag>
+                        <Text type="secondary" style={{ fontSize: 12, marginRight: 8 }}>
+                          {p.tasks?.length || 0} مهام
+                        </Text>
+                      </div>
+                    </div>
+                  </List.Item>
+                )}
+              />
+            ) : <Empty description="لا توجد مشاريع" />}
           </Card>
         </Col>
       </Row>
@@ -320,7 +635,8 @@ const PMDashboard = ({ data, loading, onRefresh }) => {
 };
 
 // ===================== ACCOUNTANT DASHBOARD =====================
-const AccountantDashboard = ({ data, loading, onRefresh }) => {
+
+const AccountantDashboard = ({ data, loading, onRefresh, timeRange, onTimeChange }) => {
   if (loading) return <DashboardSkeleton />;
   if (!data) return <Empty description="لا توجد بيانات" />;
 
@@ -328,61 +644,50 @@ const AccountantDashboard = ({ data, loading, onRefresh }) => {
 
   return (
     <div style={rtlStyle}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <Title level={2} style={{ margin: 0, color: '#1e3a8a', ...rtlStyle }}>📒 لوحة المحاسبة</Title>
-          <Paragraph style={{ margin: '8px 0 0 0', color: '#64748b', ...rtlStyle }}>نظرة عامة على الفواتير والمصاريف</Paragraph>
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <Title level={2} style={{ margin: 0, color: '#1e3a8a', ...rtlStyle }}>🧾 لوحة المحاسب</Title>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <TimeFilter value={timeRange} onChange={onTimeChange} />
+          <Button icon={<ReloadOutlined />} onClick={onRefresh} size="small" />
         </div>
-        <Button icon={<ReloadOutlined />} onClick={onRefresh} size="small">تحديث</Button>
       </div>
 
       <Row gutter={[16, 16]}>
-        <StatCard col={6} title="📋 فواتير معلقة" value={stats.pendingInvoices} icon={<FileTextOutlined />} color="#f59e0b" />
-        <StatCard col={6} title="💸 مصاريف الشهر" value={stats.monthlyExpenses} prefix="$" color="#ef4444" />
-        <StatCard col={6} title="💳 مدفوعات معلقة" value={stats.pendingPayments} icon={<ClockCircleOutlined />} color="#3b82f6" />
-        <StatCard col={6} title="🏦 رصيد الحسابات" value={stats.totalBalance} prefix="$" color="#10b981" />
+        <StatCard col={6} title="📄 فواتير معلقة" value={stats.pendingInvoices} icon={<FileTextOutlined />} color="#f59e0b" />
+        <StatCard col={6} title="💸 مصاريف الشهر" value={stats.monthlyExpenses} prefix="$" icon={<WalletOutlined />} color="#ef4444" />
+        <StatCard col={6} title="💳 مدفوعات جزئية" value={stats.pendingPayments} icon={<ClockCircleOutlined />} color="#3b82f6" />
+        <StatCard col={6} title="🏦 الرصيد" value={stats.totalBalance} prefix="$" icon={<BankOutlined />} color="#10b981" />
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col xs={24} lg={12}>
-          <Card title={<span style={rtlStyle}>📋 الفواتير المستحقة هذا الشهر</span>} bordered={false} style={{ borderRadius: 8 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
+        <Col xs={24} md={12}>
+          <Card title={<span style={rtlStyle}>📄 فواتير مستحقة قريباً</span>} size="small" style={{ borderRadius: 12 }}>
             {dueInvoices?.length > 0 ? (
-              <List dataSource={dueInvoices} renderItem={inv => (
-                <List.Item extra={<Text strong>${inv.total?.toLocaleString()}</Text>}>
-                  <List.Item.Meta title={inv.invoiceNumber} description={inv.client?.name || ''} />
-                </List.Item>
-              )} />
+              <List
+                dataSource={dueInvoices.slice(0, 5)}
+                renderItem={inv => (
+                  <List.Item>
+                    <Text style={rtlStyle}>{inv.invoiceNumber} - {inv.client?.name}</Text>
+                    <Text strong>$ {inv.total?.toLocaleString()}</Text>
+                  </List.Item>
+                )}
+              />
             ) : <Empty description="لا توجد فواتير مستحقة" />}
           </Card>
         </Col>
-        <Col xs={24} lg={12}>
-          <Card title={<span style={rtlStyle}>🧾 آخر المصاريف</span>} bordered={false} style={{ borderRadius: 8 }}>
+        <Col xs={24} md={12}>
+          <Card title={<span style={rtlStyle}>💸 آخر المصاريف</span>} size="small" style={{ borderRadius: 12 }}>
             {recentExpenses?.length > 0 ? (
-              <List dataSource={recentExpenses} renderItem={exp => (
-                <List.Item extra={<Text strong style={{ color: '#ef4444' }}>-${exp.amount?.toLocaleString()}</Text>}>
-                  <List.Item.Meta title={exp.description || exp.category} description={dayjs(exp.date).format('YYYY-MM-DD')} />
-                </List.Item>
-              )} />
+              <List
+                dataSource={recentExpenses.slice(0, 5)}
+                renderItem={exp => (
+                  <List.Item>
+                    <Text style={rtlStyle}>{exp.description || exp.category}</Text>
+                    <Text strong style={{ color: '#ef4444' }}>-${exp.amount?.toLocaleString()}</Text>
+                  </List.Item>
+                )}
+              />
             ) : <Empty description="لا توجد مصاريف" />}
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col span={24}>
-          <Card title={<span style={rtlStyle}>📊 توزيع المصاريف حسب التصنيف</span>} bordered={false} style={{ borderRadius: 8 }}>
-            <div style={{ width: '100%', height: 280 }}>
-              {charts.expensesByCategory?.length > 0 ? (
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie data={charts.expensesByCategory} dataKey="total" nameKey="_id" cx="50%" cy="50%" outerRadius={100}>
-                      {charts.expensesByCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : <Empty description="لا توجد بيانات" />}
-            </div>
           </Card>
         </Col>
       </Row>
@@ -391,6 +696,7 @@ const AccountantDashboard = ({ data, loading, onRefresh }) => {
 };
 
 // ===================== EMPLOYEE DASHBOARD =====================
+
 const EmployeeDashboard = ({ data, loading, onRefresh }) => {
   if (loading) return <DashboardSkeleton />;
   if (!data) return <Empty description="لا توجد بيانات" />;
@@ -399,50 +705,59 @@ const EmployeeDashboard = ({ data, loading, onRefresh }) => {
 
   return (
     <div style={rtlStyle}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between' }}>
         <div>
           <Title level={2} style={{ margin: 0, color: '#1e3a8a', ...rtlStyle }}>
-            👋 مرحباً {employee?.name || 'بك'}
+            👋 مرحباً {employee?.name || '...'}
           </Title>
-          <Paragraph style={{ margin: '8px 0 0 0', color: '#64748b', ...rtlStyle }}>
-            {employee?.department ? `قسم: ${employee.department}` : 'لوحة معلومات الموظف'}
-          </Paragraph>
+          <Text type="secondary" style={rtlStyle}>{employee?.department || ''}</Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={onRefresh} size="small">تحديث</Button>
+        <Button icon={<ReloadOutlined />} onClick={onRefresh} size="small" />
       </div>
 
       <Row gutter={[16, 16]}>
-        <StatCard col={6} title="💰 الراتب" value={stats.salary} prefix="$" color="#10b981" />
-        <StatCard col={6} title="💳 السلف" value={stats.advance} prefix="$" color="#f59e0b" />
-        <StatCard col={6} title="📝 مهامي النشطة" value={stats.activeTasks} icon={<ClockCircleOutlined />} color="#3b82f6" />
-        <StatCard col={6} title="✅ المهام المنجزة" value={stats.completedTasks} icon={<CheckCircleOutlined />} color="#10b981" />
+        <StatCard col={6} title="💵 الراتب" value={stats.salary} prefix="$" icon={<DollarOutlined />} color="#10b981" />
+        <StatCard col={6} title="💰 السلف المتبقية" value={stats.advance} prefix="$" icon={<WalletOutlined />} color="#f59e0b" />
+        <StatCard col={6} title="📋 مهام قيد التنفيذ" value={stats.activeTasks} icon={<ClockCircleOutlined />} color="#3b82f6" />
+        <StatCard col={6} title="✅ مهام مكتملة" value={stats.completedTasks} icon={<CheckCircleOutlined />} color="#10b981" />
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col xs={24} lg={12}>
-          <Card title={<span style={rtlStyle}>📋 مهامي</span>} bordered={false} style={{ borderRadius: 8 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
+        <Col xs={24} md={12}>
+          <Card title={<span style={rtlStyle}>📋 مهامي</span>} size="small" style={{ borderRadius: 12 }}>
             {tasks?.length > 0 ? (
-              <List dataSource={tasks} renderItem={task => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={task.title}
-                    description={`${task.projectName} | ${task.status}`}
-                  />
-                  {task.dueDate && <Text type="secondary">{dayjs(task.dueDate).format('YYYY-MM-DD')}</Text>}
-                </List.Item>
-              )} />
+              <List
+                dataSource={tasks.slice(0, 5)}
+                renderItem={t => (
+                  <List.Item>
+                    <div>
+                      <Text style={rtlStyle}>{t.title}</Text>
+                      <div>
+                        <Tag color={t.status === 'completed' ? 'green' : t.status === 'in_progress' ? 'blue' : 'default'}>
+                          {t.status === 'completed' ? 'مكتمل' : t.status === 'in_progress' ? 'قيد التنفيذ' : 'معلق'}
+                        </Tag>
+                        <Text type="secondary" style={{ fontSize: 11 }}>{t.projectName}</Text>
+                      </div>
+                    </div>
+                  </List.Item>
+                )}
+              />
             ) : <Empty description="لا توجد مهام" />}
           </Card>
         </Col>
-        <Col xs={24} lg={12}>
-          <Card title={<span style={rtlStyle}>💰 الرواتب السابقة</span>} bordered={false} style={{ borderRadius: 8 }}>
+        <Col xs={24} md={12}>
+          <Card title={<span style={rtlStyle}>💵 آخر الرواتب</span>} size="small" style={{ borderRadius: 12 }}>
             {salaries?.length > 0 ? (
-              <List dataSource={salaries} renderItem={s => (
-                <List.Item extra={<Text strong>${s.amount?.toLocaleString()}</Text>}>
-                  <List.Item.Meta title={`${s.month} ${s.year}`} description={s.status} />
-                </List.Item>
-              )} />
-            ) : <Empty description="لا توجد رواتب سابقة" />}
+              <List
+                dataSource={salaries.slice(0, 6)}
+                renderItem={s => (
+                  <List.Item>
+                    <Text style={rtlStyle}>{s.month} {s.year}</Text>
+                    <Text strong style={{ color: '#10b981' }}>$ {s.amount?.toLocaleString()}</Text>
+                  </List.Item>
+                )}
+              />
+            ) : <Empty description="لا توجد رواتب" />}
           </Card>
         </Col>
       </Row>
@@ -450,85 +765,63 @@ const EmployeeDashboard = ({ data, loading, onRefresh }) => {
   );
 };
 
-// ===================== HELPER: StatCard =====================
-const StatCard = ({ col, title, value, prefix, suffix, change, trend, icon, color }) => (
-  <Col xs={24} sm={12} lg={col}>
-    <Card bordered={false} style={{ borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-      <Statistic
-        title={<span style={rtlStyle}>{title}</span>}
-        value={value ?? 0}
-        precision={typeof value === 'number' && value % 1 !== 0 ? 2 : 0}
-        valueStyle={{ color: color || '#1e3a8a', ...rtlStyle }}
-        prefix={prefix || (icon && <span style={{ marginLeft: 8 }}>{icon}</span>)}
-        suffix={
-          suffix ? <span style={rtlStyle}>{suffix}</span> :
-          change !== undefined ? (
-            <span style={{ fontSize: 14, color: trend === 'up' ? '#10b981' : '#ef4444', ...rtlStyle }}>
-              {trend === 'up' ? <ArrowUpOutlined /> : <ArrowDownOutlined />} {Math.abs(change)}%
-            </span>
-          ) : undefined
-        }
-      />
-    </Card>
-  </Col>
-);
-
-// ===================== SKELETON =====================
-const DashboardSkeleton = () => (
-  <div style={rtlStyle}>
-    <Skeleton active paragraph={{ rows: 1 }} />
-    <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-      {[1, 2, 3, 4].map(i => (
-        <Col xs={24} sm={12} lg={6} key={i}>
-          <Card><Skeleton active paragraph={{ rows: 1 }} /></Card>
-        </Col>
-      ))}
-    </Row>
-    <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-      {[1, 2, 3, 4].map(i => (
-        <Col xs={24} sm={12} lg={6} key={i + 4}>
-          <Card><Skeleton active paragraph={{ rows: 1 }} /></Card>
-        </Col>
-      ))}
-    </Row>
-  </div>
-);
-
 // ===================== MAIN DASHBOARD =====================
+
 const Dashboard = () => {
   const { user } = useAuth();
   const role = user?.role || 'employee';
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [timeRange, setTimeRange] = useState('month');
+  const intervalRef = useRef(null);
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchDashboard = useCallback(async (range) => {
+    const r = range || timeRange;
     const endpointMap = {
-      admin: '/api/dashboard/admin',
-      finance: '/api/dashboard/finance',
-      pm: '/api/dashboard/pm',
-      accountant: '/api/dashboard/accountant',
-      employee: '/api/dashboard/employee',
+      admin: '/dashboard/admin',
+      finance: '/dashboard/finance',
+      pm: '/dashboard/pm',
+      accountant: '/dashboard/accountant',
+      employee: '/dashboard/employee',
     };
     const endpoint = endpointMap[role] || endpointMap.employee;
 
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get(endpoint);
+      const res = await api.get(`${endpoint}?range=${r}`);
       setData(res.data.data);
     } catch (err) {
       setError(err.response?.data?.message || 'فشل تحميل لوحة التحكم');
     } finally {
       setLoading(false);
     }
-  }, [role]);
+  }, [role, timeRange]);
 
+  // Initial fetch + auto-refresh every 30s
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
 
-  const handleRefresh = () => fetchDashboard();
+    intervalRef.current = setInterval(() => {
+      fetchDashboard(timeRange);
+    }, 30000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []); // eslint-disable-line
+
+  // Fetch when time range changes
+  useEffect(() => {
+    if (data !== null) fetchDashboard(timeRange);
+  }, [timeRange]); // eslint-disable-line
+
+  const handleTimeChange = (val) => {
+    setTimeRange(val);
+  };
+
+  const handleRefresh = () => fetchDashboard(timeRange);
 
   if (error) {
     return (
@@ -542,16 +835,20 @@ const Dashboard = () => {
 
   switch (role) {
     case 'admin':
-      return <AdminDashboard data={data} loading={loading} onRefresh={handleRefresh} />;
+      return <AdminDashboard data={data} loading={loading && !data} onRefresh={handleRefresh}
+        timeRange={timeRange} onTimeChange={handleTimeChange} />;
     case 'finance':
-      return <FinanceDashboard data={data} loading={loading} onRefresh={handleRefresh} />;
+      return <FinanceDashboard data={data} loading={loading && !data} onRefresh={handleRefresh}
+        timeRange={timeRange} onTimeChange={handleTimeChange} />;
     case 'pm':
-      return <PMDashboard data={data} loading={loading} onRefresh={handleRefresh} />;
+      return <PMDashboard data={data} loading={loading && !data} onRefresh={handleRefresh}
+        timeRange={timeRange} onTimeChange={handleTimeChange} />;
     case 'accountant':
-      return <AccountantDashboard data={data} loading={loading} onRefresh={handleRefresh} />;
+      return <AccountantDashboard data={data} loading={loading && !data} onRefresh={handleRefresh}
+        timeRange={timeRange} onTimeChange={handleTimeChange} />;
     case 'employee':
     default:
-      return <EmployeeDashboard data={data} loading={loading} onRefresh={handleRefresh} />;
+      return <EmployeeDashboard data={data} loading={loading && !data} onRefresh={handleRefresh} />;
   }
 };
 

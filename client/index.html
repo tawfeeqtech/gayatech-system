@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>نظام غايتك المالي</title>
+    <style>
+      @media print {
+        body * { visibility: hidden; }
+        .dashboard-printable, .dashboard-printable * { visibility: visible; }
+        .dashboard-printable { position: absolute; left: 0; top: 0; width: 100%; }
+        .ant-btn, .ant-segmented, .ant-badge { display: none !important; }
+        @page { size: A4 landscape; margin: 10mm; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
