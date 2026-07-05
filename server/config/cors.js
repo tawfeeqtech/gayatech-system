@@ -5,7 +5,10 @@ const allowedOrigins = [
   clientUrl,
   'http://localhost:9173',
   'http://localhost:3000',
-  /\.trycloudflare\.com$/
+  'https://blog.ghayatech.com',
+  'https://ghayatech.com',
+  /\.trycloudflare\.com$/,
+  /\.ghayatech\.com$/
 ];
 
 const corsOptions = {
