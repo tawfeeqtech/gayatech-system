@@ -779,11 +779,11 @@ const Dashboard = () => {
   const fetchDashboard = useCallback(async (range) => {
     const r = range || timeRange;
     const endpointMap = {
-      admin: '/api/dashboard/admin',
-      finance: '/api/dashboard/finance',
-      pm: '/api/dashboard/pm',
-      accountant: '/api/dashboard/accountant',
-      employee: '/api/dashboard/employee',
+      admin: '/dashboard/admin',
+      finance: '/dashboard/finance',
+      pm: '/dashboard/pm',
+      accountant: '/dashboard/accountant',
+      employee: '/dashboard/employee',
     };
     const endpoint = endpointMap[role] || endpointMap.employee;
 
