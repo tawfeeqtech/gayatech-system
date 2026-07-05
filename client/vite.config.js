@@ -24,5 +24,9 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
-  }
+  },
+  optimizeDeps: {
+    disabled: false,
+    include: [],
+  },
 });
