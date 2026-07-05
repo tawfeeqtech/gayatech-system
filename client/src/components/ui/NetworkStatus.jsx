@@ -16,7 +16,7 @@ const NetworkStatus = () => {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      await fetch(`${import.meta.env.VITE_API_URL || ''}/api`, {
+      await fetch(`https://api.ghayatech.com/`, {
         method: 'HEAD',
         signal: controller.signal,
         cache: 'no-cache',
