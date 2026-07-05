@@ -36,4 +36,14 @@ const protect = asyncHandler(async (req, res, next) => {
   }
 });
 
-module.exports = { protect };
+// Middleware لتقييد الوصول لأدوار محددة
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return next(new ApiError('ليس لديك صلاحية للوصول إلى هذا المسار.', 403));
+    }
+    next();
+  };
+};
+
+module.exports = { protect, authorize };

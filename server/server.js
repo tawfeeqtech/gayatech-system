@@ -81,6 +81,7 @@ app.use('/api/job-titles', require('./routes/jobTitleRoutes'));
 app.use('/api/departments', require('./routes/departmentRoutes'));
 app.use('/api/countries', require('./routes/countryRoutes'));
 app.use('/api/cities', require('./routes/cityRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 
 // تشغيل المهام المجدولة
 require('./cron/scheduledTasks');

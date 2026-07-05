@@ -3,7 +3,7 @@ import { getToken } from '../utils/auth';
 import toast from 'react-hot-toast';
 
 const api = axios.create({
-  baseURL: 'https://api.ghayatech.com/api',
+  baseURL: 'https://api.ghayatech.com',
   headers: {
     'Content-Type': 'application/json',
   },
