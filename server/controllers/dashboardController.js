@@ -1,6 +1,7 @@
 const Transaction = require('../models/Transaction');
 const Invoice = require('../models/Invoice');
 const Project = require('../models/Project');
+const ProjectTask = require('../models/ProjectTask');
 const Contract = require('../models/Contract');
 const Client = require('../models/Client');
 const Wallet = require('../models/Wallet');
@@ -36,8 +37,8 @@ function getDateRange(range, now) {
 }
 
 async function aggregateIncome(from, to) {
-  const match = { type: 'income', date: { $gte: from }, status: { $ne: 'cancelled' } };
-  if (to) match.date.$lte = to;
+  const match = { type: 'دخل', transactionDate: { $gte: from }, status: { $ne: 'ملغي' } };
+  if (to) match.transactionDate.$lte = to;
   const r = await Transaction.aggregate([
     { $match: match },
     { $group: { _id: null, total: { $sum: '$amount' } } }
@@ -46,8 +47,8 @@ async function aggregateIncome(from, to) {
 }
 
 async function aggregateExpense(from, to) {
-  const match = { type: 'expense', date: { $gte: from }, status: { $ne: 'cancelled' } };
-  if (to) match.date.$lte = to;
+  const match = { type: 'مصروف', transactionDate: { $gte: from }, status: { $ne: 'ملغي' } };
+  if (to) match.transactionDate.$lte = to;
   const r = await Transaction.aggregate([
     { $match: match },
     { $group: { _id: null, total: { $sum: '$amount' } } }
@@ -135,14 +136,14 @@ exports.getAdminDashboard = asyncHandler(async (req, res) => {
 
   // 📊 6-8. أرقام سريعة
   const [activeContracts, activeProjects, activeClients] = await Promise.all([
-    Contract.countDocuments({ status: 'active' }),
-    Project.countDocuments({ status: 'active' }),
-    Client.countDocuments({ isActive: true })
+    Contract.countDocuments({ status: 'نشط' }),
+    Project.countDocuments({ status: 'قيد التنفيذ' }),
+    Client.countDocuments({ status: 'نشط' })
   ]);
 
   // 📊 9. فواتير متأخرة
   const overdueInvoices = await Invoice.aggregate([
-    { $match: { status: { $in: ['مصدرة', 'مرسلة'] }, dueDate: { $lt: now } } },
+    { $match: { status: { $in: ['مصدرة', 'مدفوعة جزئياً'] }, dueDate: { $lt: now } } },
     { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$total' } } }
   ]);
   const overdueCount = overdueInvoices[0]?.count || 0;
@@ -156,7 +157,7 @@ exports.getAdminDashboard = asyncHandler(async (req, res) => {
 
   // 📊 12. توزيع الدخل حسب المصدر
   const incomeBySource = await Transaction.aggregate([
-    { $match: { type: 'income', date: { $gte: from }, status: { $ne: 'cancelled' } } },
+    { $match: { type: 'دخل', transactionDate: { $gte: from }, status: { $ne: 'ملغي' } } },
     { $group: { _id: '$paymentMethod', total: { $sum: '$amount' } } }
   ]);
 
@@ -174,8 +175,8 @@ exports.getAdminDashboard = asyncHandler(async (req, res) => {
   ]);
 
   // 📊 15. آخر 5 معاملات
-  const recentTransactions = await Transaction.find({ status: { $ne: 'cancelled' } })
-    .sort({ date: -1 }).limit(5)
+  const recentTransactions = await Transaction.find({ status: { $ne: 'ملغي' } })
+    .sort({ transactionDate: -1 }).limit(5)
     .populate('client', 'name').populate('project', 'name').lean();
 
   // 📊 16. تنبيهات
@@ -185,7 +186,7 @@ exports.getAdminDashboard = asyncHandler(async (req, res) => {
   }
   const expiringSubs = await Subscription.countDocuments({
     endDate: { $gte: now, $lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) },
-    status: 'active'
+    status: 'نشط'
   });
   if (expiringSubs > 0) {
     alerts.push({ type: 'info', message: `${expiringSubs} اشتراكات تنتهي خلال 30 يوم`, icon: '🔄' });
@@ -225,7 +226,7 @@ exports.getAdminDashboard = asyncHandler(async (req, res) => {
         id: t._id, number: t.transactionNumber, type: t.type,
         amount: t.amount, currency: t.currency,
         clientName: t.client?.name || '', projectName: t.project?.name || '',
-        date: t.date
+        date: t.transactionDate
       })),
       range
     }
@@ -247,12 +248,12 @@ exports.getFinanceDashboard = asyncHandler(async (req, res) => {
   const [revenue, expenses, wallets, pendingInvoices, recentCollections] = await Promise.all([
     aggregateIncome(from, now), aggregateExpense(from, now),
     Wallet.aggregate([{ $group: { _id: null, total: { $sum: '$balance' } } }]),
-    Invoice.find({ status: { $in: ['مصدرة', 'مرسلة'] } }).sort({ dueDate: 1 }).limit(10).populate('client', 'name').lean(),
-    Transaction.find({ type: 'income', status: { $ne: 'cancelled' } }).sort({ date: -1 }).limit(5).populate('client', 'name').lean()
+    Invoice.find({ status: { $in: ['مصدرة', 'مدفوعة جزئياً'] } }).sort({ dueDate: 1 }).limit(10).populate('client', 'name').lean(),
+    Transaction.find({ type: 'دخل', status: { $ne: 'ملغي' } }).sort({ transactionDate: -1 }).limit(5).populate('client', 'name').lean()
   ]);
 
   const debts = await Invoice.aggregate([
-    { $match: { status: { $in: ['مصدرة', 'مرسلة'] } } },
+    { $match: { status: { $in: ['مصدرة', 'مدفوعة جزئياً'] } } },
     { $group: { _id: null, total: { $sum: '$total' }, count: { $sum: 1 } } }
   ]);
 
@@ -302,16 +303,12 @@ exports.getPMDashboard = asyncHandler(async (req, res) => {
   const [projects, activeProjects, completedProjects, activeContracts, endedContracts,
     activeClients, pendingTasks] = await Promise.all([
     Project.find({}).lean(),
-    Project.countDocuments({ status: 'active' }),
-    Project.countDocuments({ status: 'completed' }),
-    Contract.countDocuments({ status: 'active' }),
-    Contract.countDocuments({ status: 'ended' }),
-    Client.countDocuments({ isActive: true }),
-    Project.aggregate([
-      { $unwind: { path: '$tasks', preserveNullAndEmptyArrays: true } },
-      { $match: { 'tasks.status': { $in: ['pending', 'in_progress'] } } },
-      { $count: 'total' }
-    ])
+    Project.countDocuments({ status: 'قيد التنفيذ' }),
+    Project.countDocuments({ status: 'مكتمل' }),
+    Contract.countDocuments({ status: 'نشط' }),
+    Contract.countDocuments({ status: 'منتهي' }),
+    Client.countDocuments({ status: 'نشط' }),
+    ProjectTask.countDocuments({ status: { $in: ['قيد الانتظار', 'قيد التنفيذ'] } })
   ]);
 
   const projectStatusDistribution = await Project.aggregate([
@@ -324,7 +321,7 @@ exports.getPMDashboard = asyncHandler(async (req, res) => {
       stats: {
         activeProjects, completedProjects, activeContracts,
         endedContracts, activeClients,
-        pendingTasks: pendingTasks[0]?.total || 0
+        pendingTasks: pendingTasks
       },
       projectStatus: projectStatusDistribution,
       projects: projects.slice(0, 10),
@@ -341,7 +338,7 @@ exports.getAccountantDashboard = asyncHandler(async (req, res) => {
   const { from } = getDateRange(range, now);
 
   const [pendingInvoices, monthlyExpenses, pendingPayments, wallets, recentExpenses, expensesByCategory] = await Promise.all([
-    Invoice.countDocuments({ status: { $in: ['مصدرة', 'مرسلة'] } }),
+    Invoice.countDocuments({ status: { $in: ['مصدرة', 'مدفوعة جزئياً'] } }),
     Expense.aggregate([
       { $match: { date: { $gte: from } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
@@ -356,7 +353,7 @@ exports.getAccountantDashboard = asyncHandler(async (req, res) => {
   ]);
 
   const dueInvoices = await Invoice.find({
-    status: { $in: ['مصدرة', 'مرسلة'] }, dueDate: { $gte: now }
+    status: { $in: ['مصدرة', 'مدفوعة جزئياً'] }, dueDate: { $gte: now }
   }).sort({ dueDate: 1 }).limit(10).populate('client', 'name').lean();
 
   res.json({
@@ -393,7 +390,7 @@ exports.getEmployeeDashboard = asyncHandler(async (req, res) => {
 
   const [employee, advances, salaries] = await Promise.all([
     Employee.findById(employeeId).lean(),
-    Advance.find({ employeeId, status: { $ne: 'cancelled' } }).lean(),
+    Advance.find({ employeeId, status: { $ne: 'ملغي' } }).lean(),
     require('../models/Salary').find({ employeeId }).sort({ month: -1 }).limit(6).lean()
   ]);
 
@@ -406,19 +403,26 @@ exports.getEmployeeDashboard = asyncHandler(async (req, res) => {
     month: s.month, year: s.year, amount: s.netSalary, status: s.status
   }));
 
-  const projects = await Project.find({ 'team.employee': employeeId }).lean();
-  let activeTasks = 0, completedTasks = 0;
-  const myTasks = [];
+  // استخدام ProjectTask بدلاً من tasks المضمنة في Project
+  const tasks = await ProjectTask.find({ assignedTo: employeeId }).lean();
+  const activeTasks = tasks.filter(t => t.status !== 'مكتمل' && t.status !== 'ملغي').length;
+  const completedTasks = tasks.filter(t => t.status === 'مكتمل').length;
 
-  projects.forEach(p => {
-    (p.tasks || []).forEach(t => {
-      if (t.assignedTo?.toString() === employeeId?.toString()) {
-        if (t.status === 'completed') completedTasks++;
-        else activeTasks++;
-        myTasks.push({ id: t._id, title: t.title, status: t.status, projectName: p.name, dueDate: t.dueDate });
-      }
-    });
-  });
+  // إثراء المهام باسم المشروع
+  const projectIds = [...new Set(tasks.map(t => t.project?.toString()).filter(Boolean))];
+  const projectsMap = {};
+  if (projectIds.length > 0) {
+    const projects = await Project.find({ _id: { $in: projectIds } }).select('name').lean();
+    projects.forEach(p => { projectsMap[p._id.toString()] = p.name; });
+  }
+
+  const myTasks = tasks.slice(0, 10).map(t => ({
+    id: t._id,
+    title: t.title,
+    status: t.status,
+    projectName: projectsMap[t.project?.toString()] || '—',
+    dueDate: t.dueDate
+  }));
 
   res.json({
     status: 'success',
@@ -462,11 +466,11 @@ exports.getDashboardExport = asyncHandler(async (req, res) => {
     aggregateIncome(thisMonth), aggregateIncome(lastMonth, lastMonthEnd),
     aggregateExpense(thisMonth), aggregateExpense(lastMonth, lastMonthEnd),
     Wallet.aggregate([{ $group: { _id: null, total: { $sum: '$balance' } } }]),
-    Contract.countDocuments({ status: 'active' }),
-    Project.countDocuments({ status: 'active' }),
-    Client.countDocuments({ isActive: true }),
+    Contract.countDocuments({ status: 'نشط' }),
+    Project.countDocuments({ status: 'قيد التنفيذ' }),
+    Client.countDocuments({ status: 'نشط' }),
     Invoice.aggregate([
-      { $match: { status: { $in: ['مصدرة', 'مرسلة'] }, dueDate: { $lt: now } } },
+      { $match: { status: { $in: ['مصدرة', 'مدفوعة جزئياً'] }, dueDate: { $lt: now } } },
       { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$total' } } }
     ])
   ]);
@@ -499,11 +503,11 @@ async function getMonthlyChart() {
   const chartData = await Promise.all(months.map(async (m) => {
     const [rev, exp] = await Promise.all([
       Transaction.aggregate([
-        { $match: { type: 'income', date: { $gte: m.start, $lte: m.end }, status: { $ne: 'cancelled' } } },
+        { $match: { type: 'دخل', transactionDate: { $gte: m.start, $lte: m.end }, status: { $ne: 'ملغي' } } },
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ]),
       Transaction.aggregate([
-        { $match: { type: 'expense', date: { $gte: m.start, $lte: m.end }, status: { $ne: 'cancelled' } } },
+        { $match: { type: 'مصروف', transactionDate: { $gte: m.start, $lte: m.end }, status: { $ne: 'ملغي' } } },
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ])
     ]);
