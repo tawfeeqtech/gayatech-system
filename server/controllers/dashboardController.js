@@ -258,7 +258,7 @@ exports.getFinanceDashboard = asyncHandler(async (req, res) => {
   ]);
 
   const expensesByCategory = await Expense.aggregate([
-    { $match: { date: { $gte: from } } },
+    { $match: { expenseDate: { $gte: from } } },
     { $group: { _id: '$category', total: { $sum: '$amount' } } }
   ]);
 
@@ -340,14 +340,14 @@ exports.getAccountantDashboard = asyncHandler(async (req, res) => {
   const [pendingInvoices, monthlyExpenses, pendingPayments, wallets, recentExpenses, expensesByCategory] = await Promise.all([
     Invoice.countDocuments({ status: { $in: ['مصدرة', 'مدفوعة جزئياً'] } }),
     Expense.aggregate([
-      { $match: { date: { $gte: from } } },
+      { $match: { expenseDate: { $gte: from } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]),
     Invoice.countDocuments({ status: 'مدفوعة جزئياً' }),
     Wallet.aggregate([{ $group: { _id: null, total: { $sum: '$balance' } } }]),
-    Expense.find({}).sort({ date: -1 }).limit(10).populate('category').lean(),
+    Expense.find({}).sort({ expenseDate: -1 }).limit(10).populate('category').lean(),
     Expense.aggregate([
-      { $match: { date: { $gte: from } } },
+      { $match: { expenseDate: { $gte: from } } },
       { $group: { _id: '$category', total: { $sum: '$amount' } } }
     ])
   ]);
@@ -390,21 +390,23 @@ exports.getEmployeeDashboard = asyncHandler(async (req, res) => {
 
   const [employee, advances, salaries] = await Promise.all([
     Employee.findById(employeeId).lean(),
-    Advance.find({ employeeId, status: { $ne: 'ملغي' } }).lean(),
-    require('../models/Salary').find({ employeeId }).sort({ month: -1 }).limit(6).lean()
+    Advance.find({ employee: employeeId, status: { $ne: 'ملغي' } }).lean(),
+    require('../models/Salary').find({ employee: employeeId }).sort({ month: -1 }).limit(6).lean()
   ]);
 
   const pendingAdvances = advances.reduce((sum, a) => {
-    const paid = a.payments?.reduce((p, pmt) => p + pmt.amount, 0) || 0;
-    return sum + (a.amount - paid);
+    return sum + (a.remainingAmount || (a.amount - (a.repaidAmount || 0)));
   }, 0);
 
   const recentSalaries = salaries.map(s => ({
-    month: s.month, year: s.year, amount: s.netSalary, status: s.status
+    month: s.month?.split('-')[1] || s.month,
+    year: s.month?.split('-')[0] || '',
+    amount: s.totalAmount,
+    status: s.status
   }));
 
   // استخدام ProjectTask بدلاً من tasks المضمنة في Project
-  const tasks = await ProjectTask.find({ assignedTo: employeeId }).lean();
+  const tasks = await ProjectTask.find({ 'assignedTo.employee': employeeId }).lean();
   const activeTasks = tasks.filter(t => t.status !== 'مكتمل' && t.status !== 'ملغي').length;
   const completedTasks = tasks.filter(t => t.status === 'مكتمل').length;
 
@@ -428,12 +430,12 @@ exports.getEmployeeDashboard = asyncHandler(async (req, res) => {
     status: 'success',
     data: {
       stats: {
-        salary: employee?.salary || 0, advance: pendingAdvances,
+        salary: employee?.baseSalary || 0, advance: pendingAdvances,
         activeTasks, completedTasks
       },
       tasks: myTasks.slice(0, 10),
       salaries: recentSalaries,
-      employee: { name: employee?.fullName, department: employee?.department }
+      employee: { name: employee?.name, department: employee?.department }
     }
   });
 });
