@@ -42,9 +42,17 @@ const Sidebar = () => {
   const ROLE_SECTIONS = {
     admin: ['dashboard', 'clients-contracts', 'finance', 'hr', 'partners', 'reports-data', 'settings'],
     finance: ['dashboard', 'finance', 'partners', 'reports-data'],
-    pm: ['dashboard', 'clients-contracts'],
+    pm: ['dashboard', 'clients-contracts', 'hr', 'reports-data'],
     accountant: ['dashboard', 'finance-accountant'],
     employee: ['dashboard'],
+  };
+
+  // تقييد العناصر الفرعية حسب الدور (لإخفاء روابط لا تخص الدور داخل قسم مسموح به)
+  const ROLE_CHILD_RESTRICTIONS = {
+    pm: {
+      'hr': ['/employees'],                          // مدير المشاريع يرى الموظفين فقط، بدون الرواتب والسلف
+      'reports-data': ['/reports'],                  // مدير المشاريع يرى التقارير فقط، بدون استيراد البيانات
+    },
   };
 
   const role = user?.role || 'employee';
@@ -144,11 +152,25 @@ const Sidebar = () => {
   // تصفية العناصر حسب صلاحية الدور
   const allowedSections = ROLE_SECTIONS[role] || ['dashboard'];
   const salaryRoles = ['admin', 'finance', 'employee'];
-  const menuItems = allMenuItems.filter(item => {
-    if (item.key === '/') return true; // لوحة التحكم متاحة للجميع
-    if (item.key === '/my-salary') return salaryRoles.includes(role); // راتبي
-    return allowedSections.includes(item.key);
-  });
+  const childRestrictions = ROLE_CHILD_RESTRICTIONS[role] || {};
+
+  const menuItems = allMenuItems
+    .filter(item => {
+      if (item.key === '/') return true; // لوحة التحكم متاحة للجميع
+      if (item.key === '/my-salary') return salaryRoles.includes(role); // راتبي
+      return allowedSections.includes(item.key);
+    })
+    .map(item => {
+      // تصفية العناصر الفرعية إذا كان هناك تقييد لهذا الدور على هذا القسم
+      if (item.children && childRestrictions[item.key]) {
+        const allowedChildren = childRestrictions[item.key];
+        return {
+          ...item,
+          children: item.children.filter(child => allowedChildren.includes(child.key)),
+        };
+      }
+      return item;
+    });
 
   // تحديد العنصر الفرعي النشط الذكي
   const getActiveKey = () => {

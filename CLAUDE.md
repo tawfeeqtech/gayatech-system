@@ -291,10 +291,10 @@ cd /data/gayatech-system/client && npm run build
 | username | password | الدور |
 |----------|----------|-------|
 | `admin` | `admin123` | مدير النظام |
-| `finance1` | `finance123` | مدير مالي |
-| `pm1` | `pm123` | مدير مشاريع |
-| `accountant1` | `accountant123` | محاسب |
-| `employee1` | `employee123` | موظف |
+| `finance` | `finance123` | مدير مالي |
+| `pm` | `pm123` | مدير مشاريع |
+| `accountant` | `accountant123` | محاسب |
+| `employee` | `employee123` | موظف |
 
 ### عملات
 USD (دولار), ILS (شيكل), SAR (ريال سعودي), JOD (دينار أردني), EUR (يورو)
