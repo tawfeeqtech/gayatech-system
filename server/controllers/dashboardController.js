@@ -376,7 +376,7 @@ exports.getAccountantDashboard = asyncHandler(async (req, res) => {
 // ======================== EMPLOYEE DASHBOARD ========================
 
 exports.getEmployeeDashboard = asyncHandler(async (req, res) => {
-  const employeeId = req.user?.employeeId;
+  const employeeId = req.user?.employee;
 
   if (!employeeId) {
     return res.json({
