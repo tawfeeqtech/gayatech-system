@@ -113,10 +113,7 @@ const MySalary = () => {
       setSalaries(sals);
       setAdvances(advRes.data.data?.advances || []);
       if (empRes) setEmployee(empRes.data.data?.employee || null);
-      
-      if (!sals.length) {
-        setError('لم يتم العثور على بيانات راتب لك بعد.');
-      }
+      // No error on empty — page shows KPIs + info without salary records
     } catch (err) {
       if (err.response?.status === 404) {
         setError('لم يتم العثور على بيانات راتب لك بعد.');
@@ -228,7 +225,7 @@ const MySalary = () => {
         </div>
       </div>
 
-      {error && !salaries.length ? (
+      {error ? (
         <Empty description={error} style={{ marginTop: 60 }}>
           <Button type="primary" onClick={fetchData}>إعادة المحاولة</Button>
         </Empty>
