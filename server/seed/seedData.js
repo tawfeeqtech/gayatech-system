@@ -277,6 +277,11 @@ const seedDB = async () => {
       console.log(`   ✅ ${e.name} - ${e.jobTitle}`);
     }
 
+    // ربط مستخدم employee بسجل الموظف (حتى يعمل /salaries/me)
+    await User.findByIdAndUpdate(createdUsers['employee']._id, { employee: createdEmployees['أحمد محمد']._id });
+    await Employee.findByIdAndUpdate(createdEmployees['أحمد محمد']._id, { user: createdUsers['employee']._id });
+    console.log('   🔗 Linked employee user to أحمد محمد');
+
     // 6. Clients
     console.log('\n👥 Creating clients...');
     const createdClients = {};
