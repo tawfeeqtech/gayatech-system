@@ -308,7 +308,7 @@ exports.getPMDashboard = asyncHandler(async (req, res) => {
     Contract.countDocuments({ status: 'نشط' }),
     Contract.countDocuments({ status: 'منتهي' }),
     Client.countDocuments({ status: 'نشط' }),
-    ProjectTask.countDocuments({ status: { $in: ['قيد الانتظار', 'قيد التنفيذ'] } })
+    ProjectTask.countDocuments({ status: { $in: ['لم تبدأ', 'قيد التنفيذ'] } })
   ]);
 
   const projectStatusDistribution = await Project.aggregate([
@@ -407,8 +407,8 @@ exports.getEmployeeDashboard = asyncHandler(async (req, res) => {
 
   // استخدام ProjectTask بدلاً من tasks المضمنة في Project
   const tasks = await ProjectTask.find({ 'assignedTo.employee': employeeId }).lean();
-  const activeTasks = tasks.filter(t => t.status !== 'مكتمل' && t.status !== 'ملغي').length;
-  const completedTasks = tasks.filter(t => t.status === 'مكتمل').length;
+  const activeTasks = tasks.filter(t => t.status !== 'مكتملة' && t.status !== 'ملغاة').length;
+  const completedTasks = tasks.filter(t => t.status === 'مكتملة').length;
 
   // إثراء المهام باسم المشروع
   const projectIds = [...new Set(tasks.map(t => t.project?.toString()).filter(Boolean))];
