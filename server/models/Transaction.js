@@ -216,5 +216,35 @@ TransactionSchema.pre('save', async function(next) {
   next();
 });
 
+// Middleware: عكس تأثير المعاملة على أرصدة المحافظ عند الحذف
+TransactionSchema.pre('findOneAndDelete', async function() {
+  const transaction = await this.model.findOne(this.getFilter());
+  if (!transaction) return;
+  
+  const Wallet = require('./Wallet');
+  if (transaction.toWallet) {
+    const credit = transaction.toAmount || transaction.amount;
+    await Wallet.findByIdAndUpdate(transaction.toWallet, { $inc: { balance: -credit } });
+  }
+  if (transaction.fromWallet) {
+    await Wallet.findByIdAndUpdate(transaction.fromWallet, { $inc: { balance: transaction.amount } });
+  }
+});
+
+TransactionSchema.pre('deleteMany', async function() {
+  const transactions = await this.model.find(this.getFilter());
+  const Wallet = require('./Wallet');
+  
+  for (const transaction of transactions) {
+    if (transaction.toWallet) {
+      const credit = transaction.toAmount || transaction.amount;
+      await Wallet.findByIdAndUpdate(transaction.toWallet, { $inc: { balance: -credit } });
+    }
+    if (transaction.fromWallet) {
+      await Wallet.findByIdAndUpdate(transaction.fromWallet, { $inc: { balance: transaction.amount } });
+    }
+  }
+});
+
 
 module.exports = mongoose.model('Transaction', TransactionSchema);
