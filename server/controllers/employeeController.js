@@ -1,4 +1,5 @@
 const Employee = require('../models/Employee');
+const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 const salaryService = require('../services/salaryService');
@@ -80,22 +81,52 @@ exports.getEmployee = asyncHandler(async (req, res, next) => {
 // @route   POST /api/employees
 // @access  Private (admin)
 exports.createEmployee = asyncHandler(async (req, res, next) => {
-  req.body.createdBy = req.user._id;
-  const employee = await Employee.create(req.body);
+  const { createUser, username, password, ...employeeData } = req.body;
+  employeeData.createdBy = req.user._id;
+
+  // إنشاء حساب مستخدم للموظف (اختياري)
+  if (createUser && username && password) {
+    // التحقق من عدم وجود مستخدم بنفس username
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return next(new ApiError('اسم المستخدم موجود مسبقاً', 400));
+    }
+
+    const user = await User.create({
+      username,
+      password, // سيتم تشفيرها عبر hook قبل الحفظ
+      email: employeeData.email || `${username}@gayatech.local`,
+      fullName: employeeData.name,
+      role: 'employee',
+      employee: null, // سنربطه لاحقاً
+      createdBy: req.user._id,
+    });
+
+    employeeData.user = user._id;
+  }
+
+  const employee = await Employee.create(employeeData);
+
+  // ربط المستخدم بالموظف (ثنائي الاتجاه)
+  if (employee.user) {
+    await User.findByIdAndUpdate(employee.user, { employee: employee._id });
+  }
 
   // توليد الراتب تلقائياً إذا كان الموظف نشطاً ومفعلة خاصية التوليد التلقائي
   if (employee.status === 'نشط' && employee.autoGenerateSalary === true) {
     try {
       await salaryService.generateSalariesForEmployee(employee._id, req.user._id);
     } catch (err) {
-      // لا نريد فشل العملية بسبب خطأ في توليد الراتب
       console.error(`فشل توليد الراتب للموظف ${employee._id}:`, err.message);
     }
   }
 
+  // إعادة employee مع user للإستجابة
+  const populated = await Employee.findById(employee._id).populate('user', 'username role');
+
   res.status(201).json({
     status: 'success',
-    data: { employee }
+    data: { employee: populated }
   });
 });
 

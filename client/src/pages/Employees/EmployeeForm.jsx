@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, Typography, Spin, Switch } from 'antd';
-import { SaveOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { Card, Form, Button, Space, Row, Col, Select, Typography, Spin, Switch, Divider } from 'antd';
+import { SaveOutlined, ArrowRightOutlined, UserAddOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import FormField from '../../components/ui/FormField';
 import SmartSelect from '../../components/ui/SmartSelect';
@@ -21,6 +21,7 @@ const EmployeeForm = () => {
   const { currencies } = useCurrencies();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [createUser, setCreateUser] = useState(false);
   const DEFAULT_JOB_TITLES = [
     'مستقطب مشاريع', 'تصميم ومونتاج', 'تصميم متاجر',
     'ادارة متاجر', 'ادارة حملات اعلانية', 'مصمم جرافيك',
@@ -135,10 +136,16 @@ const EmployeeForm = () => {
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
-      // تأكد من أن المسمى الوظيفي والقسم الجديد أضيفا في الـ backend
       const finalJobTitle = await ensureJobTitleCreated(values.jobTitle);
       const finalDepartment = await ensureDepartmentCreated(values.department);
-      const payload = { ...values, jobTitle: finalJobTitle, department: finalDepartment };
+      const payload = {
+        ...values,
+        jobTitle: finalJobTitle,
+        department: finalDepartment,
+        createUser: createUser,
+        username: createUser ? values.username : undefined,
+        password: createUser ? values.password : undefined,
+      };
       if (isEdit) { await employeeAPI.update(id, payload); toast.success('تم التحديث'); }
       else { await employeeAPI.create(payload); toast.success('تمت الإضافة'); }
       navigate('/employees');
@@ -201,6 +208,44 @@ const EmployeeForm = () => {
             </Col>
             <Col xs={24} md={12}><FormField name="notes" label="ملاحظات" type="textarea" /></Col>
           </Row>
+
+          {/* إنشاء حساب مستخدم */}
+          {!isEdit && (
+            <>
+              <Divider orientation="right" style={{ fontFamily: 'Cairo', fontSize: 14, color: '#64748b' }}>
+                <UserAddOutlined /> حساب المستخدم (اختياري)
+              </Divider>
+              <Row gutter={24}>
+                <Col xs={24}>
+                  <Form.Item label="إنشاء حساب للموظف" valuePropName="checked">
+                    <Switch checked={createUser} onChange={setCreateUser} />
+                  </Form.Item>
+                </Col>
+              </Row>
+              {createUser && (
+                <Row gutter={24}>
+                  <Col xs={24} md={12}>
+                    <FormField
+                      name="username"
+                      label="اسم المستخدم"
+                      rules={[{ required: true, message: 'اسم المستخدم مطلوب' }]}
+                      placeholder="مثال: ahmed.mohamed"
+                    />
+                  </Col>
+                  <Col xs={24} md={12}>
+                    <FormField
+                      name="password"
+                      label="كلمة المرور"
+                      type="password"
+                      rules={[{ required: true, message: 'كلمة المرور مطلوبة' }, { min: 6, message: '6 أحرف على الأقل' }]}
+                      placeholder="أدخل كلمة مرور"
+                    />
+                  </Col>
+                </Row>
+              )}
+            </>
+          )}
+
           <div style={{ textAlign: 'left', marginTop: 24, borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
             <Space>
               <Button onClick={() => navigate('/employees')}>إلغاء</Button>

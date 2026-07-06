@@ -78,6 +78,10 @@ const EmployeeList = () => {
       render: (s) => <StatusBadge status={s} mapping={statusColors.client} />,
     },
     { title: 'الهاتف', dataIndex: 'phone', key: 'phone', width: 130, render: (p) => p || '—' },
+    {
+      title: 'حساب المستخدم', dataIndex: 'user', key: 'user', width: 150,
+      render: (u) => u ? <Tag color="blue">{u.username} ({u.role})</Tag> : <Tag color="default">لا يوجد</Tag>,
+    },
   ];
 
   const filterBar = (
