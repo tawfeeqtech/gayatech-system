@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Typography, Spin, Result, Button, Row, Col, Statistic, Descriptions, Tag } from 'antd';
 import { DollarOutlined, ReloadOutlined, UserOutlined, CalendarOutlined, BankOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import api from '../../api/axios';
 import { useAuth } from '../../hooks/useAuth';
 
 const { Title, Paragraph } = Typography;
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
 const MySalary = () => {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [salary, setSalary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,9 +16,7 @@ const MySalary = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_URL}/salaries/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get('/salaries/me');
       setSalary(response.data.data || response.data.salary || response.data);
     } catch (err) {
       if (err.response?.status === 404) {
