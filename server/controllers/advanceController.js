@@ -31,6 +31,17 @@ exports.getAdvances = asyncHandler(async (req, res, next) => {
   });
 });
 
+exports.getMyAdvances = asyncHandler(async (req, res, next) => {
+  if (!req.user.employee) {
+    return next(new ApiError('لا يوجد موظف مرتبط بهذا الحساب', 404));
+  }
+  const advances = await Advance.find({ employee: req.user.employee })
+    .populate('approvedBy', 'fullName')
+    .populate('invoice', 'invoiceNumber status')
+    .sort('-requestDate');
+  res.status(200).json({ status: 'success', results: advances.length, data: { advances } });
+});
+
 exports.createAdvance = asyncHandler(async (req, res, next) => {
   req.body.createdBy = req.user._id;
   const advance = await Advance.create(req.body);
