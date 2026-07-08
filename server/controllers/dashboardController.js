@@ -92,6 +92,8 @@ exports.getAdminDashboard = asyncHandler(async (req, res) => {
   const now = new Date();
   const { range = 'month' } = req.query;
   const { from } = getDateRange(range, now);
+  // استخدام نهاية الشهر بدلاً من now لضمان تغطية كامل الفترة
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
   // حساب الفترة السابقة بنفس المدة للمقارنة
   const rangeMs = now.getTime() - from.getTime();
@@ -100,13 +102,13 @@ exports.getAdminDashboard = asyncHandler(async (req, res) => {
 
   // 📊 1. الإيرادات — فترة محددة + مقارنة مع الفترة السابقة
   const [revenue, prevRevenue] = await Promise.all([
-    aggregateIncome(from, now), aggregateIncome(prevFrom, prevTo)
+    aggregateIncome(from, endOfMonth), aggregateIncome(prevFrom, prevTo)
   ]);
   const revenueKPI = calcChange(revenue, prevRevenue);
 
   // 📊 2. المصاريف — فترة محددة + مقارنة
   const [expenses, prevExpenses] = await Promise.all([
-    aggregateExpense(from, now), aggregateExpense(prevFrom, prevTo)
+    aggregateExpense(from, endOfMonth), aggregateExpense(prevFrom, prevTo)
   ]);
   const expensesKPI = calcChange(expenses, prevExpenses);
 
@@ -157,7 +159,7 @@ exports.getAdminDashboard = asyncHandler(async (req, res) => {
 
   // 📊 12. توزيع الدخل حسب المصدر
   const incomeBySource = await Transaction.aggregate([
-    { $match: { type: 'دخل', transactionDate: { $gte: from }, status: { $ne: 'ملغي' } } },
+    { $match: { type: 'دخل', transactionDate: { $gte: from, $lte: endOfMonth }, status: { $ne: 'ملغي' } } },
     { $group: { _id: '$paymentMethod', total: { $sum: '$amount' } } }
   ]);
 
@@ -239,6 +241,7 @@ exports.getFinanceDashboard = asyncHandler(async (req, res) => {
   const now = new Date();
   const { range = 'month' } = req.query;
   const { from } = getDateRange(range, now);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
   // الفترة السابقة للمقارنة
   const rangeMs = now.getTime() - from.getTime();
@@ -246,7 +249,7 @@ exports.getFinanceDashboard = asyncHandler(async (req, res) => {
   const prevFrom = new Date(prevTo.getTime() - rangeMs);
 
   const [revenue, expenses, wallets, pendingInvoices, recentCollections] = await Promise.all([
-    aggregateIncome(from, now), aggregateExpense(from, now),
+    aggregateIncome(from, endOfMonth), aggregateExpense(from, endOfMonth),
     Wallet.aggregate([{ $group: { _id: null, total: { $sum: '$balance' } } }]),
     Invoice.find({ status: { $in: ['مصدرة', 'مدفوعة جزئياً'] } }).sort({ dueDate: 1 }).limit(10).populate('client', 'name').lean(),
     Transaction.find({ type: 'دخل', status: { $ne: 'ملغي' } }).sort({ transactionDate: -1 }).limit(5).populate('client', 'name').lean()

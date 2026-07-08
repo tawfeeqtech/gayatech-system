@@ -161,17 +161,17 @@ exports.createContract = asyncHandler(async (req, res, next) => {
       ? new Date(Date.UTC(contract.endDate.getUTCFullYear(), contract.endDate.getUTCMonth(), 1, 12, 0, 0))
       : now;
     
-    while (currentDate <= endLimit && currentDate <= now) {
+    while (currentDate <= endLimit) {
       const month = `${String(currentDate.getUTCFullYear()).padStart(4, '0')}-${String(currentDate.getUTCMonth() + 1).padStart(2, '0')}`;
-      
+
       const exists = await ContractMonth.findOne({
         contract: contract._id,
         month: month
       });
-      
+
       if (!exists) {
         const dueDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), contract.dueDayOfMonth || 10, 12, 0, 0));
-        
+
         const contractMonth = await ContractMonth.create({
           contract: contract._id,
           client: contract.client,
@@ -267,17 +267,17 @@ exports.updateContract = asyncHandler(async (req, res, next) => {
       : now;
     let generatedCount = 0;
     
-    while (currentDate <= endLimit && currentDate <= now) {
+    while (currentDate <= endLimit) {
       const month = `${String(currentDate.getUTCFullYear()).padStart(4, '0')}-${String(currentDate.getUTCMonth() + 1).padStart(2, '0')}`;
-      
+
       const exists = await ContractMonth.findOne({
         contract: contract._id,
         month: month
       });
-      
+
       if (!exists) {
         const dueDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), contract.dueDayOfMonth || 10, 12, 0, 0));
-        
+
         const contractMonth = await ContractMonth.create({
           contract: contract._id,
           client: contract.client,
