@@ -172,21 +172,27 @@ const Sidebar = () => {
       return item;
     });
 
-  // تحديد العنصر الفرعي النشط الذكي
+  // تحديد العنصر الفرعي النشط — يختار أطول مسار متطابق (وليس أول تطابق)
   const getActiveKey = () => {
     const path = location.pathname;
-    
+
     if (path === '/') return '/';
 
-    // البحث في القائمة عن عنصر يبدأ به الرابط الحالي
+    let bestMatch = null;
+    let bestMatchLen = 0;
+
     for (const item of menuItems) {
       if (item.children) {
-        const activeChild = item.children.find(child => path.startsWith(child.key));
-        if (activeChild) return activeChild.key;
+        for (const child of item.children) {
+          if (path.startsWith(child.key) && child.key.length > bestMatchLen) {
+            bestMatch = child.key;
+            bestMatchLen = child.key.length;
+          }
+        }
       }
     }
-    
-    return path;
+
+    return bestMatch || path;
   };
 
   // تحديد القسم الأب المفتوح تلقائياً
