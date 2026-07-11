@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Card, Form, Button, Space, Row, Col, Select, message, Switch, Typography, Divider, InputNumber, Alert } from 'antd';
-import { SaveOutlined } from '@ant-design/icons';
+import { Card, Form, Button, Space, Row, Col, Select, message, Switch, Typography, Divider, InputNumber, Alert, Modal, Popconfirm } from 'antd';
+import { SaveOutlined, WarningOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useCurrencies } from '../../hooks/useCurrencies';
 import accountAPI from '../../api/accounts';
 import walletAPI from '../../api/wallets';
 import settingsAPI from '../../api/settings';
+import systemAPI from '../../api/system';
 
 const { Title, Text } = Typography;
 
@@ -14,6 +15,7 @@ const SystemSettings = () => {
   const [accounts, setAccounts] = React.useState([]);
   const [wallets, setWallets] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [resetting, setResetting] = useState(false);
 
   React.useEffect(() => {
     loadData();
@@ -62,6 +64,20 @@ const SystemSettings = () => {
       message.success('تم حفظ الإعدادات بنجاح');
     } catch (e) {
       message.error('فشل حفظ الإعدادات');
+    }
+  };
+
+  const handleReset = async () => {
+    setResetting(true);
+    try {
+      const res = await systemAPI.reset();
+      message.success(res.data.message);
+      // إعادة تحميل الصفحة بعد ثانيتين
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (e) {
+      message.error(e.response?.data?.message || 'فشل في تهيئة النظام');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -168,15 +184,35 @@ const SystemSettings = () => {
         </div>
       </Form>
 
-      <Card title="معلومات النظام" style={{ borderRadius: 8, marginTop: 16 }}>
-        <Row gutter={[16, 8]}>
-          <Col span={8}><Text strong>الإصدار:</Text></Col>
-          <Col span={16}><Text>1.0.0</Text></Col>
-          <Col span={8}><Text strong>الترخيص:</Text></Col>
-          <Col span={16}><Text>MIT</Text></Col>
-          <Col span={8}><Text strong>آخر تحديث:</Text></Col>
-          <Col span={16}><Text>2026-06-10</Text></Col>
-        </Row>
+      <Card 
+        title={<span><WarningOutlined style={{ color: '#ff4d4f', marginLeft: 8 }} /> منطقة خطيرة</span>}
+        style={{ borderRadius: 8, marginTop: 16, borderColor: '#ff4d4f' }}
+      >
+        <Alert
+          message="تحذير: تهيئة النظام"
+          description="سيتم حذف جميع البيانات (المعاملات، الفواتير، العقود، المشاريع، العملاء، الموظفين، الرواتب، الحسابات، الموردين، الاشتراكات، وغيرها). سيتم تصفير أرصدة المحافظ فقط. سيتم الاحتفاظ بـ: المستخدمين، المحافظ (برصيد 0)، العملات."
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        <Popconfirm
+          title="هل أنت متأكد من تهيئة النظام؟"
+          description="سيتم حذف جميع البيانات بشكل نهائي ولا يمكن التراجع!"
+          onConfirm={handleReset}
+          okText="نعم، هيّئ النظام"
+          cancelText="إلغاء"
+          okButtonProps={{ danger: true }}
+        >
+          <Button 
+            danger 
+            type="primary" 
+            icon={<ReloadOutlined spin={resetting} />} 
+            loading={resetting}
+            size="large"
+          >
+            تهيئة النظام
+          </Button>
+        </Popconfirm>
       </Card>
     </div>
   );

@@ -74,6 +74,7 @@ app.use('/api/currencies', require('./routes/currencyListRoutes'));
 app.use('/api/income-sources', require('./routes/incomeSourceRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/import', require('./routes/importRoutes'));
+app.use('/api/system', require('./routes/systemRoutes'));
 app.use('/api/settings', require('./routes/systemSettingsRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
