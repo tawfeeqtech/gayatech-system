@@ -15,7 +15,6 @@ const MODELS_TO_CLEAR = [
   'Advance',
   'Subscription',
   'Vendor',
-  'Account',
   'CurrencyExchange',
   'Notification',
   'Partner',
@@ -29,14 +28,17 @@ const MODELS_TO_CLEAR = [
   'Country',
 ];
 
-// @desc    تهيئة النظام — حذف جميع البيانات ما عدا المستخدمين والمحافظ والعملات
+// النماذج المحتفظ بها (لا تمسح، فقط رصيد المحافظ يتصفر)
+const MODELS_TO_KEEP = ['User', 'Account', 'Wallet', 'Currency'];
+
+// @desc    تهيئة النظام — حذف جميع البيانات مع الاحتفاظ بالمستخدمين والحسابات والمحافظ والعملات
 // @route   POST /api/system/reset
 // @access  Private/Admin
 exports.resetSystem = async (req, res) => {
   const stats = {
     deleted: {},
     zeroed: 0,
-    kept: { users: 0, currencies: 0, wallets: 0 },
+    kept: {},
   };
 
   try {
@@ -47,36 +49,19 @@ exports.resetSystem = async (req, res) => {
       stats.deleted[modelName] = result.deletedCount;
     }
 
-    // 2. إسقاط المؤشر الفريد على المحافظ (account+currency) لتجنب التعارض
+    // 2. تصفير أرصدة المحافظ فقط (الحسابات تبقى كما هي)
     const Wallet = mongoose.model('Wallet');
-    try {
-      await Wallet.collection.dropIndex('account_1_currency_1');
-    } catch (e) {
-      // المؤشر قد لا يكون موجوداً، لا مشكلة
-    }
-
-    // 3. تصفير أرصدة المحافظ وإزالة مرجع الحساب
-    const walletResult = await Wallet.collection.updateMany(
-      {},
-      {
-        $set: { balance: 0 },
-        $unset: { account: '' },
-      }
-    );
+    const walletResult = await Wallet.updateMany({}, { $set: { balance: 0 } });
     stats.zeroed = walletResult.modifiedCount;
 
-    // 4. إعادة إنشاء المؤشر الفريد (بدون account الآن، المؤشر يكون sparse)
-    // نترك المؤشر مفكوكاً لأن المحافظ بلا حسابات بعد التهيئة
-    // عند إضافة حسابات جديدة لاحقاً، سينشئ Mongoose المؤشر تلقائياً
-
-    // 5. إحصاء المحفوظات
-    stats.kept.users = await mongoose.model('User').countDocuments();
-    stats.kept.currencies = await mongoose.model('Currency').countDocuments();
-    stats.kept.wallets = await mongoose.model('Wallet').countDocuments();
+    // 3. إحصاء المحفوظات
+    for (const modelName of MODELS_TO_KEEP) {
+      stats.kept[modelName] = await mongoose.model(modelName).countDocuments();
+    }
 
     res.json({
       success: true,
-      message: '✅ تمت تهيئة النظام بنجاح — تم حذف جميع البيانات مع الاحتفاظ بالمستخدمين والمحافظ والعملات',
+      message: '✅ تمت تهيئة النظام بنجاح — تم حذف البيانات التشغيلية مع الاحتفاظ بالمستخدمين، الحسابات، المحافظ، والعملات',
       stats,
     });
   } catch (error) {
