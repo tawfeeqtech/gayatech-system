@@ -14,5 +14,6 @@ router.get('/:id', roleCheck('admin', 'finance', 'accountant'), accountControlle
 router.get('/:id/movements', roleCheck('admin', 'finance'), accountController.getAccountMovements);
 router.post('/', roleCheck('admin'), accountController.createAccount);
 router.put('/:id', roleCheck('admin'), accountController.updateAccount);
+router.delete('/:id', roleCheck('admin'), accountController.deleteAccount);
 
 module.exports = router;

@@ -112,6 +112,32 @@ exports.updateAccount = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc    حذف حساب
+// @route   DELETE /api/accounts/:id
+// @access  Private (admin)
+exports.deleteAccount = asyncHandler(async (req, res, next) => {
+  const account = await Account.findById(req.params.id);
+
+  if (!account) {
+    return next(new ApiError('الحساب غير موجود', 404));
+  }
+
+  // قيود الحذف: منع حذف حساب به محافظ
+  const Wallet = require('../models/Wallet');
+  const hasWallets = await Wallet.exists({ account: req.params.id });
+
+  if (hasWallets) {
+    return next(new ApiError('لا يمكن حذف حساب يحتوي على محافظ. قم بحذف المحافظ أولاً.', 400));
+  }
+
+  await Account.findByIdAndDelete(req.params.id);
+
+  res.status(200).json({
+    status: 'success',
+    message: 'تم حذف الحساب بنجاح'
+  });
+});
+
 // @desc    الحصول على حركة حساب
 // @route   GET /api/accounts/:id/movements
 // @access  Private (admin, finance)

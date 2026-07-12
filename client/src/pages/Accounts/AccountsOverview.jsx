@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Table, Spin, message, Typography, Tag, Button, Space, Popconfirm, Tooltip, Select } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Table, Spin, message, Typography, Tag, Button, Space, Popconfirm, Tooltip, Select, Modal, Form, Input } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, BankOutlined } from '@ant-design/icons';
 import StatCard from '../../components/ui/StatCard';
 import accountAPI from '../../api/accounts';
 import walletAPI from '../../api/wallets';
 import { formatCurrency } from '../../utils/formatters';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import { ACCOUNT_TYPES } from '../../utils/constants';
 import WalletForm from './WalletForm';
 
 const { Title } = Typography;
@@ -16,10 +17,16 @@ const AccountsOverview = () => {
   const [loading, setLoading] = useState(true);
   const { currencies } = useCurrencies();
 
-  // State for Wallet Modal
-  const [modalVisible, setModalVisible] = useState(false);
+  // Wallet Modal state
+  const [walletModalVisible, setWalletModalVisible] = useState(false);
   const [editingWallet, setEditingWallet] = useState(null);
   const [currentAccountId, setCurrentAccountId] = useState(null);
+
+  // Account Modal state
+  const [accountModalVisible, setAccountModalVisible] = useState(false);
+  const [editingAccount, setEditingAccount] = useState(null);
+  const [accountForm] = Form.useForm();
+  const [accountSaving, setAccountSaving] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -42,16 +49,17 @@ const AccountsOverview = () => {
     finally { setLoading(false); }
   };
 
+  // ===== Wallet handlers =====
   const handleAddWallet = (accountId) => {
     setCurrentAccountId(accountId);
     setEditingWallet(null);
-    setModalVisible(true);
+    setWalletModalVisible(true);
   };
 
   const handleEditWallet = (accountId, wallet) => {
     setCurrentAccountId(accountId);
     setEditingWallet(wallet);
-    setModalVisible(true);
+    setWalletModalVisible(true);
   };
 
   const handleDeleteWallet = async (accountId, walletId) => {
@@ -64,7 +72,7 @@ const AccountsOverview = () => {
     }
   };
 
-  const handleModalSuccess = async (values) => {
+  const handleWalletModalSuccess = async (values) => {
     try {
       if (editingWallet) {
         await walletAPI.update(currentAccountId, editingWallet._id, values);
@@ -73,10 +81,65 @@ const AccountsOverview = () => {
         await walletAPI.create(currentAccountId, values);
         message.success('تم إضافة المحفظة بنجاح');
       }
-      setModalVisible(false);
+      setWalletModalVisible(false);
       loadData();
     } catch (error) {
       message.error(error.response?.data?.message || 'فشل في حفظ المحفظة');
+    }
+  };
+
+  // ===== Account handlers =====
+  const handleAddAccount = () => {
+    setEditingAccount(null);
+    accountForm.resetFields();
+    accountForm.setFieldsValue({ accountType: 'بنك', currency: 'JOD', isActive: true });
+    setAccountModalVisible(true);
+  };
+
+  const handleEditAccount = (account) => {
+    setEditingAccount(account);
+    accountForm.setFieldsValue({
+      name: account.name,
+      accountType: account.accountType,
+      currency: account.currency,
+      bankName: account.bankName,
+      accountNumber: account.accountNumber,
+      iban: account.iban,
+      description: account.description,
+      notes: account.notes,
+      isActive: account.isActive,
+    });
+    setAccountModalVisible(true);
+  };
+
+  const handleDeleteAccount = async (accountId) => {
+    try {
+      await accountAPI.delete(accountId);
+      message.success('تم حذف الحساب بنجاح');
+      loadData();
+    } catch (error) {
+      message.error(error.response?.data?.message || 'فشل في حذف الحساب');
+    }
+  };
+
+  const handleAccountSubmit = async () => {
+    try {
+      const values = await accountForm.validateFields();
+      setAccountSaving(true);
+      if (editingAccount) {
+        await accountAPI.update(editingAccount._id, values);
+        message.success('تم تحديث الحساب بنجاح');
+      } else {
+        await accountAPI.create(values);
+        message.success('تم إضافة الحساب بنجاح');
+      }
+      setAccountModalVisible(false);
+      loadData();
+    } catch (error) {
+      if (error.errorFields) return; // validation error
+      message.error(error.response?.data?.message || 'فشل في حفظ الحساب');
+    } finally {
+      setAccountSaving(false);
     }
   };
 
@@ -103,7 +166,7 @@ const AccountsOverview = () => {
       )
     },
     { title: 'العملة', dataIndex: 'currency', key: 'currency', render: (c) => <Tag color="blue">{c}</Tag> },
-    { 
+    {
       title: 'الرصيد', dataIndex: 'balance', key: 'balance',
       render: (v, r) => (
         <span style={{ color: v >= 0 ? '#10b981' : '#ef4444', fontWeight: 700, fontSize: 15 }}>
@@ -131,11 +194,7 @@ const AccountsOverview = () => {
             cancelText="لا"
           >
             <Tooltip title="حذف">
-              <Button
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-              />
+              <Button type="text" danger icon={<DeleteOutlined />} />
             </Tooltip>
           </Popconfirm>
         </Space>
@@ -147,18 +206,23 @@ const AccountsOverview = () => {
 
   return (
     <div style={{ fontFamily: 'Cairo, sans-serif' }}>
-      <Title level={4} style={{ marginBottom: 16 }}>الحسابات والمحافظ</Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+        <Title level={4} style={{ margin: 0 }}>الحسابات والمحافظ</Title>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddAccount}>
+          إضافة حساب جديد
+        </Button>
+      </div>
 
       {/* أرصدة حسب العملة */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {Object.entries(balanceByCurrency).map(([currency, balance]) => (
           <Col xs={24} sm={12} md={6} key={currency}>
-            <StatCard 
-              title={`رصيد ${currency}`} 
-              value={balance} 
+            <StatCard
+              title={`رصيد ${currency}`}
+              value={balance}
               prefix={currency}
-              color="#3b82f6" 
-              icon="💰" 
+              color="#3b82f6"
+              icon="💰"
             />
           </Col>
         ))}
@@ -170,20 +234,23 @@ const AccountsOverview = () => {
       {/* تفاصيل كل حساب */}
       {accounts.map(acc => {
         const wallets = walletsMap[acc._id] || [];
-        
+
         // مجموع المحافظ لكل عملة
         const byCurrency = {};
         wallets.forEach(w => {
           if (!byCurrency[w.currency]) byCurrency[w.currency] = 0;
           byCurrency[w.currency] += (w.balance || 0);
         });
-        
+
         return (
-          <Card 
+          <Card
             key={acc._id}
             title={
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                <span>{acc.name} <Tag>{acc.accountType}</Tag></span>
+                <span>
+                  {acc.name} <Tag>{acc.accountType}</Tag>
+                  {!acc.isActive && <Tag color="default">غير نشط</Tag>}
+                </span>
                 <span style={{ fontSize: 13 }}>
                   {Object.entries(byCurrency).map(([cur, bal]) => (
                     <Tag key={cur} color={bal >= 0 ? 'green' : 'red'} style={{ margin: '0 4px' }}>
@@ -195,6 +262,28 @@ const AccountsOverview = () => {
             }
             extra={
               <Space>
+                <Tooltip title="تعديل الحساب">
+                  <Button
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => handleEditAccount(acc)}
+                  >
+                    تعديل
+                  </Button>
+                </Tooltip>
+                <Popconfirm
+                  title="هل أنت متأكد من حذف هذا الحساب؟"
+                  description="لا يمكن حذف حساب يحتوي على محافظ. احذف المحافظ أولاً."
+                  onConfirm={() => handleDeleteAccount(acc._id)}
+                  okText="نعم"
+                  cancelText="لا"
+                >
+                  <Tooltip title="حذف الحساب">
+                    <Button size="small" danger icon={<DeleteOutlined />}>
+                      حذف
+                    </Button>
+                  </Tooltip>
+                </Popconfirm>
                 <Select
                   placeholder="اختر المحفظة"
                   style={{ width: 200 }}
@@ -220,6 +309,14 @@ const AccountsOverview = () => {
             }
             style={{ borderRadius: 8, marginBottom: 16 }}
           >
+            {/* معلومات الحساب */}
+            <div style={{ marginBottom: 12, display: 'flex', gap: 16, flexWrap: 'wrap', color: '#6b7280', fontSize: 13 }}>
+              {acc.bankName && <span>🏦 {acc.bankName}</span>}
+              {acc.accountNumber && <span>🔢 {acc.accountNumber}</span>}
+              {acc.iban && <span>📋 {acc.iban}</span>}
+              {acc.description && <span>📝 {acc.description}</span>}
+            </div>
+
             <Table
               columns={walletColumns}
               dataSource={wallets}
@@ -233,13 +330,79 @@ const AccountsOverview = () => {
         );
       })}
 
+      {accounts.length === 0 && !loading && (
+        <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>
+          <BankOutlined style={{ fontSize: 48, marginBottom: 16, display: 'block' }} />
+          لا توجد حسابات. اضغط على "إضافة حساب جديد" للبدء.
+        </div>
+      )}
+
+      {/* Wallet Modal */}
       <WalletForm
-        visible={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        onSuccess={handleModalSuccess}
+        visible={walletModalVisible}
+        onCancel={() => setWalletModalVisible(false)}
+        onSuccess={handleWalletModalSuccess}
         initialValues={editingWallet}
         accountId={currentAccountId}
       />
+
+      {/* Account Modal */}
+      <Modal
+        title={editingAccount ? 'تعديل حساب' : 'إضافة حساب جديد'}
+        open={accountModalVisible}
+        onCancel={() => setAccountModalVisible(false)}
+        onOk={handleAccountSubmit}
+        okText={editingAccount ? 'تحديث' : 'إضافة'}
+        cancelText="إلغاء"
+        confirmLoading={accountSaving}
+        destroyOnClose
+      >
+        <Form form={accountForm} layout="vertical">
+          <Form.Item
+            name="name"
+            label="اسم الحساب"
+            rules={[{ required: true, message: 'يرجى إدخال اسم الحساب' }]}
+          >
+            <Input placeholder="مثال: حساب الشركة، صندوق ريم" />
+          </Form.Item>
+
+          <Form.Item
+            name="accountType"
+            label="نوع الحساب"
+            rules={[{ required: true, message: 'يرجى اختيار نوع الحساب' }]}
+          >
+            <Select options={ACCOUNT_TYPES} placeholder="اختر نوع الحساب" />
+          </Form.Item>
+
+          <Form.Item
+            name="currency"
+            label="العملة الافتراضية"
+            rules={[{ required: true, message: 'يرجى اختيار العملة' }]}
+          >
+            <Select options={currencies} placeholder="اختر العملة" />
+          </Form.Item>
+
+          <Form.Item name="bankName" label="اسم البنك">
+            <Input placeholder="مثال: البنك العربي" />
+          </Form.Item>
+
+          <Form.Item name="accountNumber" label="رقم الحساب">
+            <Input placeholder="رقم الحساب البنكي" />
+          </Form.Item>
+
+          <Form.Item name="iban" label="IBAN">
+            <Input placeholder="رقم IBAN" />
+          </Form.Item>
+
+          <Form.Item name="description" label="وصف">
+            <Input.TextArea rows={2} placeholder="وصف مختصر للحساب" />
+          </Form.Item>
+
+          <Form.Item name="notes" label="ملاحظات">
+            <Input.TextArea rows={2} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };
